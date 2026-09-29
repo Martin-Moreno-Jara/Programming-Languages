@@ -18,6 +18,7 @@ class Lexer:
             "false",
             "for",
             "function",
+            "global",
             "goto",
             "if",
             "in",
@@ -25,6 +26,7 @@ class Lexer:
             "nil",
             "not",
             "or",
+            "print",
             "repeat",
             "return",
             "then",
@@ -131,26 +133,31 @@ class Lexer:
         return f"<{self.operand_symbols_dict.get(symbol)},{symbol},{self.line},{start - self.last_pos + 1}>"
 
     def _mode_single_comment(self):
-        pass
+        while self.pos < len(self.data) and self.data[self.pos] != "\n":
+            self.pos += 1
 
     def tokenize(self) -> str:
         try:
-            token = ""
+            token = None
+            # identificar y saltar comentarios
+
             # identificar y saltar espacios
-            while self.pos < len(self.data) and self.data[self.pos] == "\n":
+            while self.pos < len(self.data) and self.data[self.pos] == " ":
+                self.pos += 1
+            if self.data[self.pos] == "\n":
                 self.line += 1
                 self.pos += 1
                 self.last_pos = self.pos
-            while self.pos < len(self.data) and self.data[self.pos] == " ":
-                self.pos += 1
-
-            # identificar y saltar comentarios
+                return
 
             #
             start = self.pos
             first_char = self.data[start]
+            # si primer y segundo caracter - es modo comentario de una línea
+            if self.data[start] == "-" and self.data[start + 1] == "-":
+                self._mode_single_comment()
             # si primer caracter letra - modo keyword/id
-            if self.patterns_dict["id"].match(first_char):
+            elif self.patterns_dict["id"].match(first_char):
                 token = self._mode_keyword_id(start)
 
                 # si primer caracter número - modo número
@@ -167,7 +174,9 @@ class Lexer:
 
                 # si no, error léxico
             else:
-                print(f">>> Error lexico (linea: {self.line}, posicion: {self.pos+1})")
+                print(
+                    f">>> Error lexico (linea: {self.line}, posicion: {start - self.last_pos + 1} : {self.data[self.pos]})"
+                )
                 exit()
 
             return token
@@ -183,4 +192,5 @@ lexer = Lexer(data)
 
 while True:
     token = lexer.tokenize()
-    print(token)
+    if token:
+        print(token)
