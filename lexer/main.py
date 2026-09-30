@@ -79,6 +79,12 @@ class Lexer:
             "multi_comm": re.compile(r"^\[\[ .* \]\]"),
         }
 
+    def lookup(self,offset=0):
+        return self.data[self.pos+offset] if self.data[self.pos+offset] < len(self.data) else None
+
+    def calc_inline_pos(self,start):
+        return start - self.last_pos + 1
+ 
     def _mode_keyword_id(self, start):
         while self.pos < len(self.data) and self.patterns_dict["id"].match(
             self.data[self.pos]
@@ -87,9 +93,9 @@ class Lexer:
 
         lexem = self.data[start : self.pos]
         if lexem in self.keywords_set:  # token is a keyword
-            return f"<{lexem},{self.line},{start - self.last_pos + 1}>"
+            return f"<{lexem},{self.line},{self.calc_inline_pos(start)}>"
         else:  # token is an identifier
-            return f"<id,{lexem},{self.line},{start - self.last_pos + 1}>"
+            return f"<id,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_num(self, start):
         num = self.data[start]
@@ -104,7 +110,7 @@ class Lexer:
                 break
             num = aux
 
-        return f"<tkn_num,{num},{self.line},{start - self.last_pos + 1}>"
+        return f"<tkn_num,{num},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_string(self, start):
         starting_quote = self.data[start]
@@ -117,7 +123,7 @@ class Lexer:
                 pass
 
         lexem = self.data[start + 1 : self.pos - 1]
-        return f"<tkn_str,{lexem},{self.line},{start - self.last_pos + 1}>"
+        return f"<tkn_str,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_op_symbol(self, start):
         symbol = self.data[start]
@@ -130,17 +136,42 @@ class Lexer:
             symbol = aux
 
         # print(self.operand_symbols_dict.get(" "))
-        return f"<{self.operand_symbols_dict.get(symbol)},{symbol},{self.line},{start - self.last_pos + 1}>"
+        return f"<{self.operand_symbols_dict.get(symbol)},{symbol},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_single_comment(self):
         while self.pos < len(self.data) and self.data[self.pos] != "\n":
             self.pos += 1
 
+    def _handle_blanks(self):
+        pass
+
+    def _handle_new_line(self):
+            pass
+
+    def _handle_comments(self):
+        pass
+    
+    def _cleanse_input(self):
+        # identify each type of unnecessary token
+        while True:
+            cur = self.lookup()
+            next = self.lookup(1)
+
+            if cur == "-" and next == "-":
+                self._handle_single_line_comments()
+            elif cur == " " or cur == "\t" or cur == "\r":
+                self._handle_blanks()
+            elif cur == "\n":
+                self._handle_new_line()
+            else:
+                break
+
     def tokenize(self) -> str:
         try:
             token = None
-            # identificar y saltar comentarios
 
+            # identificar y saltar comentarios
+            self._cleanse_input()
             # identificar y saltar espacios
             while self.pos < len(self.data) and self.data[self.pos] == " ":
                 self.pos += 1
@@ -175,7 +206,7 @@ class Lexer:
                 # si no, error léxico
             else:
                 print(
-                    f">>> Error lexico (linea: {self.line}, posicion: {start - self.last_pos + 1} : {self.data[self.pos]})"
+                    f">>> Error lexico (linea: {self.line}, posicion: {self.calc_inline_pos(start)} : {self.data[self.pos]})"
                 )
                 exit()
 
