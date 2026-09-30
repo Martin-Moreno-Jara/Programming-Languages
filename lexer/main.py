@@ -79,12 +79,14 @@ class Lexer:
             "multi_comm": re.compile(r"^\[\[ .* \]\]"),
         }
 
-    def peek(self,offset=0):
-        return self.data[self.pos+offset] if self.pos+offset < len(self.data) else None
+    def peek(self, offset=0):
+        return (
+            self.data[self.pos + offset] if self.pos + offset < len(self.data) else None
+        )
 
-    def calc_inline_pos(self,start):
+    def calc_inline_pos(self, start):
         return start - self.last_pos + 1
- 
+
     def _mode_keyword_id(self, start):
         while self.pos < len(self.data) and self.patterns_dict["id"].match(
             self.data[self.pos]
@@ -146,33 +148,64 @@ class Lexer:
         while True:
             cur = self.peek()
             if cur == " " or cur == "\t" or cur == "\r":
-                self.pos+=1
-            else: break
+                self.pos += 1
+            else:
+                break
 
     def _handle_new_line(self):
         while self.peek() == "\n":
-            self.pos+=1
-            self.line+=1
+            self.pos += 1
+            self.line += 1
             self.last_pos = self.pos
 
     def _handle_single_line_comments(self):
         while self.peek() != "\n":
-            self.pos+=1
+            self.pos += 1
 
+    def _handle_multiline_comments(self, starting_pos: int, n_equals=0):
+        while True:
+            cur = self.peek()
+            while cur != "]":
+                self.pos += 1
+                if cur == "\n":
+                    self.line += 1
+                    self.last_pos = self.pos
+                cur = self.peek()
+            i = 1
+            n_counter = 0
+            start_again = False
+            while n_equals != n_counter:
+                if self.peek(i) == "=":
+                    n_counter += 1
+                    i += 1
+                else:
+                    start_again == True
+                    break
+            if start_again:
+                continue
+            if self.peek(i) == "]":
+                self.pos += i+1
+                break
 
-    def _handle_multiline_comments(self):
-         pass       
-    
     def _handle_comments(self):
-        self.pos+=2
+        starting_pos = self.pos
+        self.pos += 2
         cur = self.peek()
         next = self.peek(1)
-        if cur == "[" and (next == "[" or next == "="):
-            self._handle_multiline_comments()
-        else: self._handle_single_line_comments()
+        if cur == "[" and next == "[":
+            self._handle_multiline_comments(starting_pos)
+        elif cur == "[" and next == "=":
+            i = 1
+            n_equals = 0
+            while self.peek(i) == "=":
+                n_equals += 1
+                i += 1
+            if self.peek() == "[":
+                self.pos += i + 1
+                self._handle_multiline_comments(starting_pos, n_equals)
+        else:
+            self._handle_single_line_comments()
 
-        pass
-    
     def _cleanse_input(self):
         # identify each type of unnecessary token
         while True:
@@ -180,7 +213,7 @@ class Lexer:
             next = self.peek(1)
 
             if cur == "-" and next == "-":
-                self._handle_single_line_comments()
+                self._handle_comments()
             elif cur == " " or cur == "\t" or cur == "\r":
                 self._handle_blanks()
             elif cur == "\n":
@@ -191,7 +224,6 @@ class Lexer:
     def _process_token(self):
         pass
 
-
     def tokenize(self) -> str:
         try:
             token = None
@@ -199,8 +231,6 @@ class Lexer:
             # identificar y saltar comentarios
             self._cleanse_input()
 
-
-            #
             start = self.pos
             first_char = self.data[start]
             # si primer y segundo caracter - es modo comentario de una línea
