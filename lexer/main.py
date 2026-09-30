@@ -79,8 +79,8 @@ class Lexer:
             "multi_comm": re.compile(r"^\[\[ .* \]\]"),
         }
 
-    def lookup(self,offset=0):
-        return self.data[self.pos+offset] if self.data[self.pos+offset] < len(self.data) else None
+    def peek(self,offset=0):
+        return self.data[self.pos+offset] if self.pos+offset < len(self.data) else None
 
     def calc_inline_pos(self,start):
         return start - self.last_pos + 1
@@ -143,19 +143,41 @@ class Lexer:
             self.pos += 1
 
     def _handle_blanks(self):
-        pass
+        while True:
+            cur = self.peek()
+            if cur == " " or cur == "\t" or cur == "\r":
+                self.pos+=1
+            else: break
 
     def _handle_new_line(self):
-            pass
+        while self.peek() == "\n":
+            self.pos+=1
+            self.line+=1
+            self.last_pos = self.pos
 
+    def _handle_single_line_comments(self):
+        while self.peek() != "\n":
+            self.pos+=1
+
+
+    def _handle_multiline_comments(self):
+         pass       
+    
     def _handle_comments(self):
+        self.pos+=2
+        cur = self.peek()
+        next = self.peek(1)
+        if cur == "[" and (next == "[" or next == "="):
+            self._handle_multiline_comments()
+        else: self._handle_single_line_comments()
+
         pass
     
     def _cleanse_input(self):
         # identify each type of unnecessary token
         while True:
-            cur = self.lookup()
-            next = self.lookup(1)
+            cur = self.peek()
+            next = self.peek(1)
 
             if cur == "-" and next == "-":
                 self._handle_single_line_comments()
@@ -166,20 +188,17 @@ class Lexer:
             else:
                 break
 
+    def _process_token(self):
+        pass
+
+
     def tokenize(self) -> str:
         try:
             token = None
 
             # identificar y saltar comentarios
             self._cleanse_input()
-            # identificar y saltar espacios
-            while self.pos < len(self.data) and self.data[self.pos] == " ":
-                self.pos += 1
-            if self.data[self.pos] == "\n":
-                self.line += 1
-                self.pos += 1
-                self.last_pos = self.pos
-                return
+
 
             #
             start = self.pos
