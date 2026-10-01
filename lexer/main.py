@@ -2,6 +2,11 @@ import sys
 import re
 
 
+class LexicalError(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
+
 class Lexer:
     def __init__(self, data):
         self.data: str = data
@@ -140,10 +145,6 @@ class Lexer:
         # print(self.operand_symbols_dict.get(" "))
         return f"<{self.operand_symbols_dict.get(symbol)},{symbol},{self.line},{self.calc_inline_pos(start)}>"
 
-    def _mode_single_comment(self):
-        while self.pos < len(self.data) and self.data[self.pos] != "\n":
-            self.pos += 1
-
     def _handle_blanks(self):
         while True:
             cur = self.peek()
@@ -184,7 +185,7 @@ class Lexer:
             if start_again:
                 continue
             if self.peek(i) == "]":
-                self.pos += i+1
+                self.pos += i + 1
                 break
 
     def _handle_comments(self):
@@ -221,47 +222,47 @@ class Lexer:
             else:
                 break
 
-    def _process_token(self):
-        pass
+    def _process_token(self, start, first_char):
+
+        # si primer caracter letra - modo keyword/id
+        if self.patterns_dict["id"].match(first_char):
+            token = self._mode_keyword_id(start)
+            return token
+
+            # si primer caracter número - modo número
+        elif self.patterns_dict["tkn_num"].match(first_char):
+            token = self._mode_num(start)
+            return token
+
+            # si primer caracter " o ' - modo string
+        elif first_char == '"' or first_char == "'":
+            token = self._mode_string(start)
+            return token
+
+            # si primer caracter está en dict de simbolos - modo operador/simbolo
+        elif self.operand_symbols_dict.get(first_char):
+            token = self._mode_op_symbol(start)
+            return token
+
+            # si no, error léxico
+        else:
+            print(
+                f">>> Error lexico (linea: {self.line}, posicion: {self.calc_inline_pos(start)} : {self.data[self.pos]})"
+            )
+            exit()
 
     def tokenize(self) -> str:
         try:
             token = None
-
             # identificar y saltar comentarios
             self._cleanse_input()
 
             start = self.pos
             first_char = self.data[start]
             # si primer y segundo caracter - es modo comentario de una línea
-            if self.data[start] == "-" and self.data[start + 1] == "-":
-                self._mode_single_comment()
-            # si primer caracter letra - modo keyword/id
-            elif self.patterns_dict["id"].match(first_char):
-                token = self._mode_keyword_id(start)
-
-                # si primer caracter número - modo número
-            elif self.patterns_dict["tkn_num"].match(first_char):
-                token = self._mode_num(start)
-
-                # si primer caracter " o ' - modo string
-            elif first_char == '"' or first_char == "'":
-                token = self._mode_string(start)
-
-                # si primer caracter está en dict de simbolos - modo operador/simbolo
-            elif self.operand_symbols_dict.get(first_char):
-                token = self._mode_op_symbol(start)
-
-                # si no, error léxico
-            else:
-                print(
-                    f">>> Error lexico (linea: {self.line}, posicion: {self.calc_inline_pos(start)} : {self.data[self.pos]})"
-                )
-                exit()
+            token = self._process_token(start, first_char)
 
             return token
-        except EOFError:
-            return
         except IndexError:
             exit()
 
