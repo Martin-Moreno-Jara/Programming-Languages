@@ -3,8 +3,11 @@ import re
 
 
 class LexicalError(Exception):
-    def __init__(self, message):
+    def __init__(self, message, line, col):
         super().__init__(message)
+        self.message = message
+        self.line = line
+        self.col = col
 
 
 class Lexer:
@@ -163,14 +166,22 @@ class Lexer:
         while self.peek() != "\n":
             self.pos += 1
 
-    def _handle_multiline_comments(self, starting_pos: int, n_equals=0):
+    def _handle_multiline_comments(self, starting_pos: int, starting_line, n_equals=0):
         while True:
             cur = self.peek()
+            # TODO: Arreglar la mandada a error por comentario mal cerrado
+
             while cur != "]":
                 self.pos += 1
                 if cur == "\n":
                     self.line += 1
                     self.last_pos = self.pos
+                if not cur:
+                    raise LexicalError(
+                        f">>> Error lexico Comentario multilinea no cerrado",
+                        starting_line,
+                        starting_pos,
+                    )
                 cur = self.peek()
             i = 1
             n_counter = 0
@@ -189,12 +200,13 @@ class Lexer:
                 break
 
     def _handle_comments(self):
-        starting_pos = self.pos
+        starting_pos = self.calc_inline_pos(self.pos)
+        starting_line = self.line
         self.pos += 2
         cur = self.peek()
         next = self.peek(1)
         if cur == "[" and next == "[":
-            self._handle_multiline_comments(starting_pos)
+            self._handle_multiline_comments(starting_pos, starting_line)
         elif cur == "[" and next == "=":
             i = 1
             n_equals = 0
@@ -203,7 +215,7 @@ class Lexer:
                 i += 1
             if self.peek() == "[":
                 self.pos += i + 1
-                self._handle_multiline_comments(starting_pos, n_equals)
+                self._handle_multiline_comments(starting_pos, starting_line, n_equals)
         else:
             self._handle_single_line_comments()
 
@@ -246,24 +258,33 @@ class Lexer:
 
             # si no, error léxico
         else:
-            print(
-                f">>> Error lexico (linea: {self.line}, posicion: {self.calc_inline_pos(start)} : {self.data[self.pos]})"
+            raise LexicalError(
+                f">>> Error lexico Token no identificado",
+                self.line,
+                self.calc_inline_pos(start),
             )
-            exit()
 
     def tokenize(self) -> str:
         try:
-            token = None
-            # identificar y saltar comentarios
             self._cleanse_input()
 
             start = self.pos
-            first_char = self.data[start]
-            # si primer y segundo caracter - es modo comentario de una línea
-            token = self._process_token(start, first_char)
+            first_char = self.peek()
 
-            return token
-        except IndexError:
+            if not first_char:
+                raise EOFError("End of file reached")
+
+            return self._process_token(start, first_char)
+        except LexicalError as e:
+            print(
+                f">>> Error lexico (linea: {e.line}, posicion: {e.col} : {self.peek()})"
+            )
+            print(e.message)
+            exit()
+        except EOFError:
+            raise
+        except Exception as e:
+            print(f"Unexpected error ocurred {e.args}, {e.__cause__}")
             exit()
 
 
@@ -272,6 +293,9 @@ data = sys.stdin.read()
 lexer = Lexer(data)
 
 while True:
-    token = lexer.tokenize()
-    if token:
-        print(token)
+    try:
+        token = lexer.tokenize()
+        if token:
+            print(token)
+    except EOFError:
+        break
