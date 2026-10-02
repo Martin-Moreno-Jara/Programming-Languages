@@ -80,8 +80,9 @@ class Lexer:
 
         self.patterns_dict: dict = {
             "id": re.compile(r"^[a-zA-Z_]+\d*[a-zA-Z-]*$"),
-            "alf": re.compile(r"^[a-zA-Z_]+$"),
+            "alfnum": re.compile(r"[a-zA-Z_0-9]+"),
             "tkn_num": re.compile(r"^\d+(\.\d+)*\Z"),
+            "nums": re.compile(r"\d+|\."),
             "tkn_string": re.compile(r"\"([^\"\\]|\\.)*\"|'([^'\\]|\\.)*'"),
             "comm": re.compile(r"^--.*$"),
             "multi_comm": re.compile(r"^\[\[ .* \]\]"),
@@ -96,7 +97,7 @@ class Lexer:
         return start - self.last_pos + 1
 
     def _mode_keyword_id(self, start):
-        while self.pos < len(self.data) and self.patterns_dict["id"].match(
+        while self.pos < len(self.data) and self.patterns_dict["alfnum"].match(
             self.data[self.pos]
         ):
             self.pos += 1
@@ -108,19 +109,19 @@ class Lexer:
             return f"<id,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_num(self, start):
-        num = self.data[start]
+        start = self.pos
+        end = start
+        allowed_points = 0
 
         while self.pos < len(self.data):
             self.pos += 1
-            aux = num + self.data[self.pos]
-            if self.data[self.pos] == ".":
-                aux += "."
-                continue
-            if not self.patterns_dict["tkn_num"].match(aux):
+            if self.peek() == ".":
+                allowed_points += 1
+            if allowed_points > 1 or not self.patterns_dict["nums"].match(self.peek()):
+                end = self.pos
                 break
-            num = aux
 
-        return f"<tkn_num,{num},{self.line},{self.calc_inline_pos(start)}>"
+        return f"<tkn_num,{self.data[start:end]},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_string(self, start):
         starting_quote = self.data[start]
