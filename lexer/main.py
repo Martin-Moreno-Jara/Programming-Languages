@@ -23,6 +23,7 @@ class Lexer:
             "else",
             "elseif",
             "end",
+            "error",
             "false",
             "for",
             "function",
@@ -35,11 +36,13 @@ class Lexer:
             "not",
             "or",
             "print",
+            "pcall",
             "repeat",
             "return",
             "then",
             "true",
             "until",
+            "warn",
             "while",
         }
         self.operand_symbols_dict: dict = {
@@ -97,6 +100,7 @@ class Lexer:
         return start - self.last_pos + 1
 
     def _mode_keyword_id(self, start):
+        # TODO: Use set for single symbol comparison
         while self.pos < len(self.data) and self.patterns_dict["alfnum"].match(
             self.data[self.pos]
         ):
@@ -109,6 +113,7 @@ class Lexer:
             return f"<id,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_num(self, start):
+        # TODO: Refactor this. Avoid re
         start = self.pos
         end = start
         allowed_points = 0
@@ -124,19 +129,23 @@ class Lexer:
         return f"<tkn_num,{self.data[start:end]},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_string(self, start):
-        starting_quote = self.data[start]
+        # TODO: Complete and refactor this. Consider not closed and multiline strings
+        starting_quote = self.peek()
         while self.pos < len(self.data):
             self.pos += 1
+            if (
+                self.peek() == "\\" and self.peek(1) == starting_quote
+            ):  # escaping sequence for \" or \'
+                pass
             if self.data[self.pos] == starting_quote:
                 self.pos += 1
                 break
-            if self.data[self.pos] == "\\":  # secuencia de escape
-                pass
 
         lexem = self.data[start + 1 : self.pos - 1]
         return f"<tkn_str,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_op_symbol(self, start):
+        # TODO: Check and refactor this code. Check from 3 lenght symbosl downward
         symbol = self.data[start]
 
         while self.pos < len(self.data):
@@ -147,30 +156,13 @@ class Lexer:
             symbol = aux
 
         # print(self.operand_symbols_dict.get(" "))
-        return f"<{self.operand_symbols_dict.get(symbol)},{symbol},{self.line},{self.calc_inline_pos(start)}>"
+        return f"<{self.operand_symbols_dict.get(symbol)},{self.line},{self.calc_inline_pos(start)}>"
 
-    def _handle_blanks(self):
-        while True:
-            cur = self.peek()
-            if cur == " " or cur == "\t" or cur == "\r":
-                self.pos += 1
-            else:
-                break
-
-    def _handle_new_line(self):
-        while self.peek() == "\n":
-            self.pos += 1
-            self.line += 1
-            self.last_pos = self.pos
-
-    def _handle_single_line_comments(self):
-        while self.peek() != "\n":
-            self.pos += 1
 
     def _handle_multiline_comments(self, starting_pos: int, starting_line, n_equals=0):
+        # TODO: Refactor this code
         while True:
             cur = self.peek()
-            # TODO: Arreglar la mandada a error por comentario mal cerrado
 
             while cur != "]":
                 self.pos += 1
@@ -192,7 +184,8 @@ class Lexer:
                     n_counter += 1
                     i += 1
                 else:
-                    start_again == True
+                    start_again = True
+                    self.pos += i
                     break
             if start_again:
                 continue
@@ -201,6 +194,7 @@ class Lexer:
                 break
 
     def _handle_comments(self):
+        # TODO: Refactor this code to avoid checking for multiline comments with = separators differently
         starting_pos = self.calc_inline_pos(self.pos)
         starting_line = self.line
         self.pos += 2
@@ -218,7 +212,8 @@ class Lexer:
                 self.pos += i + 1
                 self._handle_multiline_comments(starting_pos, starting_line, n_equals)
         else:
-            self._handle_single_line_comments()
+            while self.peek() and self.peek() != "\n": # single line comments
+                self.pos += 1
 
     def _cleanse_input(self):
         # identify each type of unnecessary token
@@ -226,17 +221,19 @@ class Lexer:
             cur = self.peek()
             next = self.peek(1)
 
-            if cur == "-" and next == "-":
+            if cur == "-" and next == "-": # comment
                 self._handle_comments()
-            elif cur == " " or cur == "\t" or cur == "\r":
-                self._handle_blanks()
-            elif cur == "\n":
-                self._handle_new_line()
+            elif cur == " " or cur == "\t" or cur == "\r" or cur =="\v" or cur=="\f": # blank spaces
+                self.pos+=1
+            elif cur == "\n": # new lines
+                self.pos += 1
+                self.line += 1
+                self.last_pos = self.pos
             else:
                 break
 
     def _process_token(self, start, first_char):
-
+        # TODO: Cambiar regex por sets para comprobación de primer carácter
         # si primer caracter letra - modo keyword/id
         if self.patterns_dict["id"].match(first_char):
             token = self._mode_keyword_id(start)
@@ -247,6 +244,7 @@ class Lexer:
             token = self._mode_num(start)
             return token
 
+            #TODO: Considerar comentarios multilínea con [[""]]
             # si primer caracter " o ' - modo string
         elif first_char == '"' or first_char == "'":
             token = self._mode_string(start)
@@ -277,10 +275,7 @@ class Lexer:
 
             return self._process_token(start, first_char)
         except LexicalError as e:
-            print(
-                f">>> Error lexico (linea: {e.line}, posicion: {e.col} : {self.peek()})"
-            )
-            print(e.message)
+            print(f">>> Error lexico (linea: {e.line}, posicion: {e.col})")
             exit()
         except EOFError:
             raise
@@ -295,8 +290,6 @@ lexer = Lexer(data)
 
 while True:
     try:
-        token = lexer.tokenize()
-        if token:
-            print(token)
+        print(lexer.tokenize())
     except EOFError:
         break
