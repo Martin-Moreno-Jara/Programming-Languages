@@ -177,7 +177,6 @@ Smoke tests plus spot checks:
 | Input | Expected (spec) | Current output |
 |---|---|---|
 | `x = 5` (number at EOF) | `<tkn_num,5,1,5>` | `Unexpected error … NoneType` |
-| `a...` / `)` at EOF | symbol token | `Unexpected error … string index out of range` |
 | `"abc` (unclosed string) | `>>> Error lexico (linea: 1, posicion: 1)` | `Unexpected error …` |
 | `x = "a\"b"` | `<tkn_str,a\"b,1,5>` | string cut at `\`, then a crash |
 | `0xFF` | `<tkn_num,0xFF,1,1>` | `<tkn_num,0,…>` `<id,xFF,…>` |

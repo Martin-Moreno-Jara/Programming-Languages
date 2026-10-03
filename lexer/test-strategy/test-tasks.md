@@ -107,7 +107,7 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_op_no_invalid_pair`: `Lexer("<>")._mode_op_symbol(0)` → `"<tkn_less,1,1>"`, `pos == 1`.
 - [x] `test_lexer.py::test_op_run_equals`: `lex_all("==== ")` → `["<tkn_equal,1,1>", "<tkn_equal,1,3>"]`.
 - [x] `test_lexer.py::test_op_run_geq_assign`: `lex_all(">== ")` → `["<tkn_geq,1,1>", "<tkn_assign,1,3>"]`.
-- [x] `test_lexer.py::test_op_at_eof`: `Lexer(")")._mode_op_symbol(0)` → `"<tkn_closing_par,1,1>"`. **xfail**: raises `IndexError`.
+- [x] `test_lexer.py::test_op_at_eof`: `Lexer(")")._mode_op_symbol(0)` → `"<tkn_closing_par,1,1>"`.
 
 ## 10. `_handle_comments()` and `_handle_multiline_comments(...)`
 - [x] `test_lexer.py::test_comment_single_line`: `lx = Lexer("-- hi\nx"); lx._handle_comments()` → `pos == 5` (on the `\n`).
@@ -154,7 +154,7 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_tokenize_empty`: `Lexer("").tokenize()` raises `EOFError`.
 - [x] `test_lexer.py::test_tokenize_only_comments`: `Lexer("  -- c\n--[[x]]\n").tokenize()` raises `EOFError`.
 - [x] `test_lexer.py::test_tokenize_error_exits`: `Lexer("@").tokenize()` raises `SystemExit`, and captured stdout is `">>> Error lexico (linea: 1, posicion: 1)\n"`.
-- [x] `test_lexer.py::test_tokenize_never_unexpected_error` (parametrized over `"x = 5"`, `"a..."`, `")"`, `'"abc'`, `'x = "a\\"b"'`, `"[[hola]]"`): no line from `lex_all(src)` starts with `"Unexpected error"`. **xfail** for each one (they all crash today).
+- [x] `test_lexer.py::test_tokenize_never_unexpected_error` (parametrized over `"x = 5"`, `"a..."`, `")"`, `'"abc'`, `'x = "a\\"b"'`, `"[[hola]]"`): no line from `lex_all(src)` starts with `"Unexpected error"`. **xfail** only for `"x = 5"`, `'"abc'` and `'x = "a\\"b"'` (they still crash).
 
 ## 14. End-to-end: reference examples (`docs/output_format.txt`)
 Each task: `run_main(input)` == expected stdout, line by line. The input is exactly as in the spec, with a trailing `\n`.
@@ -178,7 +178,7 @@ Each task: `run_main(input)` == expected stdout, line by line. The input is exac
 - [x] `test_main.py::test_only_comments`: `-- a\n--[[ b\n c ]]\n` → empty stdout, exit code 0 (uses `run_main_process`).
 - [x] `test_main.py::test_eof_after_id`: `x = y` (no `\n`) → `<id,x,1,1>` `<tkn_assign,1,3>` `<id,y,1,5>`.
 - [x] `test_main.py::test_eof_after_number`: `x = 5` (no `\n`) → `<id,x,1,1>` `<tkn_assign,1,3>` `<tkn_num,5,1,5>`. **xfail**.
-- [x] `test_main.py::test_eof_after_symbol`: `f()` (no `\n`) → `<id,f,1,1>` `<tkn_opening_par,1,2>` `<tkn_closing_par,1,3>`. **xfail**.
+- [x] `test_main.py::test_eof_after_symbol`: `f()` (no `\n`) → `<id,f,1,1>` `<tkn_opening_par,1,2>` `<tkn_closing_par,1,3>`.
 - [x] `test_main.py::test_eof_after_string`: `s = "a"` (no `\n`) → `<id,s,1,1>` `<tkn_assign,1,3>` `<tkn_str,a,1,5>`.
 - [x] `test_main.py::test_crlf_line_endings`: `a\r\nb\r\n` → `<id,a,1,1>` `<id,b,2,1>`.
 - [x] `test_main.py::test_nothing_after_error`: `print("x") @ print\n` → `<print,1,1>` `<tkn_opening_par,1,6>` `<tkn_str,x,1,7>` `<tkn_closing_par,1,10>` `>>> Error lexico (linea: 1, posicion: 12)`, with nothing after it.
@@ -199,9 +199,8 @@ Each task: `run_main(input)` == expected stdout, line by line. The input is exac
 ## 17. xfail index
 The bug each group comes from:
 - **Number at EOF** (`TypeError`): `test_num_at_eof`, `test_eof_after_number`, `test_tokenize_never_unexpected_error["x = 5"]`.
-- **Symbol at EOF** (`IndexError`): `test_op_at_eof`, `test_eof_after_symbol`, `test_tokenize_never_unexpected_error["a..."]`, `test_tokenize_never_unexpected_error[")"]`.
 - **Unclosed string**: `test_str_unclosed_eof`, `test_str_unclosed_newline`, `test_case_12_unclosed_string`, `test_cases_well_formed[12.in]`, `test_tokenize_never_unexpected_error['"abc']`.
 - **Escaped quote**: `test_str_escaped_quote`, `test_tokenize_never_unexpected_error['x = "a\\"b"']`.
 - **Scientific notation**: all `test_num_exp_*`, `test_hex_and_exponent`.
 - **Hexadecimal**: all `test_num_hex_*`, `test_hex_and_exponent`.
-- **Long-bracket strings**: all `test_long_str_*` except `test_plain_bracket_is_symbol`, plus `test_process_long_string*`, `test_long_string_line_tracking` and `test_tokenize_never_unexpected_error["[[hola]]"]`.
+- **Long-bracket strings**: all `test_long_str_*` except `test_plain_bracket_is_symbol`, plus `test_process_long_string*` and `test_long_string_line_tracking`.

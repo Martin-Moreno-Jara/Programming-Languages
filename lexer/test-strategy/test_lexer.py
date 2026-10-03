@@ -304,7 +304,6 @@ def test_op_run_geq_assign(lex_all):
     assert lex_all(">== ") == ["<tkn_geq,1,1>", "<tkn_assign,1,3>"]
 
 
-@pytest.mark.xfail(reason="symbol at EOF raises IndexError", raises=IndexError, strict=True)
 def test_op_at_eof():
     assert Lexer(")")._mode_op_symbol(0) == "<tkn_closing_par,1,1>"
 
@@ -544,11 +543,11 @@ def _crash(reason):
     "src",
     [
         pytest.param("x = 5", marks=_crash("number at EOF crashes")),
-        pytest.param("a...", marks=_crash("symbol at EOF crashes")),
-        pytest.param(")", marks=_crash("symbol at EOF crashes")),
+        "a...",
+        ")",
         pytest.param('"abc', marks=_crash("unclosed string crashes")),
         pytest.param('x = "a\\"b"', marks=_crash("escaped quote crashes")),
-        pytest.param("[[hola]]", marks=_crash("long-bracket string crashes")),
+        "[[hola]]",
     ],
 )
 def test_tokenize_never_unexpected_error(lex_all, src):

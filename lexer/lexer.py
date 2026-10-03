@@ -91,8 +91,7 @@ class Lexer:
         }
 
         self.patterns_dict: dict = {
-            "id": re.compile(r"^[a-zA-Z_]+\d*[a-zA-Z-]*$"),
-            "alfnum": re.compile(r"[a-zA-Z_0-9]+"),
+            "id": re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*"),
             "tkn_num": re.compile(r"^\d+(\.\d+)*\Z"),
             "nums": re.compile(r"\d+|\."),
             "tkn_string": re.compile(r"\"([^\"\\]|\\.)*\"|'([^'\\]|\\.)*'"),
@@ -122,13 +121,10 @@ class Lexer:
         it captures the longest possible substring and decides
         which one it is by checking the keywords set
         """
-        # TODO: Use set for single symbol comparison
-        while self.pos < len(self.data) and self.patterns_dict["alfnum"].match(
-            self.data[self.pos]
-        ):
-            self.pos += 1
+        longest_match = self.patterns_dict["id"].match(self.data,start) #use regex to quickly catch the longest match
 
-        lexem = self.data[start : self.pos]
+        lexem = longest_match.group()
+        self.pos = longest_match.end()
         if lexem in self.keywords_set:  # token is a keyword
             return f"<{lexem},{self.line},{self.calc_inline_pos(start)}>"
         else:  # token is an identifier
@@ -167,18 +163,20 @@ class Lexer:
         return f"<tkn_str,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_op_symbol(self, start):
+        """
+        Given that the first character is in the symbols and operands dict
+        it returns the longest possible and valid match in the dict
+        """
         # TODO: Check and refactor this code. Check from 3 lenght symbosl downward
-        symbol = self.data[start]
+        symbol = ""
+        for i in range(2,-1,-1):
+            if self.peek(i):
+                symbol = self.operand_symbols_dict.get(self.data[start:start+i+1])
+                if symbol:
+                    self.pos+=i+1
+                    break
 
-        while self.pos < len(self.data):
-            self.pos += 1
-            aux = symbol + self.data[self.pos]
-            if not self.operand_symbols_dict.get(aux):
-                break
-            symbol = aux
-
-        # print(self.operand_symbols_dict.get(" "))
-        return f"<{self.operand_symbols_dict.get(symbol)},{self.line},{self.calc_inline_pos(start)}>"
+        return f"<{symbol},{self.line},{self.calc_inline_pos(start)}>"
 
     def _handle_multiline_comments(
         self, starting_pos: int, starting_line: int, n_equals=0
