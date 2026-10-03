@@ -204,7 +204,6 @@ def test_num_stops_at_symbol():
     assert lexer.pos == 1
 
 
-@pytest.mark.xfail(reason="number at EOF raises TypeError", raises=TypeError, strict=True)
 def test_num_at_eof():
     assert Lexer("5")._mode_num(0) == "<tkn_num,5,1,1>"
 
@@ -542,7 +541,7 @@ def _crash(reason):
 @pytest.mark.parametrize(
     "src",
     [
-        pytest.param("x = 5", marks=_crash("number at EOF crashes")),
+        "x = 5",
         "a...",
         ")",
         pytest.param('"abc', marks=_crash("unclosed string crashes")),

@@ -176,7 +176,6 @@ Smoke tests plus spot checks:
 ## 6. Known bugs (tests expected to fail for now)
 | Input | Expected (spec) | Current output |
 |---|---|---|
-| `x = 5` (number at EOF) | `<tkn_num,5,1,5>` | `Unexpected error … NoneType` |
 | `"abc` (unclosed string) | `>>> Error lexico (linea: 1, posicion: 1)` | `Unexpected error …` |
 | `x = "a\"b"` | `<tkn_str,a\"b,1,5>` | string cut at `\`, then a crash |
 | `0xFF` | `<tkn_num,0xFF,1,1>` | `<tkn_num,0,…>` `<id,xFF,…>` |
@@ -187,3 +186,6 @@ Smoke tests plus spot checks:
 - `return` vs `retornar` in spec example 3.
 - Malformed numbers (`1e`, `0xG`, `4..5`): a lexical error at the number's start (Lua's behaviour, assumed above), or longest match (`1` then `id e`)?
 - How should a long string that spans several lines be printed? Is the raw newline kept in the lexeme?
+
+## 8. Notes
+- **Number followed only by a dot (`3.`) – pending decision.** `_mode_num` currently accepts it as one number (`<tkn_num,3.,1,1>`), and `test_num_trailing_dot` checks this. Lua also accepts `3.` as a valid numeral. It is kept as valid for now. If it is changed to invalid, update `test_num_trailing_dot` and the "trailing dot" line in section 3.6. It also affects `4..5`, which currently gives `<tkn_num,4.,1,1>`, `<tkn_period,1,3>`, `<tkn_num,5,1,4>` (see section 7).

@@ -54,11 +54,11 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 ### Decimal
 - [x] `test_lexer.py::test_num_integer`: `Lexer("16 ")._mode_num(0)` → `"<tkn_num,16,1,1>"`, `pos == 2`.
 - [x] `test_lexer.py::test_num_decimal`: `Lexer("3.145 ")._mode_num(0)` → `"<tkn_num,3.145,1,1>"`.
-- [x] `test_lexer.py::test_num_trailing_dot`: `Lexer("3. ")._mode_num(0)` → `"<tkn_num,3.,1,1>"`.
+- [x] `test_lexer.py::test_num_trailing_dot`: `Lexer("3. ")._mode_num(0)` → `"<tkn_num,3.,1,1>"`. Kept for now; validity still undecided (see test-plan.md §8).
 - [x] `test_lexer.py::test_num_two_dots_longest_match`: `Lexer("120.075.389")._mode_num(0)` → `"<tkn_num,120.075,1,1>"`, `pos == 7`.
 - [x] `test_lexer.py::test_num_stops_at_invalid_char`: `Lexer("8.9!")._mode_num(0)` → `"<tkn_num,8.9,1,1>"`, `pos == 3`.
 - [x] `test_lexer.py::test_num_stops_at_symbol`: `Lexer("6=")._mode_num(0)` → `"<tkn_num,6,1,1>"`, `pos == 1`.
-- [x] `test_lexer.py::test_num_at_eof`: `Lexer("5")._mode_num(0)` → `"<tkn_num,5,1,1>"`. **xfail**: number at EOF raises `TypeError`.
+- [x] `test_lexer.py::test_num_at_eof`: `Lexer("5")._mode_num(0)` → `"<tkn_num,5,1,1>"`.
 
 ### Scientific notation
 - [ ] `test_lexer.py::test_num_exp_lower`: `Lexer("1e10 ")._mode_num(0)` → `"<tkn_num,1e10,1,1>"`. **xfail**: exponent not supported.
@@ -154,7 +154,7 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_tokenize_empty`: `Lexer("").tokenize()` raises `EOFError`.
 - [x] `test_lexer.py::test_tokenize_only_comments`: `Lexer("  -- c\n--[[x]]\n").tokenize()` raises `EOFError`.
 - [x] `test_lexer.py::test_tokenize_error_exits`: `Lexer("@").tokenize()` raises `SystemExit`, and captured stdout is `">>> Error lexico (linea: 1, posicion: 1)\n"`.
-- [x] `test_lexer.py::test_tokenize_never_unexpected_error` (parametrized over `"x = 5"`, `"a..."`, `")"`, `'"abc'`, `'x = "a\\"b"'`, `"[[hola]]"`): no line from `lex_all(src)` starts with `"Unexpected error"`. **xfail** only for `"x = 5"`, `'"abc'` and `'x = "a\\"b"'` (they still crash).
+- [x] `test_lexer.py::test_tokenize_never_unexpected_error` (parametrized over `"x = 5"`, `"a..."`, `")"`, `'"abc'`, `'x = "a\\"b"'`, `"[[hola]]"`): no line from `lex_all(src)` starts with `"Unexpected error"`. **xfail** only for `'"abc'` and `'x = "a\\"b"'` (they still crash).
 
 ## 14. End-to-end: reference examples (`docs/output_format.txt`)
 Each task: `run_main(input)` == expected stdout, line by line. The input is exactly as in the spec, with a trailing `\n`.
@@ -177,7 +177,7 @@ Each task: `run_main(input)` == expected stdout, line by line. The input is exac
 - [x] `test_main.py::test_empty_input`: `` → empty stdout, exit code 0 (uses `run_main_process`).
 - [x] `test_main.py::test_only_comments`: `-- a\n--[[ b\n c ]]\n` → empty stdout, exit code 0 (uses `run_main_process`).
 - [x] `test_main.py::test_eof_after_id`: `x = y` (no `\n`) → `<id,x,1,1>` `<tkn_assign,1,3>` `<id,y,1,5>`.
-- [x] `test_main.py::test_eof_after_number`: `x = 5` (no `\n`) → `<id,x,1,1>` `<tkn_assign,1,3>` `<tkn_num,5,1,5>`. **xfail**.
+- [x] `test_main.py::test_eof_after_number`: `x = 5` (no `\n`) → `<id,x,1,1>` `<tkn_assign,1,3>` `<tkn_num,5,1,5>`.
 - [x] `test_main.py::test_eof_after_symbol`: `f()` (no `\n`) → `<id,f,1,1>` `<tkn_opening_par,1,2>` `<tkn_closing_par,1,3>`.
 - [x] `test_main.py::test_eof_after_string`: `s = "a"` (no `\n`) → `<id,s,1,1>` `<tkn_assign,1,3>` `<tkn_str,a,1,5>`.
 - [x] `test_main.py::test_crlf_line_endings`: `a\r\nb\r\n` → `<id,a,1,1>` `<id,b,2,1>`.
@@ -198,7 +198,6 @@ Each task: `run_main(input)` == expected stdout, line by line. The input is exac
 
 ## 17. xfail index
 The bug each group comes from:
-- **Number at EOF** (`TypeError`): `test_num_at_eof`, `test_eof_after_number`, `test_tokenize_never_unexpected_error["x = 5"]`.
 - **Unclosed string**: `test_str_unclosed_eof`, `test_str_unclosed_newline`, `test_case_12_unclosed_string`, `test_cases_well_formed[12.in]`, `test_tokenize_never_unexpected_error['"abc']`.
 - **Escaped quote**: `test_str_escaped_quote`, `test_tokenize_never_unexpected_error['x = "a\\"b"']`.
 - **Scientific notation**: all `test_num_exp_*`, `test_hex_and_exponent`.

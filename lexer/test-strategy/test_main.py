@@ -242,7 +242,6 @@ def test_eof_after_id(run_main):
     assert run_main("x = y").splitlines() == ["<id,x,1,1>", "<tkn_assign,1,3>", "<id,y,1,5>"]
 
 
-@pytest.mark.xfail(reason="number at EOF crashes", raises=AssertionError, strict=True)
 def test_eof_after_number(run_main):
     assert run_main("x = 5").splitlines() == ["<id,x,1,1>", "<tkn_assign,1,3>", "<tkn_num,5,1,5>"]
 

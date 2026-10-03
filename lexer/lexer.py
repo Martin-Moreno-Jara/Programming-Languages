@@ -7,6 +7,7 @@ class LexicalError(Exception):
     Custom exception class to raise when a symbol is not recognized
     as a part of the language
     """
+
     def __init__(self, message, line, col):
         super().__init__(message)
         self.message = message
@@ -18,6 +19,7 @@ class Lexer:
     """
     Lexical analyzer implementation class
     """
+
     def __init__(self, data):
         self.data: str = data
         self.line = 1
@@ -92,11 +94,8 @@ class Lexer:
 
         self.patterns_dict: dict = {
             "id": re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*"),
-            "tkn_num": re.compile(r"^\d+(\.\d+)*\Z"),
+            "int_dec": re.compile(r"\d+\.\d*|\d+"),
             "nums": re.compile(r"\d+|\."),
-            "tkn_string": re.compile(r"\"([^\"\\]|\\.)*\"|'([^'\\]|\\.)*'"),
-            "comm": re.compile(r"^--.*$"),
-            "multi_comm": re.compile(r"^\[\[ .* \]\]"),
         }
 
     def peek(self, offset=0):
@@ -110,7 +109,7 @@ class Lexer:
 
     def calc_inline_pos(self, start):
         """
-        Calculates the position of a token relative to its line. 
+        Calculates the position of a token relative to its line.
         In other words, the col.
         """
         return start - self.last_pos + 1
@@ -121,7 +120,9 @@ class Lexer:
         it captures the longest possible substring and decides
         which one it is by checking the keywords set
         """
-        longest_match = self.patterns_dict["id"].match(self.data,start) #use regex to quickly catch the longest match
+        longest_match = self.patterns_dict["id"].match(
+            self.data, start
+        )  # use regex to quickly catch the longest match
 
         lexem = longest_match.group()
         self.pos = longest_match.end()
@@ -131,20 +132,12 @@ class Lexer:
             return f"<id,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_num(self, start):
-        # TODO: Refactor this. Avoid re
-        start = self.pos
-        end = start
-        allowed_points = 0
+        # TODO: If next submission doesn't pass, consider adding scientific notation, hexadecimals and binaries
+        longest_match = self.patterns_dict["int_dec"].match(self.data, start)
+        lexem = longest_match.group()
+        self.pos = longest_match.end()
 
-        while self.pos < len(self.data):
-            self.pos += 1
-            if self.peek() == ".":
-                allowed_points += 1
-            if allowed_points > 1 or not self.patterns_dict["nums"].match(self.peek()):
-                end = self.pos
-                break
-
-        return f"<tkn_num,{self.data[start:end]},{self.line},{self.calc_inline_pos(start)}>"
+        return f"<tkn_num,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_string(self, start):
         # TODO: Complete and refactor this. Consider not closed and multiline strings
@@ -169,11 +162,11 @@ class Lexer:
         """
         # TODO: Check and refactor this code. Check from 3 lenght symbosl downward
         symbol = ""
-        for i in range(2,-1,-1):
+        for i in range(2, -1, -1):
             if self.peek(i):
-                symbol = self.operand_symbols_dict.get(self.data[start:start+i+1])
+                symbol = self.operand_symbols_dict.get(self.data[start : start + i + 1])
                 if symbol:
-                    self.pos+=i+1
+                    self.pos += i + 1
                     break
 
         return f"<{symbol},{self.line},{self.calc_inline_pos(start)}>"
@@ -210,7 +203,7 @@ class Lexer:
                     next = self.peek(1)
                 if next == "]" and n_equals == matching_delim:
                     is_closed_correctly = True
-                    self.pos+=2 # added 2 because it puts the pos pointer in the next position after finishing the comment
+                    self.pos += 2  # added 2 because it puts the pos pointer in the next position after finishing the comment
                 else:
                     matching_delim = 0  # reset the matching counter if the closing part is not well formed
                     self.pos += 1
@@ -231,7 +224,7 @@ class Lexer:
         decide whether it is a single line or multiline comment
         and treat it accordingly.
         """
- 
+
         starting_pos = self.calc_inline_pos(self.pos)
         starting_line = self.line
 
@@ -245,7 +238,7 @@ class Lexer:
         if cur == "[":  # check possible multiline comment start
             while next == "=":  # count the = delimitator if there are
                 n_equals += 1
-                self.pos+=1
+                self.pos += 1
                 next = self.peek(1)
             if (
                 next == "["
