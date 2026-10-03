@@ -117,7 +117,8 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_comment_block_level`: `Lexer("--[==[ a ]] b ]==]x")._handle_comments()` → `pos == 18`.
 - [x] `test_lexer.py::test_comment_block_empty`: `Lexer("--[[]]x")._handle_comments()` → `pos == 6`.
 - [x] `test_lexer.py::test_comment_space_before_bracket`: `Lexer("-- [[\nx")._handle_comments()` → `pos == 5` (single-line).
-- [x] `test_lexer.py::test_comment_bad_level_is_single_line`: `Lexer("--[=x\ny")._handle_comments()` → `pos == 5`. **xfail**: currently raises `LexicalError`.
+- [x] `test_lexer.py::test_comment_bad_level_is_single_line`: `Lexer("--[=x\ny")._handle_comments()` → `pos == 5` (single-line).
+- [x] `test_lexer.py::test_comment_bad_level_two_equals_is_single_line`: `Lexer("--[==x\ny")._handle_comments()` → `pos == 6` (single-line).
 - [x] `test_lexer.py::test_comment_block_unclosed`: `lx = Lexer("x\n  --[[ open"); lx.pos, lx.line, lx.last_pos = 4, 2, 2; lx._handle_comments()` raises `LexicalError(line=2, col=3)`.
 - [x] `test_lexer.py::test_multiline_handler_direct`: `lx = Lexer("--[[a]]x"); lx.pos = 2; lx._handle_multiline_comments(1, 1)` → `pos == 7`.
 - [x] `test_lexer.py::test_multiline_handler_level`: `lx = Lexer("--[==[a]]b]==]x"); lx.pos = 6; lx._handle_multiline_comments(1, 1, 2)` → `pos == 14`.
@@ -204,4 +205,3 @@ The bug each group comes from:
 - **Scientific notation**: all `test_num_exp_*`, `test_hex_and_exponent`.
 - **Hexadecimal**: all `test_num_hex_*`, `test_hex_and_exponent`.
 - **Long-bracket strings**: all `test_long_str_*` except `test_plain_bracket_is_symbol`, plus `test_process_long_string*`, `test_long_string_line_tracking` and `test_tokenize_never_unexpected_error["[[hola]]"]`.
-- **`--[=` without a second `[`**: `test_comment_bad_level_is_single_line`.

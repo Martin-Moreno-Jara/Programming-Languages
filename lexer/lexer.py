@@ -160,97 +160,113 @@ class Lexer:
         # print(self.operand_symbols_dict.get(" "))
         return f"<{self.operand_symbols_dict.get(symbol)},{self.line},{self.calc_inline_pos(start)}>"
 
-    def _handle_multiline_comments(self, starting_pos: int, starting_line, n_equals=0):
-        # TODO: Refactor this code
+    def _handle_multiline_comments(
+        self, starting_pos: int, starting_line: int, n_equals=0
+    ):
+        """
+        Given a multiline comment, it ignores everything
+        until the block is correctly closed.
+        Raises error otherwise
+        """
+        is_closed_correctly = False
+        matching_delim = 0
         while True:
             cur = self.peek()
+            next = self.peek(1)
 
-            while cur != "]":
-                self.pos += 1
-                if cur == "\n":
-                    self.line += 1
-                    self.last_pos = self.pos
-                if not cur:
-                    raise LexicalError(
-                        f">>> Error lexico Comentario multilinea no cerrado",
-                        starting_line,
-                        starting_pos,
-                    )
-                cur = self.peek()
-            i = 1
-            n_counter = 0
-            start_again = False
-            while n_equals != n_counter:
-                if self.peek(i) == "=":
-                    n_counter += 1
-                    i += 1
+            if (
+                not cur
+            ):  # Reached the end of the input without correctly closing the comment
+                raise LexicalError(
+                    f">>> Error lexico Comentario multilinea no cerrado",
+                    starting_line,
+                    starting_pos,
+                )
+
+            if cur == "]":  # possibility of closing the comment
+                while (
+                    next == "="
+                ):  # checking that the number of = deliminator coincides with the opening part
+                    matching_delim += 1
+                    self.pos += 1
+                    next = self.peek(1)
+                if next == "]" and n_equals == matching_delim:
+                    is_closed_correctly = True
+                    self.pos+=2 # added 2 because it puts the pos pointer in the next position after finishing the comment
                 else:
-                    start_again = True
-                    self.pos += i
-                    break
-            if start_again:
-                continue
-            if self.peek(i) == "]":
-                self.pos += i + 1
+                    matching_delim = 0  # reset the matching counter if the closing part is not well formed
+                    self.pos += 1
+
+            elif cur == "\n":  # newline character - must update line data
+                self.pos += 1
+                self.line += 1
+                self.last_pos = self.pos
+            else:  # general case
+                self.pos += 1
+
+            if is_closed_correctly:
                 break
 
-    def _handle_comments(self):
+    def _handle_comments(self) -> None:
         """
         Given that the following sequence is a comment,
         decide whether it is a single line or multiline comment
         and treat it accordingly.
         """
-        # TODO: Refactor this code to avoid checking for multiline comments with = separators differently
-
+ 
         starting_pos = self.calc_inline_pos(self.pos)
         starting_line = self.line
 
-        self.pos += 2    # leave pointer in the next character after --
+        self.pos += 2  # leave pointer in the next character after --
 
         cur = self.peek()
         next = self.peek(1)
-        
-        if cur == "[" and next == "[":
-            self._handle_multiline_comments(starting_pos, starting_line)
-        elif cur == "[" and next == "=":
-            i = 1
-            n_equals = 0
-            while self.peek(i) == "=":
+
+        is_multiline = False
+        n_equals = 0
+        if cur == "[":  # check possible multiline comment start
+            while next == "=":  # count the = delimitator if there are
                 n_equals += 1
-                i += 1
-            if self.peek() == "[":
-                self.pos += i + 1
-                self._handle_multiline_comments(starting_pos, starting_line, n_equals)
+                self.pos+=1
+                next = self.peek(1)
+            if (
+                next == "["
+            ):  # makes sure that the multicomment block is formed correctly --[[ or -[(=)*[
+                self.pos += 1
+                is_multiline = True
+
+        if is_multiline:
+            self._handle_multiline_comments(starting_pos, starting_line, n_equals)
         else:
             while self.peek() and self.peek() != "\n":  # single line comments
                 self.pos += 1
 
-    def _cleanse_input(self):
+    def _cleanse_input(self) -> None:
         """
-        Ignore characters that should not be processed 
+        Ignore characters that should not be processed
         as tokens (blank spaces, new lines and comments)
         until it finds a valid token character.
         """
         # TODO: Maybe find a more efficient way to skip blank spaces
         while True:
-            cur = self.peek() 
+            cur = self.peek()
             next = self.peek(1)
 
-            if cur == "-" and next == "-":  # comment 
+            if cur == "-" and next == "-":  # comment
                 self._handle_comments()
-            elif (                          # blank spaces
+            elif (  # blank spaces
                 cur == " " or cur == "\t" or cur == "\r" or cur == "\v" or cur == "\f"
-            ):  
+            ):
                 self.pos += 1
-            elif cur == "\n":               # new lines
+            elif cur == "\n":  # new lines
                 self.pos += 1
                 self.line += 1
                 self.last_pos = self.pos
-            else:                           # other character - must process it
+            else:  # other character - must process it
                 break
 
-    def _process_token(self):
-        """"
+    def _process_token(self) -> str:
+        """ "
         Given the first character of a token
         it decides what it should be processed as.
         """
@@ -268,7 +284,6 @@ class Lexer:
             # si primer caracter " o ' - modo string
         elif first_char == '"' or first_char == "'":
             return self._mode_string(start)
-   
 
             # si primer caracter está en dict de simbolos - modo operador/simbolo
         elif self.operand_symbols_dict.get(first_char):
@@ -284,7 +299,7 @@ class Lexer:
 
     def tokenize(self) -> str:
         """
-        Wrapper function. Calls function to clean the input of 
+        Wrapper function. Calls function to clean the input of
         unnecessary characters, and then calls the function
         to process and return the next token, while handling
         exception in the try except block

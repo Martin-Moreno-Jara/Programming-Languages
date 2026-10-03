@@ -325,6 +325,7 @@ def test_comment_single_line_eof():
 def test_comment_block_inline():
     lexer = Lexer("--[[ a ]]x")
     lexer._handle_comments()
+    print(lexer.pos)
     assert lexer.pos == 9
 
 
@@ -352,15 +353,16 @@ def test_comment_space_before_bracket():
     assert lexer.pos == 5
 
 
-@pytest.mark.xfail(
-    reason="'--[=' without a second '[' is treated as an unclosed block comment",
-    raises=LexicalError,
-    strict=True,
-)
 def test_comment_bad_level_is_single_line():
     lexer = Lexer("--[=x\ny")
     lexer._handle_comments()
     assert lexer.pos == 5
+
+
+def test_comment_bad_level_two_equals_is_single_line():
+    lexer = Lexer("--[==x\ny")
+    lexer._handle_comments()
+    assert lexer.pos == 6
 
 
 def test_comment_block_unclosed():
