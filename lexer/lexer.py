@@ -3,6 +3,10 @@ import string
 
 
 class LexicalError(Exception):
+    """
+    Custom exception class to raise when a symbol is not recognized
+    as a part of the language
+    """
     def __init__(self, message, line, col):
         super().__init__(message)
         self.message = message
@@ -11,6 +15,9 @@ class LexicalError(Exception):
 
 
 class Lexer:
+    """
+    Lexical analyzer implementation class
+    """
     def __init__(self, data):
         self.data: str = data
         self.line = 1
@@ -94,14 +101,27 @@ class Lexer:
         }
 
     def peek(self, offset=0):
+        """
+        returns the element at self.pos+offset. If that position is out of range,
+        it returns None, so a index out of bounds exception is not triggered.
+        """
         return (
             self.data[self.pos + offset] if self.pos + offset < len(self.data) else None
         )
 
     def calc_inline_pos(self, start):
+        """
+        Calculates the position of a token relative to its line. 
+        In other words, the col.
+        """
         return start - self.last_pos + 1
 
     def _mode_keyword_id(self, start):
+        """
+        Given that the token could be a keyword or an identifier,
+        it captures the longest possible substring and decides
+        which one it is by checking the keywords set
+        """
         # TODO: Use set for single symbol comparison
         while self.pos < len(self.data) and self.patterns_dict["alfnum"].match(
             self.data[self.pos]
