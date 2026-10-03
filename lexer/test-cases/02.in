@@ -1,0 +1,27 @@
+-- 1. Función básica sin parámetros ni retorno
+function saludar()
+    print("¡Hola, bienvenido a la programación en Lua!")
+end
+
+-- Llamada a la función
+saludar()
+
+
+-- 2. Función con parámetros y un valor de retorno
+function sumar(a, b)
+    return a + b
+end
+
+local resultado = sumar(5, 3)
+print("El resultado de la suma es:", resultado)
+
+
+-- 3. Función con parámetros opcionales o valores por defecto
+function saludarPersonalizado(nombre, saludo)
+    -- Si 'saludo' es nil (no se pasa), se le asigna un valor por defecto
+    saludo = saludo or "Hola"
+    print(saludo .. ", " .. (nombre or "invitado") .. "!")
+end
+
+saludarPersonalizado("Carlos")          -- Usa el valor por defecto
+saludarPersonalizado("Ana", "Buenos días") -- Usa el saludo personalizado

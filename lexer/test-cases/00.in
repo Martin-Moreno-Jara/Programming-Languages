@@ -1,0 +1,7 @@
+-- Este caso evalua palabras reservadas básicas
+
+print true
+
+until nil while if
+
+else elseif error

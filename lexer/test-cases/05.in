@@ -1,0 +1,35 @@
+
+--..Este caso evalua la definición de ciclos.. 
+-- 1. Ciclo While
+local contador = 1
+
+print("--- Ciclo while ---")
+while contador <= 3 do
+    print("Contador en:", contador)
+    contador = contador + 1
+end
+
+-- 2. Ciclo repeat..until
+local numero = 1
+
+print("\n--- Ciclo repeat...until ---")
+repeat
+    print("Número actual:", numero)
+    numero = numero + 1
+until numero > 3
+
+-- 3. Ciclo For
+print("\n--- Ciclo for numérico (ascendente) ---")
+for i = 1, 5 do
+    print("Iteración:", i)
+end
+
+print("\n--- Ciclo for numérico con paso de 2 en 2 ---")
+for i = 0, 10, 2 do
+    print("Valor par:", i)
+end
+
+print("\n--- Ciclo for numérico descendiente ---")
+for i = 3, 1, -1 do
+    print("Cuenta regresiva:", i)
+end
