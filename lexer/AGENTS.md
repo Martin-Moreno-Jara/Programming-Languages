@@ -15,4 +15,5 @@ Implementation of a lexical analyzer for HLL Lua Code
 ## Instructions
 - Do NOT touch or make any changes to the implementation code. Only work in testing and giving advice only when asked to.
 - Keep the testing strategy up to date with the implementation code. That is, when a new function is added, it must be unit-tested. If it is removed, the tests associated with that function must be removed as well.
+- Before performing any action, read the implementation code and be aware of changes and differences between it and the tests
 

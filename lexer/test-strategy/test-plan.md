@@ -31,6 +31,7 @@ Lines and columns start at 1. Column = position of the token's **first** charact
 - Starts at `line = 1`, `pos = 0`, `last_pos = 0`.
 - The keyword set contains: `and break do else elseif end error false for function global goto if in local nil not or print pcall repeat return then true until warn while`.
 - The operator dictionary has **all 33** symbols from the spec table, each with the correct `tkn_` name (e.g. `"//" → tkn_floor_div`, `"::" → tkn_goto`, `"..." → tkn_varargs`).
+- `digits_set` holds exactly the ASCII digits `0-9`. `alfabetic_set` holds exactly the ASCII letters `a-z`, `A-Z` and `_`. `_process_token` uses them to classify a token's first character.
 
 ### 3.3 `peek(offset)`
 - `Lexer("abc").peek()` → `"a"`. `peek(2)` → `"c"`.
@@ -82,7 +83,7 @@ Lines and columns start at 1. Column = position of the token's **first** charact
 - Unclosed string (`"Hola` with no closing quote, or a newline before the closing quote) → `LexicalError` at the opening quote's line and column.
 
 ### 3.8 Long-bracket strings (`[[…]]`, `[==[…]==]`)
-There is no dedicated method for these yet. They are tested through `_process_token` / `tokenize`. If a new method is added for them, these cases move under it.
+There is no dedicated method for these yet. They are tested through `_process_token()` / `tokenize()`. If a new method is added for them, these cases move under it.
 - `"[[hola]]"` → `<tkn_str,hola,1,1>`.
 - With equals signs: `"[==[a]]b]==]"` → `<tkn_str,a]]b,1,1>`. Only the closing bracket with the same number of `=` ends the string.
 - Multi-line: `"[[a\nb]]x"` → one string at (1,1), then `x` gets line 2 and the right column. The line counter and `last_pos` are updated inside the string.
@@ -116,12 +117,17 @@ There is no dedicated method for these yet. They are tested through `_process_to
 - Skips several comments and blank lines in a row, and stops on the first real character.
 - Does **not** skip a single `-` (`"- 3"` stops on `-`).
 
-### 3.12 `_process_token(start, first_char)`
-- Sends each kind of input to the right handler: a letter or `_` → keyword/id, a digit → number, `"` or `'` → short string, `[[` or `[=` → long string, any other known symbol → operator.
-- Unknown characters raise `LexicalError` at the right position: `@`, `?`, `!`, `$`, `` ` ``, and non-ASCII characters such as `ñ`, `◕` and `¡`.
+### 3.12 `_process_token()`
+Takes no arguments: it reads the token start from `self.pos` and the first character from `peek()`.
+- Sends each kind of input to the right handler: a character in `alfabetic_set` (letter or `_`) → keyword/id, a character in `digits_set` → number, `"` or `'` → short string, `[[` or `[=` → long string, any other known symbol → operator.
+- Starts at the current `pos`, not at 0: with `pos = 3` on `"ab cd "` it returns `<id,cd,1,4>`.
+- Unknown characters raise `LexicalError` at the right position: `@`, `?`, `!`, `$`, `` ` ``, and non-ASCII characters such as `ñ`, `◕`, `¡`, `é`. Non-ASCII digits (e.g. `٣`) are also errors, because the check is a set lookup, not a regex `\d`.
+- At end of input (`peek()` is `None`) it raises `LexicalError` instead of crashing. `tokenize()` normally prevents this case by raising `EOFError` first.
 
 ### 3.13 `tokenize()`
+Wrapper: calls `_cleanse_input()`, raises `EOFError` if nothing is left, otherwise returns `_process_token()`. Lexical errors and unexpected exceptions are handled here.
 - Returns one token string per call, in order.
+- The token position is taken **after** whitespace and comments are skipped: `"  -- c\n\t x "` → `<id,x,2,3>`.
 - Raises `EOFError` when only whitespace or comments are left, and on empty input.
 - On a lexical error: prints `>>> Error lexico (linea: X, posicion: Y)` and exits (`SystemExit`).
 - Never prints `Unexpected error ocurred …` for any input. This message means a crash, not a lexical error.

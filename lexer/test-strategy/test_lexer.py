@@ -78,6 +78,15 @@ def test_init_operator_table():
     assert Lexer("x").operand_symbols_dict == OPERATORS
 
 
+def test_init_digits_set():
+    assert Lexer("x").digits_set == set("0123456789")
+
+
+def test_init_alfabetic_set():
+    expected = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_")
+    assert Lexer("x").alfabetic_set == expected
+
+
 # 3. peek(offset)
 def test_peek_current():
     assert Lexer("abc").peek() == "a"
@@ -422,17 +431,17 @@ def test_cleanse_empty():
     assert lexer.pos == 0
 
 
-# 12. _process_token(start, first_char)
+# 12. _process_token()
 def test_process_letter():
-    assert Lexer("abc ")._process_token(0, "a") == "<id,abc,1,1>"
+    assert Lexer("abc ")._process_token() == "<id,abc,1,1>"
 
 
 def test_process_underscore():
-    assert Lexer("_x ")._process_token(0, "_") == "<id,_x,1,1>"
+    assert Lexer("_x ")._process_token() == "<id,_x,1,1>"
 
 
 def test_process_digit():
-    assert Lexer("9 ")._process_token(0, "9") == "<tkn_num,9,1,1>"
+    assert Lexer("9 ")._process_token() == "<tkn_num,9,1,1>"
 
 
 def test_process_leading_dot_is_period(lex_all):
@@ -440,31 +449,38 @@ def test_process_leading_dot_is_period(lex_all):
 
 
 def test_process_single_quote():
-    assert Lexer("'a' ")._process_token(0, "'") == "<tkn_str,a,1,1>"
+    assert Lexer("'a' ")._process_token() == "<tkn_str,a,1,1>"
 
 
 def test_process_double_quote():
-    assert Lexer('"a" ')._process_token(0, '"') == "<tkn_str,a,1,1>"
+    assert Lexer('"a" ')._process_token() == "<tkn_str,a,1,1>"
 
 
 def test_process_symbol():
-    assert Lexer("+ ")._process_token(0, "+") == "<tkn_plus,1,1>"
+    assert Lexer("+ ")._process_token() == "<tkn_plus,1,1>"
+
+
+def test_process_reads_current_pos():
+    lexer = Lexer("ab cd ")
+    lexer.pos = 3
+    assert lexer._process_token() == "<id,cd,1,4>"
 
 
 @pytest.mark.xfail(reason="long-bracket strings not supported", raises=AssertionError, strict=True)
 def test_process_long_string():
-    assert Lexer("[[a]] ")._process_token(0, "[") == "<tkn_str,a,1,1>"
+    assert Lexer("[[a]] ")._process_token() == "<tkn_str,a,1,1>"
 
 
 @pytest.mark.xfail(reason="long-bracket strings not supported", raises=AssertionError, strict=True)
 def test_process_long_string_level():
-    assert Lexer("[=[a]=] ")._process_token(0, "[") == "<tkn_str,a,1,1>"
+    assert Lexer("[=[a]=] ")._process_token() == "<tkn_str,a,1,1>"
 
 
-@pytest.mark.parametrize("char", ["@", "?", "!", "$", "`", "ñ", "◕", "¡"])
+# "٣" (Arabic-Indic digit) and "é" are outside the ASCII digit/letter sets
+@pytest.mark.parametrize("char", ["@", "?", "!", "$", "`", "ñ", "◕", "¡", "٣", "é"])
 def test_process_unknown_char(char):
     with pytest.raises(LexicalError) as exc_info:
-        Lexer(char)._process_token(0, char)
+        Lexer(char)._process_token()
     assert (exc_info.value.line, exc_info.value.col) == (1, 1)
 
 
@@ -472,8 +488,14 @@ def test_process_unknown_char_position():
     lexer = Lexer("ab\n  @")
     lexer.pos, lexer.line, lexer.last_pos = 5, 2, 3
     with pytest.raises(LexicalError) as exc_info:
-        lexer._process_token(5, "@")
+        lexer._process_token()
     assert (exc_info.value.line, exc_info.value.col) == (2, 3)
+
+
+def test_process_at_eof():
+    with pytest.raises(LexicalError) as exc_info:
+        Lexer("")._process_token()
+    assert (exc_info.value.line, exc_info.value.col) == (1, 1)
 
 
 # 13. tokenize()
@@ -490,6 +512,10 @@ def test_tokenize_eof_after_tokens():
         lexer.tokenize()
     with pytest.raises(EOFError):
         lexer.tokenize()
+
+
+def test_tokenize_position_after_cleanse():
+    assert Lexer("  -- c\n\t x ").tokenize() == "<id,x,2,3>"
 
 
 def test_tokenize_empty():

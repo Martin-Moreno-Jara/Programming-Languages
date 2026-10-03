@@ -1,5 +1,5 @@
-import sys
 import re
+import string
 
 
 class LexicalError(Exception):
@@ -45,6 +45,8 @@ class Lexer:
             "warn",
             "while",
         }
+        self.digits_set = set(string.digits)
+        self.alfabetic_set = set(string.ascii_letters + "_")
         self.operand_symbols_dict: dict = {
             "&": "tkn_bit_and",
             "|": "tkn_bit_or",
@@ -158,7 +160,6 @@ class Lexer:
         # print(self.operand_symbols_dict.get(" "))
         return f"<{self.operand_symbols_dict.get(symbol)},{self.line},{self.calc_inline_pos(start)}>"
 
-
     def _handle_multiline_comments(self, starting_pos: int, starting_line, n_equals=0):
         # TODO: Refactor this code
         while True:
@@ -194,12 +195,21 @@ class Lexer:
                 break
 
     def _handle_comments(self):
+        """
+        Given that the following sequence is a comment,
+        decide whether it is a single line or multiline comment
+        and treat it accordingly.
+        """
         # TODO: Refactor this code to avoid checking for multiline comments with = separators differently
+
         starting_pos = self.calc_inline_pos(self.pos)
         starting_line = self.line
-        self.pos += 2
+
+        self.pos += 2    # leave pointer in the next character after --
+
         cur = self.peek()
         next = self.peek(1)
+        
         if cur == "[" and next == "[":
             self._handle_multiline_comments(starting_pos, starting_line)
         elif cur == "[" and next == "=":
@@ -212,48 +222,57 @@ class Lexer:
                 self.pos += i + 1
                 self._handle_multiline_comments(starting_pos, starting_line, n_equals)
         else:
-            while self.peek() and self.peek() != "\n": # single line comments
+            while self.peek() and self.peek() != "\n":  # single line comments
                 self.pos += 1
 
     def _cleanse_input(self):
-        # identify each type of unnecessary token
+        """
+        Ignore characters that should not be processed 
+        as tokens (blank spaces, new lines and comments)
+        until it finds a valid token character.
+        """
+        # TODO: Maybe find a more efficient way to skip blank spaces
         while True:
-            cur = self.peek()
+            cur = self.peek() 
             next = self.peek(1)
 
-            if cur == "-" and next == "-": # comment
+            if cur == "-" and next == "-":  # comment 
                 self._handle_comments()
-            elif cur == " " or cur == "\t" or cur == "\r" or cur =="\v" or cur=="\f": # blank spaces
-                self.pos+=1
-            elif cur == "\n": # new lines
+            elif (                          # blank spaces
+                cur == " " or cur == "\t" or cur == "\r" or cur == "\v" or cur == "\f"
+            ):  
+                self.pos += 1
+            elif cur == "\n":               # new lines
                 self.pos += 1
                 self.line += 1
                 self.last_pos = self.pos
-            else:
+            else:                           # other character - must process it
                 break
 
-    def _process_token(self, start, first_char):
-        # TODO: Cambiar regex por sets para comprobación de primer carácter
+    def _process_token(self):
+        """"
+        Given the first character of a token
+        it decides what it should be processed as.
+        """
+        start = self.pos
+        first_char = self.peek()
         # si primer caracter letra - modo keyword/id
-        if self.patterns_dict["id"].match(first_char):
-            token = self._mode_keyword_id(start)
-            return token
+        if first_char in self.alfabetic_set:
+            return self._mode_keyword_id(start)
 
             # si primer caracter número - modo número
-        elif self.patterns_dict["tkn_num"].match(first_char):
-            token = self._mode_num(start)
-            return token
+        elif first_char in self.digits_set:
+            return self._mode_num(start)
 
-            #TODO: Considerar comentarios multilínea con [[""]]
+            # TODO: Considerar comentarios multilínea con [[""]]
             # si primer caracter " o ' - modo string
         elif first_char == '"' or first_char == "'":
-            token = self._mode_string(start)
-            return token
+            return self._mode_string(start)
+   
 
             # si primer caracter está en dict de simbolos - modo operador/simbolo
         elif self.operand_symbols_dict.get(first_char):
-            token = self._mode_op_symbol(start)
-            return token
+            return self._mode_op_symbol(start)
 
             # si no, error léxico
         else:
@@ -264,16 +283,19 @@ class Lexer:
             )
 
     def tokenize(self) -> str:
+        """
+        Wrapper function. Calls function to clean the input of 
+        unnecessary characters, and then calls the function
+        to process and return the next token, while handling
+        exception in the try except block
+        """
         try:
             self._cleanse_input()
 
-            start = self.pos
-            first_char = self.peek()
-
-            if not first_char:
+            if not self.peek():
                 raise EOFError("End of file reached")
 
-            return self._process_token(start, first_char)
+            return self._process_token()
         except LexicalError as e:
             print(f">>> Error lexico (linea: {e.line}, posicion: {e.col})")
             exit()

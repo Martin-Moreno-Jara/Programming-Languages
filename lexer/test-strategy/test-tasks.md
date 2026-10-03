@@ -6,7 +6,7 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - `test_lexer.py::name`: unit test file and function name (in `test-strategy/`).
 - `test_main.py::name`: end-to-end test.
 - **xfail**: the spec behaviour isn't implemented yet. Mark it with `@pytest.mark.xfail(reason=…)` and remove the mark once the bug is fixed.
-- `Lexer(src).method(0)` means: build a fresh lexer on `src`, call the method with `start = 0`, and check the return value (and `pos` when listed).
+- `Lexer(src).method(0)` means: build a fresh lexer on `src`, call the method with `start = 0`, and check the return value (and `pos` when listed). `_process_token()` takes no arguments; it starts at the lexer's current `pos`.
 - Python string literals are used for inputs, so `"\n"` is a newline and `"\\n"` is a literal backslash followed by `n`.
 
 ## 0. Setup
@@ -23,6 +23,8 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_init_state`: `Lexer("x")` → `line == 1`, `pos == 0`, `last_pos == 0`, `data == "x"`.
 - [x] `test_lexer.py::test_init_keywords`: `keywords_set == {and, break, do, else, elseif, end, error, false, for, function, global, goto, if, in, local, nil, not, or, print, pcall, repeat, return, then, true, until, warn, while}` (27 words).
 - [x] `test_lexer.py::test_init_operator_table`: `operand_symbols_dict` has exactly the 33 spec entries (`& → tkn_bit_and`, `| → tkn_bit_or`, `~ → tkn_bitex_or`, `>> → tkn_right_shift`, `<< → tkn_left_shift`, `; → tkn_semicolon`, `: → tkn_colon`, `, → tkn_comma`, `. → tkn_period`, `:: → tkn_goto`, `.. → tkn_concat`, `... → tkn_varargs`, `{ → tkn_opening_key`, `} → tkn_closing_key`, `[ → tkn_opening_bra`, `] → tkn_closing_bra`, `( → tkn_opening_par`, `) → tkn_closing_par`, `# → tkn_length`, `+ → tkn_plus`, `- → tkn_minus`, `* → tkn_times`, `/ → tkn_div`, `// → tkn_floor_div`, `^ → tkn_power`, `% → tkn_mod`, `== → tkn_equal`, `~= → tkn_neq`, `<= → tkn_leq`, `>= → tkn_geq`, `> → tkn_greater`, `< → tkn_less`, `= → tkn_assign`).
+- [x] `test_lexer.py::test_init_digits_set`: `Lexer("x").digits_set == set("0123456789")`.
+- [x] `test_lexer.py::test_init_alfabetic_set`: `Lexer("x").alfabetic_set` == every ASCII letter (`a-z`, `A-Z`) plus `_`.
 
 ## 3. `peek(offset)`
 - [x] `test_lexer.py::test_peek_current`: `Lexer("abc").peek()` → `"a"`.
@@ -129,22 +131,25 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_cleanse_keeps_single_minus`: `Lexer("- 3")._cleanse_input()` → `pos == 0`.
 - [x] `test_lexer.py::test_cleanse_empty`: `Lexer("")._cleanse_input()` → `pos == 0`, no exception.
 
-## 12. `_process_token(start, first_char)`
-- [x] `test_lexer.py::test_process_letter`: `Lexer("abc ")._process_token(0, "a")` → `"<id,abc,1,1>"`.
-- [x] `test_lexer.py::test_process_underscore`: `Lexer("_x ")._process_token(0, "_")` → `"<id,_x,1,1>"`.
-- [x] `test_lexer.py::test_process_digit`: `Lexer("9 ")._process_token(0, "9")` → `"<tkn_num,9,1,1>"`.
+## 12. `_process_token()`
+- [x] `test_lexer.py::test_process_letter`: `Lexer("abc ")._process_token()` → `"<id,abc,1,1>"`.
+- [x] `test_lexer.py::test_process_underscore`: `Lexer("_x ")._process_token()` → `"<id,_x,1,1>"`.
+- [x] `test_lexer.py::test_process_digit`: `Lexer("9 ")._process_token()` → `"<tkn_num,9,1,1>"`.
 - [x] `test_lexer.py::test_process_leading_dot_is_period`: `lex_all(".5 ")` → `["<tkn_period,1,1>", "<tkn_num,5,1,2>"]`.
-- [x] `test_lexer.py::test_process_single_quote`: `Lexer("'a' ")._process_token(0, "'")` → `"<tkn_str,a,1,1>"`.
-- [x] `test_lexer.py::test_process_double_quote`: `Lexer('"a" ')._process_token(0, '"')` → `"<tkn_str,a,1,1>"`.
-- [x] `test_lexer.py::test_process_symbol`: `Lexer("+ ")._process_token(0, "+")` → `"<tkn_plus,1,1>"`.
-- [x] `test_lexer.py::test_process_long_string`: `Lexer("[[a]] ")._process_token(0, "[")` → `"<tkn_str,a,1,1>"`. **xfail**.
-- [x] `test_lexer.py::test_process_long_string_level`: `Lexer("[=[a]=] ")._process_token(0, "[")` → `"<tkn_str,a,1,1>"`. **xfail**.
-- [x] `test_lexer.py::test_process_unknown_char` (parametrized over `@ ? ! $ ` ` ñ ◕ ¡`): `Lexer(ch)._process_token(0, ch)` raises `LexicalError(line=1, col=1)`.
-- [x] `test_lexer.py::test_process_unknown_char_position`: `lx = Lexer("ab\n  @"); lx.pos, lx.line, lx.last_pos = 5, 2, 3; lx._process_token(5, "@")` raises `LexicalError(line=2, col=3)`.
+- [x] `test_lexer.py::test_process_single_quote`: `Lexer("'a' ")._process_token()` → `"<tkn_str,a,1,1>"`.
+- [x] `test_lexer.py::test_process_double_quote`: `Lexer('"a" ')._process_token()` → `"<tkn_str,a,1,1>"`.
+- [x] `test_lexer.py::test_process_symbol`: `Lexer("+ ")._process_token()` → `"<tkn_plus,1,1>"`.
+- [x] `test_lexer.py::test_process_reads_current_pos`: `lx = Lexer("ab cd "); lx.pos = 3; lx._process_token()` → `"<id,cd,1,4>"`.
+- [x] `test_lexer.py::test_process_long_string`: `Lexer("[[a]] ")._process_token()` → `"<tkn_str,a,1,1>"`. **xfail**.
+- [x] `test_lexer.py::test_process_long_string_level`: `Lexer("[=[a]=] ")._process_token()` → `"<tkn_str,a,1,1>"`. **xfail**.
+- [x] `test_lexer.py::test_process_unknown_char` (parametrized over `@ ? ! $ ` ` ñ ◕ ¡ ٣ é`): `Lexer(ch)._process_token()` raises `LexicalError(line=1, col=1)`. `٣` (non-ASCII digit) and `é` (non-ASCII letter) are not in `digits_set` / `alfabetic_set`.
+- [x] `test_lexer.py::test_process_unknown_char_position`: `lx = Lexer("ab\n  @"); lx.pos, lx.line, lx.last_pos = 5, 2, 3; lx._process_token()` raises `LexicalError(line=2, col=3)`.
+- [x] `test_lexer.py::test_process_at_eof`: `Lexer("")._process_token()` raises `LexicalError(line=1, col=1)` (no `TypeError` on `peek() is None`).
 
 ## 13. `tokenize()`
 - [x] `test_lexer.py::test_tokenize_sequence`: `lx = Lexer("a b\nc")`. Three calls → `"<id,a,1,1>"`, `"<id,b,1,3>"`, `"<id,c,2,1>"`.
 - [x] `test_lexer.py::test_tokenize_eof_after_tokens`: on the same lexer, a fourth call raises `EOFError`.
+- [x] `test_lexer.py::test_tokenize_position_after_cleanse`: `Lexer("  -- c\n\t x ").tokenize()` → `"<id,x,2,3>"` (start is read after `_cleanse_input()`).
 - [x] `test_lexer.py::test_tokenize_empty`: `Lexer("").tokenize()` raises `EOFError`.
 - [x] `test_lexer.py::test_tokenize_only_comments`: `Lexer("  -- c\n--[[x]]\n").tokenize()` raises `EOFError`.
 - [x] `test_lexer.py::test_tokenize_error_exits`: `Lexer("@").tokenize()` raises `SystemExit`, and captured stdout is `">>> Error lexico (linea: 1, posicion: 1)\n"`.
