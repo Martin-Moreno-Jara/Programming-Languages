@@ -152,11 +152,8 @@ class Lexer:
         raises an exception if it is not correctly closed
 
         """
-        # TODO: Complete and refactor this. Consider not closed and multiline strings
         starting_quote = self.peek()
         self.pos += 1
-        string_intervals_q = deque()
-        string_intervals_q.append(start+1)
         while True:
             cur = self.peek()
             next = self.peek(1)
@@ -173,29 +170,22 @@ class Lexer:
                     self.line,
                     self.calc_inline_pos(start),
                 )
-            elif cur == "\\" and next == starting_quote: # Allowing embedded quotes with scaping sequence
-                string_intervals_q.append(self.pos)
-                string_intervals_q.append(self.pos+1)
+            elif cur == "\\" and (next == starting_quote or next =="\\"): # Allowing embedded quotes with scaping sequence
                 self.pos+=2
 
             elif cur == starting_quote: # Closing of string reached
-                string_intervals_q.append(self.pos)
                 self.pos+=1
                 break
             else: # General case
                 self.pos+=1
-        lexem = ""
-        while len(string_intervals_q)>0:
-            lexem+=self.data[string_intervals_q.popleft():string_intervals_q.popleft()]
 
-        return f"<tkn_str,{lexem},{self.line},{self.calc_inline_pos(start)}>"
+        return f"<tkn_str,{self.data[start+1:self.pos-1]},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_op_symbol(self, start):
         """
         Given that the first character is in the symbols and operands dict
         it returns the longest possible and valid match in the dict
         """
-        # TODO: Check and refactor this code. Check from 3 lenght symbosl downward
         symbol = ""
         for i in range(2, -1, -1):
             if self.peek(i):

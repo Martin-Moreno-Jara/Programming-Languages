@@ -227,14 +227,12 @@ def test_str_keeps_spaces():
     assert Lexer('"Valor de @: "')._mode_string(0) == "<tkn_str,Valor de @: ,1,1>"
 
 
-@pytest.mark.xfail(reason="the backslash of an escaped quote is dropped", raises=AssertionError, strict=True)
 def test_str_escaped_quote():
     lexer = Lexer('"a\\"b" ')
     assert lexer._mode_string(0) == '<tkn_str,a\\"b,1,1>'
     assert lexer.pos == 6
 
 
-@pytest.mark.xfail(reason="\\\\ before the closing quote is read as an escaped quote", raises=LexicalError, strict=True)
 def test_str_escaped_backslash():
     assert Lexer('"x\\\\" ')._mode_string(0) == "<tkn_str,x\\\\,1,1>"
 
