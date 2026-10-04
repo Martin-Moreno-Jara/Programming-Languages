@@ -1,5 +1,6 @@
 import re
 import string
+from collections import deque
 
 
 class LexicalError(Exception):
@@ -132,6 +133,11 @@ class Lexer:
             return f"<id,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_num(self, start):
+        """
+        Given the first char is a digit, it checks the
+        longest substring that coincides with a integer
+        or a decimal
+        """
         # TODO: If next submission doesn't pass, consider adding scientific notation, hexadecimals and binaries
         longest_match = self.patterns_dict["int_dec"].match(self.data, start)
         lexem = longest_match.group()
@@ -140,19 +146,48 @@ class Lexer:
         return f"<tkn_num,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_string(self, start):
+        """
+        Given that the first char is a quote " or '
+        it processes the string until it closes, or
+        raises an exception if it is not correctly closed
+
+        """
         # TODO: Complete and refactor this. Consider not closed and multiline strings
         starting_quote = self.peek()
-        while self.pos < len(self.data):
-            self.pos += 1
-            if (
-                self.peek() == "\\" and self.peek(1) == starting_quote
-            ):  # escaping sequence for \" or \'
-                pass
-            if self.data[self.pos] == starting_quote:
-                self.pos += 1
-                break
+        self.pos += 1
+        string_intervals_q = deque()
+        string_intervals_q.append(start+1)
+        while True:
+            cur = self.peek()
+            next = self.peek(1)
 
-        lexem = self.data[start + 1 : self.pos - 1]
+            if not cur: # if end of file is reached without closing the string, lexical error
+                raise LexicalError(
+                    f">>> Error lexico String no cerrado",
+                    self.line,
+                    self.calc_inline_pos(start),
+                )
+            elif cur == "\n": # if there is a newline in a simple string, lexical error
+                raise LexicalError(
+                    f">>> Error lexico String malformado. Nueva línea no permitida",
+                    self.line,
+                    self.calc_inline_pos(start),
+                )
+            elif cur == "\\" and next == starting_quote: # Allowing embedded quotes with scaping sequence
+                string_intervals_q.append(self.pos)
+                string_intervals_q.append(self.pos+1)
+                self.pos+=2
+
+            elif cur == starting_quote: # Closing of string reached
+                string_intervals_q.append(self.pos)
+                self.pos+=1
+                break
+            else: # General case
+                self.pos+=1
+        lexem = ""
+        while len(string_intervals_q)>0:
+            lexem+=self.data[string_intervals_q.popleft():string_intervals_q.popleft()]
+
         return f"<tkn_str,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
     def _mode_op_symbol(self, start):

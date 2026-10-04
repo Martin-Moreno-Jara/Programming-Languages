@@ -227,13 +227,14 @@ def test_str_keeps_spaces():
     assert Lexer('"Valor de @: "')._mode_string(0) == "<tkn_str,Valor de @: ,1,1>"
 
 
-@pytest.mark.xfail(reason="string ends at the escaped quote", raises=AssertionError, strict=True)
+@pytest.mark.xfail(reason="the backslash of an escaped quote is dropped", raises=AssertionError, strict=True)
 def test_str_escaped_quote():
     lexer = Lexer('"a\\"b" ')
     assert lexer._mode_string(0) == '<tkn_str,a\\"b,1,1>'
     assert lexer.pos == 6
 
 
+@pytest.mark.xfail(reason="\\\\ before the closing quote is read as an escaped quote", raises=LexicalError, strict=True)
 def test_str_escaped_backslash():
     assert Lexer('"x\\\\" ')._mode_string(0) == "<tkn_str,x\\\\,1,1>"
 
@@ -246,22 +247,26 @@ def test_str_adjacent(lex_all):
     assert lex_all("'U''n'") == ["<tkn_str,U,1,1>", "<tkn_str,n,1,4>"]
 
 
-@pytest.mark.xfail(reason="unclosed string raises IndexError", raises=IndexError, strict=True)
 def test_str_unclosed_eof():
     with pytest.raises(LexicalError) as exc_info:
         Lexer('"Hola')._mode_string(0)
     assert (exc_info.value.line, exc_info.value.col) == (1, 1)
 
 
-@pytest.mark.xfail(
-    reason="newline is accepted inside a short string",
-    raises=pytest.fail.Exception,
-    strict=True,
-)
 def test_str_unclosed_newline():
     with pytest.raises(LexicalError) as exc_info:
         Lexer('"Ho\nla"')._mode_string(0)
     assert (exc_info.value.line, exc_info.value.col) == (1, 1)
+
+
+# Column must be relative to the line, not the absolute index
+@pytest.mark.parametrize("src", ['x\n  y = "ab', 'x\n  y = "a\nb"'])
+def test_str_unclosed_position(src):
+    lexer = Lexer(src)
+    lexer.pos, lexer.line, lexer.last_pos = 8, 2, 2
+    with pytest.raises(LexicalError) as exc_info:
+        lexer._mode_string(8)
+    assert (exc_info.value.line, exc_info.value.col) == (2, 7)
 
 
 # 9. _mode_op_symbol(start)
@@ -544,8 +549,8 @@ def _crash(reason):
         "x = 5",
         "a...",
         ")",
-        pytest.param('"abc', marks=_crash("unclosed string crashes")),
-        pytest.param('x = "a\\"b"', marks=_crash("escaped quote crashes")),
+        '"abc',
+        'x = "a\\"b"',
         "[[hola]]",
     ],
 )

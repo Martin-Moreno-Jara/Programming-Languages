@@ -286,9 +286,6 @@ def _run_case(run_main, name):
 
 
 def _case_param(path):
-    if path.name == "12.in":
-        mark = pytest.mark.xfail(reason="unclosed string crashes", raises=AssertionError, strict=True)
-        return pytest.param(path.name, marks=mark)
     return path.name
 
 
@@ -406,7 +403,6 @@ def test_case_08_relational(run_main):
     assert output[-3:] == ["<tkn_geq,8,1>", "<return,8,6>", "<id,tkn_geq,8,15>"]
 
 
-@pytest.mark.xfail(reason="unclosed string crashes", raises=AssertionError, strict=True)
 def test_case_12_unclosed_string(run_main):
     output = _run_case(run_main, "12.in")
     assert output[-4:] == [

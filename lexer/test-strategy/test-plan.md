@@ -80,7 +80,7 @@ Lines and columns start at 1. Column = position of the token's **first** charact
 - Escape sequences are kept as written: `"a\"b"` → `<tkn_str,a\"b,…>`. `"x\\"` → `<tkn_str,x\\,…>`.
 - Empty string: `""` → `<tkn_str,,1,1>`.
 - Strings next to each other: `'U''n'` gives two tokens, `U` then `n`, with the right columns.
-- Unclosed string (`"Hola` with no closing quote, or a newline before the closing quote) → `LexicalError` at the opening quote's line and column.
+- Unclosed string (`"Hola` with no closing quote, or a newline before the closing quote) → `LexicalError` at the opening quote's line and column. The column is relative to the line: `x\n  y = "ab` → (2, 7).
 
 ### 3.8 Long-bracket strings (`[[…]]`, `[==[…]==]`)
 There is no dedicated method for these yet. They are tested through `_process_token()` / `tokenize()`. If a new method is added for them, these cases move under it.
@@ -176,8 +176,8 @@ Smoke tests plus spot checks:
 ## 6. Known bugs (tests expected to fail for now)
 | Input | Expected (spec) | Current output |
 |---|---|---|
-| `"abc` (unclosed string) | `>>> Error lexico (linea: 1, posicion: 1)` | `Unexpected error …` |
-| `x = "a\"b"` | `<tkn_str,a\"b,1,5>` | string cut at `\`, then a crash |
+| `x = "a\"b"` | `<tkn_str,a\"b,1,5>` | `<tkn_str,a"b,1,5>` (backslash dropped) |
+| `"x\\"` (escaped backslash) | `<tkn_str,x\\,1,1>` | `>>> Error lexico (linea: 1, posicion: 0)` (`\"` read as an escaped quote) |
 | `0xFF` | `<tkn_num,0xFF,1,1>` | `<tkn_num,0,…>` `<id,xFF,…>` |
 | `1e10` / `2.5E-3` | one `tkn_num` | number + `id` (+ minus + number) |
 | `[[hola]]` | `<tkn_str,hola,1,1>` | brackets + `id` |

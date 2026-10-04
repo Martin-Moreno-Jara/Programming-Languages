@@ -82,12 +82,13 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_str_single_quotes`: `Lexer("'abc'")._mode_string(0)` → `"<tkn_str,abc,1,1>"`.
 - [x] `test_lexer.py::test_str_other_quote_inside`: `Lexer("'\"double\" string'")._mode_string(0)` → `'<tkn_str,"double" string,1,1>'`.
 - [x] `test_lexer.py::test_str_keeps_spaces`: `Lexer('"Valor de @: "')._mode_string(0)` → `"<tkn_str,Valor de @: ,1,1>"`.
-- [x] `test_lexer.py::test_str_escaped_quote`: `Lexer('"a\\"b" ')._mode_string(0)` → `'<tkn_str,a\\"b,1,1>'`, `pos == 6`. **xfail**: the string stops at the escaped quote.
-- [x] `test_lexer.py::test_str_escaped_backslash`: `Lexer('"x\\\\" ')._mode_string(0)` → `"<tkn_str,x\\\\,1,1>"` (source `x\\` kept as written).
+- [x] `test_lexer.py::test_str_escaped_quote`: `Lexer('"a\\"b" ')._mode_string(0)` → `'<tkn_str,a\\"b,1,1>'`, `pos == 6`. **xfail**: the backslash is dropped (gives `a"b`).
+- [x] `test_lexer.py::test_str_escaped_backslash`: `Lexer('"x\\\\" ')._mode_string(0)` → `"<tkn_str,x\\\\,1,1>"` (source `x\\` kept as written). **xfail**: the second `\` plus the closing quote is read as an escaped quote, so it raises `LexicalError` (unclosed string).
 - [x] `test_lexer.py::test_str_empty`: `Lexer('"" ')._mode_string(0)` → `"<tkn_str,,1,1>"`.
 - [x] `test_lexer.py::test_str_adjacent`: `lex_all("'U''n'")` → `["<tkn_str,U,1,1>", "<tkn_str,n,1,4>"]`.
-- [x] `test_lexer.py::test_str_unclosed_eof`: `Lexer('"Hola')._mode_string(0)` raises `LexicalError(line=1, col=1)`. **xfail**: raises `IndexError`.
-- [x] `test_lexer.py::test_str_unclosed_newline`: `Lexer('"Ho\nla"')._mode_string(0)` raises `LexicalError(line=1, col=1)`. **xfail**: the newline is accepted inside the string.
+- [x] `test_lexer.py::test_str_unclosed_eof`: `Lexer('"Hola')._mode_string(0)` raises `LexicalError(line=1, col=1)`.
+- [x] `test_lexer.py::test_str_unclosed_newline`: `Lexer('"Ho\nla"')._mode_string(0)` raises `LexicalError(line=1, col=1)`.
+- [x] `test_lexer.py::test_str_unclosed_position` (parametrized over `'x\n  y = "ab'` and `'x\n  y = "a\nb"'`): `lx.pos, lx.line, lx.last_pos = 8, 2, 2; lx._mode_string(8)` raises `LexicalError(line=2, col=7)` (column relative to the line, not the absolute index).
 
 ## 8. Long-bracket strings (through `lex_all` / `tokenize`)
 - [ ] `test_lexer.py::test_long_str_basic`: `lex_all("[[hola]]")` → `["<tkn_str,hola,1,1>"]`. **xfail**: long strings not supported.
@@ -154,7 +155,7 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_tokenize_empty`: `Lexer("").tokenize()` raises `EOFError`.
 - [x] `test_lexer.py::test_tokenize_only_comments`: `Lexer("  -- c\n--[[x]]\n").tokenize()` raises `EOFError`.
 - [x] `test_lexer.py::test_tokenize_error_exits`: `Lexer("@").tokenize()` raises `SystemExit`, and captured stdout is `">>> Error lexico (linea: 1, posicion: 1)\n"`.
-- [x] `test_lexer.py::test_tokenize_never_unexpected_error` (parametrized over `"x = 5"`, `"a..."`, `")"`, `'"abc'`, `'x = "a\\"b"'`, `"[[hola]]"`): no line from `lex_all(src)` starts with `"Unexpected error"`. **xfail** only for `'"abc'` and `'x = "a\\"b"'` (they still crash).
+- [x] `test_lexer.py::test_tokenize_never_unexpected_error` (parametrized over `"x = 5"`, `"a..."`, `")"`, `'"abc'`, `'x = "a\\"b"'`, `"[[hola]]"`): no line from `lex_all(src)` starts with `"Unexpected error"`.
 
 ## 14. End-to-end: reference examples (`docs/output_format.txt`)
 Each task: `run_main(input)` == expected stdout, line by line. The input is exactly as in the spec, with a trailing `\n`.
@@ -184,7 +185,7 @@ Each task: `run_main(input)` == expected stdout, line by line. The input is exac
 - [x] `test_main.py::test_nothing_after_error`: `print("x") @ print\n` → `<print,1,1>` `<tkn_opening_par,1,6>` `<tkn_str,x,1,7>` `<tkn_closing_par,1,10>` `>>> Error lexico (linea: 1, posicion: 12)`, with nothing after it.
 
 ## 16. End-to-end: `test-cases/*.in`
-- [x] `test_main.py::test_cases_well_formed` (parametrized over all `.in` files): every stdout line matches `^<(id|tkn_num|tkn_str),.*,\d+,\d+>$`, `^<[a-z_]+,\d+,\d+>$` or `^>>> Error lexico \(linea: \d+, posicion: \d+\)$`. No line contains `Unexpected error`. **xfail** for `12.in` only.
+- [x] `test_main.py::test_cases_well_formed` (parametrized over all `.in` files): every stdout line matches `^<(id|tkn_num|tkn_str),.*,\d+,\d+>$`, `^<[a-z_]+,\d+,\d+>$` or `^>>> Error lexico \(linea: \d+, posicion: \d+\)$`. No line contains `Unexpected error`.
 - [x] `test_main.py::test_case_00_keywords`: `test-cases/00.in` → exactly `<print,3,1>` `<true,3,7>` `<until,5,1>` `<nil,5,7>` `<while,5,11>` `<if,5,17>` `<else,7,1>` `<elseif,7,6>` `<error,7,13>`.
 - [x] `test_main.py::test_case_01_block_comment`: `test-cases/01.in` → starts with `<if,3,1>` `<for,4,6>` `<pcall,4,13>`, and the last line is `<id,proof,17,12>`.
 - [x] `test_main.py::test_case_02_strings_and_concat`: `test-cases/02.in` → contains `<tkn_str,¡Hola, bienvenido a la programación en Lua!,3,11>`, `<tkn_concat,23,18>` and `<tkn_concat,23,26>`. The last line is `<tkn_closing_par,27,42>`.
@@ -193,13 +194,13 @@ Each task: `run_main(input)` == expected stdout, line by line. The input is exac
 - [x] `test_main.py::test_case_06_varargs_error`: `test-cases/06.in` → exactly `<id,_f,3,1>` `<tkn_num,4.559,3,4>` `<tkn_varargs,3,9>` `<tkn_num,6,3,12>` `<tkn_assign,3,13>` `<tkn_str,1,3,14>` `>>> Error lexico (linea: 3, posicion: 17)`.
 - [x] `test_main.py::test_case_07_adjacent_strings`: `test-cases/07.in` → exactly `<tkn_opening_par,3,1>` `<tkn_str,HaBía una Vez,3,2>` `<tkn_closing_par,3,17>` `<tkn_str,U,3,19>` `<tkn_str,n,3,22>` `<tkn_str,a fea,3,25>` `<tkn_opening_bra,3,33>` `<tkn_str,C,3,34>` `<tkn_str,ala,3,37>` `<tkn_str,b,3,42>` `<tkn_str,a,3,45>` `<tkn_str,za,3,48>` `<tkn_closing_bra,3,52>` `<tkn_opening_key,3,53>` `<tkn_str,C,3,54>` `<tkn_str,ala,3,57>` `<tkn_str,b,3,62>` `<tkn_str,a,3,65>` `<tkn_str,za,3,68>` `<tkn_closing_key,3,72>`.
 - [x] `test_main.py::test_case_08_relational`: `test-cases/08.in` → starts with `<tkn_equal,3,1>` `<return,3,6>` `<id,tkn_equal,3,15>` `<tkn_neq,4,1>`, and ends with `<tkn_geq,8,1>` `<return,8,6>` `<id,tkn_geq,8,15>`.
-- [x] `test_main.py::test_case_12_unclosed_string`: `test-cases/12.in` → the output ends with `<local,9,1>` `<id,mensaje,9,7>` `<tkn_assign,9,15>` `>>> Error lexico (linea: 9, posicion: 17)`. **xfail**: crashes with `Unexpected error`.
+- [x] `test_main.py::test_case_12_unclosed_string`: `test-cases/12.in` → the output ends with `<local,9,1>` `<id,mensaje,9,7>` `<tkn_assign,9,15>` `>>> Error lexico (linea: 9, posicion: 17)`.
 - [x] `test_main.py::test_case_13_full_program`: `test-cases/13.in` → starts with `<local,4,1>` `<id,CONFIG_ACTIVA,4,7>` `<tkn_assign,4,21>`, and contains `<warn,12,9>`, `<error,19,9>` and `<pcall,37,24>`. The last line is `<end,43,1>`.
 
 ## 17. xfail index
 The bug each group comes from:
-- **Unclosed string**: `test_str_unclosed_eof`, `test_str_unclosed_newline`, `test_case_12_unclosed_string`, `test_cases_well_formed[12.in]`, `test_tokenize_never_unexpected_error['"abc']`.
-- **Escaped quote**: `test_str_escaped_quote`, `test_tokenize_never_unexpected_error['x = "a\\"b"']`.
+- **Escaped quote** (backslash dropped): `test_str_escaped_quote`.
+- **Escaped backslash before the closing quote**: `test_str_escaped_backslash`.
 - **Scientific notation**: all `test_num_exp_*`, `test_hex_and_exponent`.
 - **Hexadecimal**: all `test_num_hex_*`, `test_hex_and_exponent`.
 - **Long-bracket strings**: all `test_long_str_*` except `test_plain_bracket_is_symbol`, plus `test_process_long_string*` and `test_long_string_line_tracking`.
