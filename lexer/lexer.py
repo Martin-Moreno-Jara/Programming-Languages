@@ -1,6 +1,5 @@
 import re
 import string
-from collections import deque
 
 
 class LexicalError(Exception):
@@ -57,6 +56,7 @@ class Lexer:
         }
         self.digits_set = set(string.digits)
         self.alfabetic_set = set(string.ascii_letters + "_")
+        self.hexdigits_set = set(string.hexdigits)
         self.operand_symbols_dict: dict = {
             "&": "tkn_bit_and",
             "|": "tkn_bit_or",
@@ -95,7 +95,12 @@ class Lexer:
 
         self.patterns_dict: dict = {
             "id": re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*"),
-            "int_dec": re.compile(r"\d+\.\d*|\d+"),
+            "int_dec": re.compile(
+                r"\d+\.\d*[eE][+-]{0,1}\d+|\d+\.\d*|\d+[eE][+-]{0,1}\d+|\d+"
+            ),
+            "hex": re.compile(
+                r"0[xX](?:[0-9a-fA-F]+\.?[0-9a-fA-F]*|\.[0-9a-fA-F]+)(?:[pP][+-]?\d+)?"
+            ),
             "nums": re.compile(r"\d+|\."),
         }
 
@@ -139,7 +144,13 @@ class Lexer:
         or a decimal
         """
         # TODO: If next submission doesn't pass, consider adding scientific notation, hexadecimals and binaries
-        longest_match = self.patterns_dict["int_dec"].match(self.data, start)
+        cur = self.peek()
+        next = self.peek(1)
+        after_next = self.peek(2)
+        if cur == "0" and (next == "x" or next == "X") and (after_next in self.hexdigits_set):  # hexadecimal
+            longest_match = self.patterns_dict["hex"].match(self.data, start)
+        else: # int, decimal, exponentials
+            longest_match = self.patterns_dict["int_dec"].match(self.data, start)
         lexem = longest_match.group()
         self.pos = longest_match.end()
 
@@ -158,26 +169,30 @@ class Lexer:
             cur = self.peek()
             next = self.peek(1)
 
-            if not cur: # if end of file is reached without closing the string, lexical error
+            if (
+                not cur
+            ):  # if end of file is reached without closing the string, lexical error
                 raise LexicalError(
                     f">>> Error lexico String no cerrado",
                     self.line,
                     self.calc_inline_pos(start),
                 )
-            elif cur == "\n": # if there is a newline in a simple string, lexical error
+            elif cur == "\n":  # if there is a newline in a simple string, lexical error
                 raise LexicalError(
                     f">>> Error lexico String malformado. Nueva línea no permitida",
                     self.line,
                     self.calc_inline_pos(start),
                 )
-            elif cur == "\\" and (next == starting_quote or next =="\\"): # Allowing embedded quotes with scaping sequence
-                self.pos+=2
+            elif cur == "\\" and (
+                next == starting_quote or next == "\\"
+            ):  # Allowing embedded quotes with scaping sequence
+                self.pos += 2
 
-            elif cur == starting_quote: # Closing of string reached
-                self.pos+=1
+            elif cur == starting_quote:  # Closing of string reached
+                self.pos += 1
                 break
-            else: # General case
-                self.pos+=1
+            else:  # General case
+                self.pos += 1
 
         return f"<tkn_str,{self.data[start+1:self.pos-1]},{self.line},{self.calc_inline_pos(start)}>"
 

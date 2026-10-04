@@ -61,29 +61,29 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_num_at_eof`: `Lexer("5")._mode_num(0)` → `"<tkn_num,5,1,1>"`.
 
 ### Scientific notation
-- [ ] `test_lexer.py::test_num_exp_lower`: `Lexer("1e10 ")._mode_num(0)` → `"<tkn_num,1e10,1,1>"`. **xfail**: exponent not supported.
-- [ ] `test_lexer.py::test_num_exp_upper`: `Lexer("1E10 ")._mode_num(0)` → `"<tkn_num,1E10,1,1>"`. **xfail**.
-- [ ] `test_lexer.py::test_num_exp_negative`: `Lexer("2.5e-3 ")._mode_num(0)` → `"<tkn_num,2.5e-3,1,1>"`. **xfail**.
-- [ ] `test_lexer.py::test_num_exp_positive`: `Lexer("4E+2 ")._mode_num(0)` → `"<tkn_num,4E+2,1,1>"`. **xfail**.
-- [ ] `test_lexer.py::test_num_exp_after_trailing_dot`: `Lexer("3.e1 ")._mode_num(0)` → `"<tkn_num,3.e1,1,1>"`. **xfail**.
-- [ ] `test_lexer.py::test_num_exp_missing_digits` (parametrized over `"1e "`, `"1e+ "`, `"1ex "`): `_mode_num(0)` raises `LexicalError` with `line == 1`, `col == 1`. **xfail**.
+- [x] `test_lexer.py::test_num_exp_lower`: `Lexer("1e10 ")._mode_num(0)` → `"<tkn_num,1e10,1,1>"`.
+- [x] `test_lexer.py::test_num_exp_upper`: `Lexer("1E10 ")._mode_num(0)` → `"<tkn_num,1E10,1,1>"`.
+- [x] `test_lexer.py::test_num_exp_negative`: `Lexer("2.5e-3 ")._mode_num(0)` → `"<tkn_num,2.5e-3,1,1>"`.
+- [x] `test_lexer.py::test_num_exp_positive`: `Lexer("4E+2 ")._mode_num(0)` → `"<tkn_num,4E+2,1,1>"`.
+- [x] `test_lexer.py::test_num_exp_after_trailing_dot`: `Lexer("3.e1 ")._mode_num(0)` → `"<tkn_num,3.e1,1,1>"`.
+- [x] `test_lexer.py::test_num_exp_missing_digits` (parametrized over `"1e "`, `"1e+ "`, `"1ex "`, `"2.5e- "`): longest match, the `e` is not part of the number. `_mode_num(0)` → `"<tkn_num,1,1,1>"` with `pos == 1` (`"<tkn_num,2.5,1,1>"` with `pos == 3` for `"2.5e- "`).
 
 ### Hexadecimal
-- [ ] `test_lexer.py::test_num_hex_upper_digits`: `Lexer("0xFF ")._mode_num(0)` → `"<tkn_num,0xFF,1,1>"`. **xfail**: hex not supported.
-- [ ] `test_lexer.py::test_num_hex_upper_prefix`: `Lexer("0Xa1 ")._mode_num(0)` → `"<tkn_num,0Xa1,1,1>"`. **xfail**.
-- [ ] `test_lexer.py::test_num_hex_fraction`: `Lexer("0x1.8 ")._mode_num(0)` → `"<tkn_num,0x1.8,1,1>"`. **xfail**.
-- [ ] `test_lexer.py::test_num_hex_binary_exp`: `Lexer("0x1p4 ")._mode_num(0)` → `"<tkn_num,0x1p4,1,1>"`. **xfail**.
-- [ ] `test_lexer.py::test_num_hex_fraction_binary_exp`: `Lexer("0x1.8P-2 ")._mode_num(0)` → `"<tkn_num,0x1.8P-2,1,1>"`. **xfail**.
-- [ ] `test_lexer.py::test_num_hex_e_is_digit`: `Lexer("0x1e2 ")._mode_num(0)` → `"<tkn_num,0x1e2,1,1>"`. **xfail**.
-- [ ] `test_lexer.py::test_num_hex_malformed` (parametrized over `"0x "`, `"0xG "`): raises `LexicalError` with `line == 1`, `col == 1`. **xfail**.
+- [x] `test_lexer.py::test_num_hex_upper_digits`: `Lexer("0xFF ")._mode_num(0)` → `"<tkn_num,0xFF,1,1>"`.
+- [x] `test_lexer.py::test_num_hex_upper_prefix`: `Lexer("0Xa1 ")._mode_num(0)` → `"<tkn_num,0Xa1,1,1>"`.
+- [x] `test_lexer.py::test_num_hex_fraction`: `Lexer("0x1.8 ")._mode_num(0)` → `"<tkn_num,0x1.8,1,1>"`.
+- [x] `test_lexer.py::test_num_hex_binary_exp`: `Lexer("0x1p4 ")._mode_num(0)` → `"<tkn_num,0x1p4,1,1>"`.
+- [x] `test_lexer.py::test_num_hex_fraction_binary_exp`: `Lexer("0x1.8P-2 ")._mode_num(0)` → `"<tkn_num,0x1.8P-2,1,1>"`.
+- [x] `test_lexer.py::test_num_hex_e_is_digit`: `Lexer("0x1e2 ")._mode_num(0)` → `"<tkn_num,0x1e2,1,1>"`.
+- [x] `test_lexer.py::test_num_hex_malformed` (parametrized over `"0x "`, `"0xG "`): longest match, the `x` is not part of the number. `_mode_num(0)` → `"<tkn_num,0,1,1>"`, `pos == 1`.
 
 ## 7. `_mode_string(start)`: short strings
 - [x] `test_lexer.py::test_str_double_quotes`: `Lexer('"Hola, Lua"')._mode_string(0)` → `"<tkn_str,Hola, Lua,1,1>"`, `pos == 11`.
 - [x] `test_lexer.py::test_str_single_quotes`: `Lexer("'abc'")._mode_string(0)` → `"<tkn_str,abc,1,1>"`.
 - [x] `test_lexer.py::test_str_other_quote_inside`: `Lexer("'\"double\" string'")._mode_string(0)` → `'<tkn_str,"double" string,1,1>'`.
 - [x] `test_lexer.py::test_str_keeps_spaces`: `Lexer('"Valor de @: "')._mode_string(0)` → `"<tkn_str,Valor de @: ,1,1>"`.
-- [x] `test_lexer.py::test_str_escaped_quote`: `Lexer('"a\\"b" ')._mode_string(0)` → `'<tkn_str,a\\"b,1,1>'`, `pos == 6`. **xfail**: the backslash is dropped (gives `a"b`).
-- [x] `test_lexer.py::test_str_escaped_backslash`: `Lexer('"x\\\\" ')._mode_string(0)` → `"<tkn_str,x\\\\,1,1>"` (source `x\\` kept as written). **xfail**: the second `\` plus the closing quote is read as an escaped quote, so it raises `LexicalError` (unclosed string).
+- [x] `test_lexer.py::test_str_escaped_quote`: `Lexer('"a\\"b" ')._mode_string(0)` → `'<tkn_str,a\\"b,1,1>'`, `pos == 6`.
+- [x] `test_lexer.py::test_str_escaped_backslash`: `Lexer('"x\\\\" ')._mode_string(0)` → `"<tkn_str,x\\\\,1,1>"` (source `x\\` kept as written).
 - [x] `test_lexer.py::test_str_empty`: `Lexer('"" ')._mode_string(0)` → `"<tkn_str,,1,1>"`.
 - [x] `test_lexer.py::test_str_adjacent`: `lex_all("'U''n'")` → `["<tkn_str,U,1,1>", "<tkn_str,n,1,4>"]`.
 - [x] `test_lexer.py::test_str_unclosed_eof`: `Lexer('"Hola')._mode_string(0)` raises `LexicalError(line=1, col=1)`.
@@ -173,7 +173,7 @@ Each task: `run_main(input)` == expected stdout, line by line. The input is exac
 - [x] `test_main.py::test_trailing_comment`: `nil --comment` → `<nil,1,1>`.
 - [x] `test_main.py::test_number_period_number`: `120.075.389\n` → `<tkn_num,120.075,1,1>` `<tkn_period,1,8>` `<tkn_num,389,1,9>`.
 - [x] `test_main.py::test_number_then_error`: `8.9!62834127\n` → `<tkn_num,8.9,1,1>` `>>> Error lexico (linea: 1, posicion: 4)`.
-- [x] `test_main.py::test_hex_and_exponent`: `x = 0xFF + 1e3\n` → `<id,x,1,1>` `<tkn_assign,1,3>` `<tkn_num,0xFF,1,5>` `<tkn_plus,1,10>` `<tkn_num,1e3,1,12>`. **xfail**.
+- [x] `test_main.py::test_hex_and_exponent`: `x = 0xFF + 1e3\n` → `<id,x,1,1>` `<tkn_assign,1,3>` `<tkn_num,0xFF,1,5>` `<tkn_plus,1,10>` `<tkn_num,1e3,1,12>`.
 - [x] `test_main.py::test_long_string_line_tracking`: `s = [[multi\nline]] print(s)\n` → first lines `<id,s,1,1>` `<tkn_assign,1,3>`, then a token starting with `<tkn_str,multi`. The output ends with `<print,2,8>` `<tkn_opening_par,2,13>` `<id,s,2,14>` `<tkn_closing_par,2,15>`. **xfail**.
 - [x] `test_main.py::test_empty_input`: `` → empty stdout, exit code 0 (uses `run_main_process`).
 - [x] `test_main.py::test_only_comments`: `-- a\n--[[ b\n c ]]\n` → empty stdout, exit code 0 (uses `run_main_process`).
@@ -199,8 +199,4 @@ Each task: `run_main(input)` == expected stdout, line by line. The input is exac
 
 ## 17. xfail index
 The bug each group comes from:
-- **Escaped quote** (backslash dropped): `test_str_escaped_quote`.
-- **Escaped backslash before the closing quote**: `test_str_escaped_backslash`.
-- **Scientific notation**: all `test_num_exp_*`, `test_hex_and_exponent`.
-- **Hexadecimal**: all `test_num_hex_*`, `test_hex_and_exponent`.
 - **Long-bracket strings**: all `test_long_str_*` except `test_plain_bracket_is_symbol`, plus `test_process_long_string*` and `test_long_string_line_tracking`.

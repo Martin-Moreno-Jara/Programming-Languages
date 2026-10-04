@@ -63,13 +63,13 @@ Lines and columns start at 1. Column = position of the token's **first** charact
 - `"1e10"` → `<tkn_num,1e10,1,1>`. `"1E10"` → `<tkn_num,1E10,1,1>`.
 - Signed exponent: `"2.5e-3"` → `<tkn_num,2.5e-3,…>`. `"4E+2"` → `<tkn_num,4E+2,…>`.
 - Mixed with a trailing dot: `"3.e1"` → one number.
-- Malformed (no digits after `e`): `"1e"`, `"1e+"` and `"1ex"` → lexical error at the number's first column.
+- No digits after `e` (`"1e"`, `"1e+"`, `"1ex"`, `"2.5e-"`): longest match, so the number ends before the `e` (`<tkn_num,1,…>`, then the `e` is lexed as the next token). Not a lexical error, like `3abc` → `tkn_num` + `id` (see section 7).
 
 **Hexadecimal**
 - `"0xFF"` → `<tkn_num,0xFF,1,1>`. `"0Xa1"` → `<tkn_num,0Xa1,…>` (both upper and lower case are allowed).
 - Hex fraction: `"0x1.8"` → one number.
 - Binary exponent with `p`/`P`: `"0x1p4"`, `"0x1.8P-2"` → one number.
-- Malformed: `"0x"` and `"0xG"` → lexical error at the number's first column.
+- No hex digits after `0x` (`"0x"`, `"0xG"`): longest match, so `<tkn_num,0,…>` and the `x` is lexed as the next token. Not a lexical error.
 - `e` is a hex digit, not an exponent: `"0x1e2"` → `<tkn_num,0x1e2,…>`.
 
 ### 3.7 `_mode_string(start)` – short strings (`"…"` / `'…'`)
@@ -176,15 +176,11 @@ Smoke tests plus spot checks:
 ## 6. Known bugs (tests expected to fail for now)
 | Input | Expected (spec) | Current output |
 |---|---|---|
-| `x = "a\"b"` | `<tkn_str,a\"b,1,5>` | `<tkn_str,a"b,1,5>` (backslash dropped) |
-| `"x\\"` (escaped backslash) | `<tkn_str,x\\,1,1>` | `>>> Error lexico (linea: 1, posicion: 0)` (`\"` read as an escaped quote) |
-| `0xFF` | `<tkn_num,0xFF,1,1>` | `<tkn_num,0,…>` `<id,xFF,…>` |
-| `1e10` / `2.5E-3` | one `tkn_num` | number + `id` (+ minus + number) |
 | `[[hola]]` | `<tkn_str,hola,1,1>` | brackets + `id` |
 
 ## 7. Open questions (to confirm with the course staff)
 - `return` vs `retornar` in spec example 3.
-- Malformed numbers (`1e`, `0xG`, `4..5`): a lexical error at the number's start (Lua's behaviour, assumed above), or longest match (`1` then `id e`)?
+- Malformed numbers (`1e`, `0xG`, `4..5`, `3abc`): longest match is assumed above (`1` then `id e`), following the spec's `8.9!62834127` rule. Lua itself reports a malformed number. No accepted test case covers this yet.
 - How should a long string that spans several lines be printed? Is the raw newline kept in the lexeme?
 
 ## 8. Notes

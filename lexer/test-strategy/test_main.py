@@ -202,7 +202,6 @@ def test_number_then_error(run_main):
     ]
 
 
-@pytest.mark.xfail(reason="hex and exponent numbers not supported", raises=AssertionError, strict=True)
 def test_hex_and_exponent(run_main):
     assert run_main("x = 0xFF + 1e3\n").splitlines() == [
         "<id,x,1,1>",

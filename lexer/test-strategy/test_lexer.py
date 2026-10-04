@@ -208,6 +208,69 @@ def test_num_at_eof():
     assert Lexer("5")._mode_num(0) == "<tkn_num,5,1,1>"
 
 
+# 6. _mode_num(start) - scientific notation
+def test_num_exp_lower():
+    assert Lexer("1e10 ")._mode_num(0) == "<tkn_num,1e10,1,1>"
+
+
+def test_num_exp_upper():
+    assert Lexer("1E10 ")._mode_num(0) == "<tkn_num,1E10,1,1>"
+
+
+def test_num_exp_negative():
+    assert Lexer("2.5e-3 ")._mode_num(0) == "<tkn_num,2.5e-3,1,1>"
+
+
+def test_num_exp_positive():
+    assert Lexer("4E+2 ")._mode_num(0) == "<tkn_num,4E+2,1,1>"
+
+
+def test_num_exp_after_trailing_dot():
+    assert Lexer("3.e1 ")._mode_num(0) == "<tkn_num,3.e1,1,1>"
+
+
+# No digits after e: longest match keeps only the number, the e is left for the next token
+@pytest.mark.parametrize("src, lexeme, end", [("1e ", "1", 1), ("1e+ ", "1", 1), ("1ex ", "1", 1), ("2.5e- ", "2.5", 3)])
+def test_num_exp_missing_digits(src, lexeme, end):
+    lexer = Lexer(src)
+    assert lexer._mode_num(0) == f"<tkn_num,{lexeme},1,1>"
+    assert lexer.pos == end
+
+
+# 6. _mode_num(start) - hexadecimal
+def test_num_hex_upper_digits():
+    assert Lexer("0xFF ")._mode_num(0) == "<tkn_num,0xFF,1,1>"
+
+
+def test_num_hex_upper_prefix():
+    assert Lexer("0Xa1 ")._mode_num(0) == "<tkn_num,0Xa1,1,1>"
+
+
+def test_num_hex_fraction():
+    assert Lexer("0x1.8 ")._mode_num(0) == "<tkn_num,0x1.8,1,1>"
+
+
+def test_num_hex_binary_exp():
+    assert Lexer("0x1p4 ")._mode_num(0) == "<tkn_num,0x1p4,1,1>"
+
+
+def test_num_hex_fraction_binary_exp():
+    assert Lexer("0x1.8P-2 ")._mode_num(0) == "<tkn_num,0x1.8P-2,1,1>"
+
+
+# e is a hex digit here, not an exponent
+def test_num_hex_e_is_digit():
+    assert Lexer("0x1e2 ")._mode_num(0) == "<tkn_num,0x1e2,1,1>"
+
+
+# No hex digits after 0x: longest match keeps only the 0, the x is left for the next token
+@pytest.mark.parametrize("src", ["0x ", "0xG "])
+def test_num_hex_malformed(src):
+    lexer = Lexer(src)
+    assert lexer._mode_num(0) == "<tkn_num,0,1,1>"
+    assert lexer.pos == 1
+
+
 # 7. _mode_string(start) - short strings
 def test_str_double_quotes():
     lexer = Lexer('"Hola, Lua"')
