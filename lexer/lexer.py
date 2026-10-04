@@ -25,14 +25,13 @@ class Lexer:
         self.line = 1
         self.pos = 0
         self.last_pos = 0
-        self.keywords_set: set = {
+        self.keywords_set = {
             "and",
             "break",
             "do",
             "else",
             "elseif",
             "end",
-            "error",
             "false",
             "for",
             "function",
@@ -44,15 +43,26 @@ class Lexer:
             "nil",
             "not",
             "or",
-            "print",
-            "pcall",
             "repeat",
             "return",
             "then",
             "true",
             "until",
-            "warn",
             "while",
+            "dofile",
+            "error",
+            "ipairs",
+            "load",
+            "loadfile",
+            "next",
+            "pairs",
+            "pcall",
+            "print",
+            "select",
+            "tonumber",
+            "tostring",
+            "warn",
+            "xpcall",
         }
         self.digits_set = set(string.digits)
         self.alfabetic_set = set(string.ascii_letters + "_")
@@ -147,9 +157,13 @@ class Lexer:
         cur = self.peek()
         next = self.peek(1)
         after_next = self.peek(2)
-        if cur == "0" and (next == "x" or next == "X") and (after_next in self.hexdigits_set):  # hexadecimal
+        if (
+            cur == "0"
+            and (next == "x" or next == "X")
+            and (after_next in self.hexdigits_set)
+        ):  # hexadecimal
             longest_match = self.patterns_dict["hex"].match(self.data, start)
-        else: # int, decimal, exponentials
+        else:  # int, decimal, exponentials
             longest_match = self.patterns_dict["int_dec"].match(self.data, start)
         lexem = longest_match.group()
         self.pos = longest_match.end()
