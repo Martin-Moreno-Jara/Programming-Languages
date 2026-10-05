@@ -106,12 +106,11 @@ class Lexer:
         self.patterns_dict: dict = {
             "id": re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*"),
             "int_dec": re.compile(
-                r"\d+\.\d*[eE][+-]{0,1}\d+|\d+\.\d*|\d+[eE][+-]{0,1}\d+|\d+"
+                r"\d+\.\d+[eE][+-]{0,1}\d+|\d+\.\d+|\d+[eE][+-]{0,1}\d+|\d+"
             ),
             "hex": re.compile(
                 r"0[xX](?:[0-9a-fA-F]+\.?[0-9a-fA-F]*|\.[0-9a-fA-F]+)(?:[pP][+-]?\d+)?"
             ),
-            "nums": re.compile(r"\d+|\."),
         }
 
     def peek(self, offset=0):
@@ -153,7 +152,6 @@ class Lexer:
         longest substring that coincides with a integer
         or a decimal
         """
-        # TODO: If next submission doesn't pass, consider adding scientific notation, hexadecimals and binaries
         cur = self.peek()
         next = self.peek(1)
         after_next = self.peek(2)
@@ -170,13 +168,13 @@ class Lexer:
 
         return f"<tkn_num,{lexem},{self.line},{self.calc_inline_pos(start)}>"
 
-    def _mode_string(self, start):
+    def _mode_simple_string(self, start):
         """
         Given that the first char is a quote " or '
         it processes the string until it closes, or
         raises an exception if it is not correctly closed
-
         """
+
         starting_quote = self.peek()
         self.pos += 1
         while True:
@@ -312,7 +310,6 @@ class Lexer:
         as tokens (blank spaces, new lines and comments)
         until it finds a valid token character.
         """
-        # TODO: Maybe find a more efficient way to skip blank spaces
         while True:
             cur = self.peek()
             next = self.peek(1)
@@ -337,6 +334,7 @@ class Lexer:
         """
         start = self.pos
         first_char = self.peek()
+        second_char = self.peek(1)
         # si primer caracter letra - modo keyword/id
         if first_char in self.alfabetic_set:
             return self._mode_keyword_id(start)
@@ -345,10 +343,9 @@ class Lexer:
         elif first_char in self.digits_set:
             return self._mode_num(start)
 
-            # TODO: Considerar comentarios multilínea con [[""]]
-            # si primer caracter " o ' - modo string
+            # si primer caracter " o ' - modo string simple
         elif first_char == '"' or first_char == "'":
-            return self._mode_string(start)
+            return self._mode_simple_string(start)
 
             # si primer caracter está en dict de simbolos - modo operador/simbolo
         elif self.operand_symbols_dict.get(first_char):

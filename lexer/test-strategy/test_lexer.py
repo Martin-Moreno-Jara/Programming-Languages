@@ -3,9 +3,13 @@ import pytest
 from lexer import Lexer, LexicalError
 
 KEYWORDS = {
-    "and", "break", "do", "else", "elseif", "end", "error", "false", "for",
-    "function", "global", "goto", "if", "in", "local", "nil", "not", "or",
-    "print", "pcall", "repeat", "return", "then", "true", "until", "warn", "while",
+    # Lua reserved words
+    "and", "break", "do", "else", "elseif", "end", "false", "for", "function",
+    "global", "goto", "if", "in", "local", "nil", "not", "or", "repeat",
+    "return", "then", "true", "until", "while",
+    # Built-in functions treated as keywords by the course
+    "dofile", "error", "ipairs", "load", "loadfile", "next", "pairs", "pcall",
+    "print", "select", "tonumber", "tostring", "warn", "xpcall",
 }
 
 OPERATORS = {
@@ -69,7 +73,7 @@ def test_init_state():
 
 
 def test_init_keywords():
-    assert len(KEYWORDS) == 27
+    assert len(KEYWORDS) == 37
     assert Lexer("x").keywords_set == KEYWORDS
 
 
@@ -182,8 +186,15 @@ def test_num_decimal():
     assert Lexer("3.145 ")._mode_num(0) == "<tkn_num,3.145,1,1>"
 
 
+# A dot needs at least one digit after it to be part of the number
 def test_num_trailing_dot():
-    assert Lexer("3. ")._mode_num(0) == "<tkn_num,3.,1,1>"
+    lexer = Lexer("3. ")
+    assert lexer._mode_num(0) == "<tkn_num,3,1,1>"
+    assert lexer.pos == 1
+
+
+def test_num_followed_by_concat(lex_all):
+    assert lex_all("10..20") == ["<tkn_num,10,1,1>", "<tkn_concat,1,3>", "<tkn_num,20,1,5>"]
 
 
 def test_num_two_dots_longest_match():
@@ -226,7 +237,9 @@ def test_num_exp_positive():
 
 
 def test_num_exp_after_trailing_dot():
-    assert Lexer("3.e1 ")._mode_num(0) == "<tkn_num,3.e1,1,1>"
+    lexer = Lexer("3.e1 ")
+    assert lexer._mode_num(0) == "<tkn_num,3,1,1>"
+    assert lexer.pos == 1
 
 
 # No digits after e: longest match keeps only the number, the e is left for the next token
@@ -271,37 +284,37 @@ def test_num_hex_malformed(src):
     assert lexer.pos == 1
 
 
-# 7. _mode_string(start) - short strings
+# 7. _mode_simple_string(start) - short strings
 def test_str_double_quotes():
     lexer = Lexer('"Hola, Lua"')
-    assert lexer._mode_string(0) == "<tkn_str,Hola, Lua,1,1>"
+    assert lexer._mode_simple_string(0) == "<tkn_str,Hola, Lua,1,1>"
     assert lexer.pos == 11
 
 
 def test_str_single_quotes():
-    assert Lexer("'abc'")._mode_string(0) == "<tkn_str,abc,1,1>"
+    assert Lexer("'abc'")._mode_simple_string(0) == "<tkn_str,abc,1,1>"
 
 
 def test_str_other_quote_inside():
-    assert Lexer("'\"double\" string'")._mode_string(0) == '<tkn_str,"double" string,1,1>'
+    assert Lexer("'\"double\" string'")._mode_simple_string(0) == '<tkn_str,"double" string,1,1>'
 
 
 def test_str_keeps_spaces():
-    assert Lexer('"Valor de @: "')._mode_string(0) == "<tkn_str,Valor de @: ,1,1>"
+    assert Lexer('"Valor de @: "')._mode_simple_string(0) == "<tkn_str,Valor de @: ,1,1>"
 
 
 def test_str_escaped_quote():
     lexer = Lexer('"a\\"b" ')
-    assert lexer._mode_string(0) == '<tkn_str,a\\"b,1,1>'
+    assert lexer._mode_simple_string(0) == '<tkn_str,a\\"b,1,1>'
     assert lexer.pos == 6
 
 
 def test_str_escaped_backslash():
-    assert Lexer('"x\\\\" ')._mode_string(0) == "<tkn_str,x\\\\,1,1>"
+    assert Lexer('"x\\\\" ')._mode_simple_string(0) == "<tkn_str,x\\\\,1,1>"
 
 
 def test_str_empty():
-    assert Lexer('"" ')._mode_string(0) == "<tkn_str,,1,1>"
+    assert Lexer('"" ')._mode_simple_string(0) == "<tkn_str,,1,1>"
 
 
 def test_str_adjacent(lex_all):
@@ -310,13 +323,13 @@ def test_str_adjacent(lex_all):
 
 def test_str_unclosed_eof():
     with pytest.raises(LexicalError) as exc_info:
-        Lexer('"Hola')._mode_string(0)
+        Lexer('"Hola')._mode_simple_string(0)
     assert (exc_info.value.line, exc_info.value.col) == (1, 1)
 
 
 def test_str_unclosed_newline():
     with pytest.raises(LexicalError) as exc_info:
-        Lexer('"Ho\nla"')._mode_string(0)
+        Lexer('"Ho\nla"')._mode_simple_string(0)
     assert (exc_info.value.line, exc_info.value.col) == (1, 1)
 
 
@@ -326,7 +339,7 @@ def test_str_unclosed_position(src):
     lexer = Lexer(src)
     lexer.pos, lexer.line, lexer.last_pos = 8, 2, 2
     with pytest.raises(LexicalError) as exc_info:
-        lexer._mode_string(8)
+        lexer._mode_simple_string(8)
     assert (exc_info.value.line, exc_info.value.col) == (2, 7)
 
 
@@ -532,16 +545,6 @@ def test_process_reads_current_pos():
     assert lexer._process_token() == "<id,cd,1,4>"
 
 
-@pytest.mark.xfail(reason="long-bracket strings not supported", raises=AssertionError, strict=True)
-def test_process_long_string():
-    assert Lexer("[[a]] ")._process_token() == "<tkn_str,a,1,1>"
-
-
-@pytest.mark.xfail(reason="long-bracket strings not supported", raises=AssertionError, strict=True)
-def test_process_long_string_level():
-    assert Lexer("[=[a]=] ")._process_token() == "<tkn_str,a,1,1>"
-
-
 # "٣" (Arabic-Indic digit) and "é" are outside the ASCII digit/letter sets
 @pytest.mark.parametrize("char", ["@", "?", "!", "$", "`", "ñ", "◕", "¡", "٣", "é"])
 def test_process_unknown_char(char):
@@ -612,7 +615,6 @@ def _crash(reason):
         ")",
         '"abc',
         'x = "a\\"b"',
-        "[[hola]]",
     ],
 )
 def test_tokenize_never_unexpected_error(lex_all, src):

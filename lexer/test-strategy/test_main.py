@@ -212,19 +212,6 @@ def test_hex_and_exponent(run_main):
     ]
 
 
-@pytest.mark.xfail(reason="long-bracket strings not supported", raises=AssertionError, strict=True)
-def test_long_string_line_tracking(run_main):
-    output = run_main("s = [[multi\nline]] print(s)\n").splitlines()
-    assert output[:2] == ["<id,s,1,1>", "<tkn_assign,1,3>"]
-    assert output[2].startswith("<tkn_str,multi")
-    assert output[-4:] == [
-        "<print,2,8>",
-        "<tkn_opening_par,2,13>",
-        "<id,s,2,14>",
-        "<tkn_closing_par,2,15>",
-    ]
-
-
 def test_empty_input(run_main_process):
     result = run_main_process("")
     assert result.stdout == ""

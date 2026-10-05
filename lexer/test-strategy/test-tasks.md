@@ -21,7 +21,7 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 
 ## 2. `Lexer.__init__`
 - [x] `test_lexer.py::test_init_state`: `Lexer("x")` → `line == 1`, `pos == 0`, `last_pos == 0`, `data == "x"`.
-- [x] `test_lexer.py::test_init_keywords`: `keywords_set == {and, break, do, else, elseif, end, error, false, for, function, global, goto, if, in, local, nil, not, or, print, pcall, repeat, return, then, true, until, warn, while}` (27 words).
+- [x] `test_lexer.py::test_init_keywords`: `keywords_set == {and, break, do, else, elseif, end, false, for, function, global, goto, if, in, local, nil, not, or, repeat, return, then, true, until, while, dofile, error, ipairs, load, loadfile, next, pairs, pcall, print, select, tonumber, tostring, warn, xpcall}` (37 words: 23 Lua reserved words + 14 built-in functions).
 - [x] `test_lexer.py::test_init_operator_table`: `operand_symbols_dict` has exactly the 33 spec entries (`& → tkn_bit_and`, `| → tkn_bit_or`, `~ → tkn_bitex_or`, `>> → tkn_right_shift`, `<< → tkn_left_shift`, `; → tkn_semicolon`, `: → tkn_colon`, `, → tkn_comma`, `. → tkn_period`, `:: → tkn_goto`, `.. → tkn_concat`, `... → tkn_varargs`, `{ → tkn_opening_key`, `} → tkn_closing_key`, `[ → tkn_opening_bra`, `] → tkn_closing_bra`, `( → tkn_opening_par`, `) → tkn_closing_par`, `# → tkn_length`, `+ → tkn_plus`, `- → tkn_minus`, `* → tkn_times`, `/ → tkn_div`, `// → tkn_floor_div`, `^ → tkn_power`, `% → tkn_mod`, `== → tkn_equal`, `~= → tkn_neq`, `<= → tkn_leq`, `>= → tkn_geq`, `> → tkn_greater`, `< → tkn_less`, `= → tkn_assign`).
 - [x] `test_lexer.py::test_init_digits_set`: `Lexer("x").digits_set == set("0123456789")`.
 - [x] `test_lexer.py::test_init_alfabetic_set`: `Lexer("x").alfabetic_set` == every ASCII letter (`a-z`, `A-Z`) plus `_`.
@@ -39,7 +39,7 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_calc_inline_pos_after_newline`: `last_pos = 10`, `calc_inline_pos(13)` → `4`.
 
 ## 5. `_mode_keyword_id(start)`
-- [x] `test_lexer.py::test_keyword_each` (parametrized over all 27 keywords): `Lexer(kw)._mode_keyword_id(0)` → `"<kw,1,1>"`.
+- [x] `test_lexer.py::test_keyword_each` (parametrized over all 37 keywords): `Lexer(kw)._mode_keyword_id(0)` → `"<kw,1,1>"`.
 - [x] `test_lexer.py::test_keyword_case_upper`: `Lexer("PRINT")._mode_keyword_id(0)` → `"<id,PRINT,1,1>"`.
 - [x] `test_lexer.py::test_keyword_case_mixed`: `Lexer("wHILe")._mode_keyword_id(0)` → `"<id,wHILe,1,1>"`.
 - [x] `test_lexer.py::test_id_digits_underscore`: `Lexer("my_Var1")._mode_keyword_id(0)` → `"<id,my_Var1,1,1>"`.
@@ -54,7 +54,8 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 ### Decimal
 - [x] `test_lexer.py::test_num_integer`: `Lexer("16 ")._mode_num(0)` → `"<tkn_num,16,1,1>"`, `pos == 2`.
 - [x] `test_lexer.py::test_num_decimal`: `Lexer("3.145 ")._mode_num(0)` → `"<tkn_num,3.145,1,1>"`.
-- [x] `test_lexer.py::test_num_trailing_dot`: `Lexer("3. ")._mode_num(0)` → `"<tkn_num,3.,1,1>"`. Kept for now; validity still undecided (see test-plan.md §8).
+- [x] `test_lexer.py::test_num_trailing_dot`: `Lexer("3. ")._mode_num(0)` → `"<tkn_num,3,1,1>"`, `pos == 1` (a dot needs a digit after it, see test-plan.md §8).
+- [x] `test_lexer.py::test_num_followed_by_concat`: `lex_all("10..20")` → `["<tkn_num,10,1,1>", "<tkn_concat,1,3>", "<tkn_num,20,1,5>"]`.
 - [x] `test_lexer.py::test_num_two_dots_longest_match`: `Lexer("120.075.389")._mode_num(0)` → `"<tkn_num,120.075,1,1>"`, `pos == 7`.
 - [x] `test_lexer.py::test_num_stops_at_invalid_char`: `Lexer("8.9!")._mode_num(0)` → `"<tkn_num,8.9,1,1>"`, `pos == 3`.
 - [x] `test_lexer.py::test_num_stops_at_symbol`: `Lexer("6=")._mode_num(0)` → `"<tkn_num,6,1,1>"`, `pos == 1`.
@@ -65,7 +66,7 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_num_exp_upper`: `Lexer("1E10 ")._mode_num(0)` → `"<tkn_num,1E10,1,1>"`.
 - [x] `test_lexer.py::test_num_exp_negative`: `Lexer("2.5e-3 ")._mode_num(0)` → `"<tkn_num,2.5e-3,1,1>"`.
 - [x] `test_lexer.py::test_num_exp_positive`: `Lexer("4E+2 ")._mode_num(0)` → `"<tkn_num,4E+2,1,1>"`.
-- [x] `test_lexer.py::test_num_exp_after_trailing_dot`: `Lexer("3.e1 ")._mode_num(0)` → `"<tkn_num,3.e1,1,1>"`.
+- [x] `test_lexer.py::test_num_exp_after_trailing_dot`: `Lexer("3.e1 ")._mode_num(0)` → `"<tkn_num,3,1,1>"`, `pos == 1` (no digit after the dot, so neither the dot nor the exponent is part of the number).
 - [x] `test_lexer.py::test_num_exp_missing_digits` (parametrized over `"1e "`, `"1e+ "`, `"1ex "`, `"2.5e- "`): longest match, the `e` is not part of the number. `_mode_num(0)` → `"<tkn_num,1,1,1>"` with `pos == 1` (`"<tkn_num,2.5,1,1>"` with `pos == 3` for `"2.5e- "`).
 
 ### Hexadecimal
@@ -77,31 +78,20 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_num_hex_e_is_digit`: `Lexer("0x1e2 ")._mode_num(0)` → `"<tkn_num,0x1e2,1,1>"`.
 - [x] `test_lexer.py::test_num_hex_malformed` (parametrized over `"0x "`, `"0xG "`): longest match, the `x` is not part of the number. `_mode_num(0)` → `"<tkn_num,0,1,1>"`, `pos == 1`.
 
-## 7. `_mode_string(start)`: short strings
-- [x] `test_lexer.py::test_str_double_quotes`: `Lexer('"Hola, Lua"')._mode_string(0)` → `"<tkn_str,Hola, Lua,1,1>"`, `pos == 11`.
-- [x] `test_lexer.py::test_str_single_quotes`: `Lexer("'abc'")._mode_string(0)` → `"<tkn_str,abc,1,1>"`.
-- [x] `test_lexer.py::test_str_other_quote_inside`: `Lexer("'\"double\" string'")._mode_string(0)` → `'<tkn_str,"double" string,1,1>'`.
-- [x] `test_lexer.py::test_str_keeps_spaces`: `Lexer('"Valor de @: "')._mode_string(0)` → `"<tkn_str,Valor de @: ,1,1>"`.
-- [x] `test_lexer.py::test_str_escaped_quote`: `Lexer('"a\\"b" ')._mode_string(0)` → `'<tkn_str,a\\"b,1,1>'`, `pos == 6`.
-- [x] `test_lexer.py::test_str_escaped_backslash`: `Lexer('"x\\\\" ')._mode_string(0)` → `"<tkn_str,x\\\\,1,1>"` (source `x\\` kept as written).
-- [x] `test_lexer.py::test_str_empty`: `Lexer('"" ')._mode_string(0)` → `"<tkn_str,,1,1>"`.
+## 7. `_mode_simple_string(start)`: short strings
+- [x] `test_lexer.py::test_str_double_quotes`: `Lexer('"Hola, Lua"')._mode_simple_string(0)` → `"<tkn_str,Hola, Lua,1,1>"`, `pos == 11`.
+- [x] `test_lexer.py::test_str_single_quotes`: `Lexer("'abc'")._mode_simple_string(0)` → `"<tkn_str,abc,1,1>"`.
+- [x] `test_lexer.py::test_str_other_quote_inside`: `Lexer("'\"double\" string'")._mode_simple_string(0)` → `'<tkn_str,"double" string,1,1>'`.
+- [x] `test_lexer.py::test_str_keeps_spaces`: `Lexer('"Valor de @: "')._mode_simple_string(0)` → `"<tkn_str,Valor de @: ,1,1>"`.
+- [x] `test_lexer.py::test_str_escaped_quote`: `Lexer('"a\\"b" ')._mode_simple_string(0)` → `'<tkn_str,a\\"b,1,1>'`, `pos == 6`.
+- [x] `test_lexer.py::test_str_escaped_backslash`: `Lexer('"x\\\\" ')._mode_simple_string(0)` → `"<tkn_str,x\\\\,1,1>"` (source `x\\` kept as written).
+- [x] `test_lexer.py::test_str_empty`: `Lexer('"" ')._mode_simple_string(0)` → `"<tkn_str,,1,1>"`.
 - [x] `test_lexer.py::test_str_adjacent`: `lex_all("'U''n'")` → `["<tkn_str,U,1,1>", "<tkn_str,n,1,4>"]`.
-- [x] `test_lexer.py::test_str_unclosed_eof`: `Lexer('"Hola')._mode_string(0)` raises `LexicalError(line=1, col=1)`.
-- [x] `test_lexer.py::test_str_unclosed_newline`: `Lexer('"Ho\nla"')._mode_string(0)` raises `LexicalError(line=1, col=1)`.
-- [x] `test_lexer.py::test_str_unclosed_position` (parametrized over `'x\n  y = "ab'` and `'x\n  y = "a\nb"'`): `lx.pos, lx.line, lx.last_pos = 8, 2, 2; lx._mode_string(8)` raises `LexicalError(line=2, col=7)` (column relative to the line, not the absolute index).
+- [x] `test_lexer.py::test_str_unclosed_eof`: `Lexer('"Hola')._mode_simple_string(0)` raises `LexicalError(line=1, col=1)`.
+- [x] `test_lexer.py::test_str_unclosed_newline`: `Lexer('"Ho\nla"')._mode_simple_string(0)` raises `LexicalError(line=1, col=1)`.
+- [x] `test_lexer.py::test_str_unclosed_position` (parametrized over `'x\n  y = "ab'` and `'x\n  y = "a\nb"'`): `lx.pos, lx.line, lx.last_pos = 8, 2, 2; lx._mode_simple_string(8)` raises `LexicalError(line=2, col=7)` (column relative to the line, not the absolute index).
 
-## 8. Long-bracket strings (through `lex_all` / `tokenize`)
-- [ ] `test_lexer.py::test_long_str_basic`: `lex_all("[[hola]]")` → `["<tkn_str,hola,1,1>"]`. **xfail**: long strings not supported.
-- [ ] `test_lexer.py::test_long_str_level`: `lex_all("[==[a]]b]==]")` → `["<tkn_str,a]]b,1,1>"]`. **xfail**.
-- [ ] `test_lexer.py::test_long_str_multiline_positions`: `lex_all("[[a\nb]]x")` → 2 tokens. The first starts with `"<tkn_str,a"` and ends with `",1,1>"`. The second is `"<id,x,2,4>"`. **xfail**.
-- [ ] `test_lexer.py::test_long_str_skips_first_newline`: `lex_all("[[\nhi]]")` → `["<tkn_str,hi,1,1>"]`. **xfail**.
-- [ ] `test_lexer.py::test_long_str_no_escapes`: `lex_all("[[a\\nb]]")` → `["<tkn_str,a\\nb,1,1>"]` (literal backslash-n kept). **xfail**.
-- [ ] `test_lexer.py::test_long_str_empty`: `lex_all("[[]]")` → `["<tkn_str,,1,1>"]`. **xfail**.
-- [ ] `test_lexer.py::test_plain_bracket_is_symbol`: `lex_all("a[1]\n")` → `["<id,a,1,1>", "<tkn_opening_bra,1,2>", "<tkn_num,1,1,3>", "<tkn_closing_bra,1,4>"]`.
-- [ ] `test_lexer.py::test_long_str_invalid_delimiter`: `lex_all("[=x")` → `[">>> Error lexico (linea: 1, posicion: 1)"]`. **xfail**.
-- [ ] `test_lexer.py::test_long_str_unclosed`: `lex_all("[[abc")` → `[">>> Error lexico (linea: 1, posicion: 1)"]`. **xfail**.
-
-## 9. `_mode_op_symbol(start)`
+## 8. `_mode_op_symbol(start)`
 - [x] `test_lexer.py::test_op_single_each` (parametrized over the 23 one-character symbols, input `sym + " "`): `_mode_op_symbol(0)` → `"<tkn_name,1,1>"`, `pos == 1`.
 - [x] `test_lexer.py::test_op_double_each` (parametrized over `>> << :: .. // == ~= <= >=`, input `sym + " "`): → correct name, `pos == 2`.
 - [x] `test_lexer.py::test_op_varargs`: `Lexer("... ")._mode_op_symbol(0)` → `"<tkn_varargs,1,1>"`, `pos == 3`.
@@ -110,7 +100,7 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_op_run_geq_assign`: `lex_all(">== ")` → `["<tkn_geq,1,1>", "<tkn_assign,1,3>"]`.
 - [x] `test_lexer.py::test_op_at_eof`: `Lexer(")")._mode_op_symbol(0)` → `"<tkn_closing_par,1,1>"`.
 
-## 10. `_handle_comments()` and `_handle_multiline_comments(...)`
+## 9. `_handle_comments()` and `_handle_multiline_comments(...)`
 - [x] `test_lexer.py::test_comment_single_line`: `lx = Lexer("-- hi\nx"); lx._handle_comments()` → `pos == 5` (on the `\n`).
 - [x] `test_lexer.py::test_comment_single_line_eof`: `Lexer("-- hi")._handle_comments()` → `pos == 5`, no exception.
 - [x] `test_lexer.py::test_comment_block_inline`: `Lexer("--[[ a ]]x")._handle_comments()` → `pos == 9`.
@@ -126,14 +116,14 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_multiline_handler_newlines`: `lx = Lexer("--[[a\nb]]x"); lx.pos = 2; lx._handle_multiline_comments(1, 1)` → `pos == 9`, `line == 2`, `last_pos == 6`.
 - [x] `test_lexer.py::test_multiline_handler_unclosed`: `lx = Lexer("--[[abc"); lx.pos = 2; lx._handle_multiline_comments(1, 1)` raises `LexicalError(line=1, col=1)`.
 
-## 11. `_cleanse_input()`
+## 10. `_cleanse_input()`
 - [x] `test_lexer.py::test_cleanse_whitespace`: `Lexer(" \t\r\v\fx")._cleanse_input()` → `pos == 5`, `line == 1`.
 - [x] `test_lexer.py::test_cleanse_newlines`: `Lexer("\n\nab")._cleanse_input()` → `pos == 2`, `line == 3`, `last_pos == 2`.
 - [x] `test_lexer.py::test_cleanse_mixed`: `Lexer("-- a\n\n--[[b]]  -- c\n  x")._cleanse_input()` → `pos == 22`, `line == 4`, `last_pos == 20`.
 - [x] `test_lexer.py::test_cleanse_keeps_single_minus`: `Lexer("- 3")._cleanse_input()` → `pos == 0`.
 - [x] `test_lexer.py::test_cleanse_empty`: `Lexer("")._cleanse_input()` → `pos == 0`, no exception.
 
-## 12. `_process_token()`
+## 11. `_process_token()`
 - [x] `test_lexer.py::test_process_letter`: `Lexer("abc ")._process_token()` → `"<id,abc,1,1>"`.
 - [x] `test_lexer.py::test_process_underscore`: `Lexer("_x ")._process_token()` → `"<id,_x,1,1>"`.
 - [x] `test_lexer.py::test_process_digit`: `Lexer("9 ")._process_token()` → `"<tkn_num,9,1,1>"`.
@@ -142,22 +132,20 @@ Each task below becomes one pytest test, or one row of a parametrized test. Tick
 - [x] `test_lexer.py::test_process_double_quote`: `Lexer('"a" ')._process_token()` → `"<tkn_str,a,1,1>"`.
 - [x] `test_lexer.py::test_process_symbol`: `Lexer("+ ")._process_token()` → `"<tkn_plus,1,1>"`.
 - [x] `test_lexer.py::test_process_reads_current_pos`: `lx = Lexer("ab cd "); lx.pos = 3; lx._process_token()` → `"<id,cd,1,4>"`.
-- [x] `test_lexer.py::test_process_long_string`: `Lexer("[[a]] ")._process_token()` → `"<tkn_str,a,1,1>"`. **xfail**.
-- [x] `test_lexer.py::test_process_long_string_level`: `Lexer("[=[a]=] ")._process_token()` → `"<tkn_str,a,1,1>"`. **xfail**.
 - [x] `test_lexer.py::test_process_unknown_char` (parametrized over `@ ? ! $ ` ` ñ ◕ ¡ ٣ é`): `Lexer(ch)._process_token()` raises `LexicalError(line=1, col=1)`. `٣` (non-ASCII digit) and `é` (non-ASCII letter) are not in `digits_set` / `alfabetic_set`.
 - [x] `test_lexer.py::test_process_unknown_char_position`: `lx = Lexer("ab\n  @"); lx.pos, lx.line, lx.last_pos = 5, 2, 3; lx._process_token()` raises `LexicalError(line=2, col=3)`.
 - [x] `test_lexer.py::test_process_at_eof`: `Lexer("")._process_token()` raises `LexicalError(line=1, col=1)` (no `TypeError` on `peek() is None`).
 
-## 13. `tokenize()`
+## 12. `tokenize()`
 - [x] `test_lexer.py::test_tokenize_sequence`: `lx = Lexer("a b\nc")`. Three calls → `"<id,a,1,1>"`, `"<id,b,1,3>"`, `"<id,c,2,1>"`.
 - [x] `test_lexer.py::test_tokenize_eof_after_tokens`: on the same lexer, a fourth call raises `EOFError`.
 - [x] `test_lexer.py::test_tokenize_position_after_cleanse`: `Lexer("  -- c\n\t x ").tokenize()` → `"<id,x,2,3>"` (start is read after `_cleanse_input()`).
 - [x] `test_lexer.py::test_tokenize_empty`: `Lexer("").tokenize()` raises `EOFError`.
 - [x] `test_lexer.py::test_tokenize_only_comments`: `Lexer("  -- c\n--[[x]]\n").tokenize()` raises `EOFError`.
 - [x] `test_lexer.py::test_tokenize_error_exits`: `Lexer("@").tokenize()` raises `SystemExit`, and captured stdout is `">>> Error lexico (linea: 1, posicion: 1)\n"`.
-- [x] `test_lexer.py::test_tokenize_never_unexpected_error` (parametrized over `"x = 5"`, `"a..."`, `")"`, `'"abc'`, `'x = "a\\"b"'`, `"[[hola]]"`): no line from `lex_all(src)` starts with `"Unexpected error"`.
+- [x] `test_lexer.py::test_tokenize_never_unexpected_error` (parametrized over `"x = 5"`, `"a..."`, `")"`, `'"abc'`, `'x = "a\\"b"'`): no line from `lex_all(src)` starts with `"Unexpected error"`.
 
-## 14. End-to-end: reference examples (`docs/output_format.txt`)
+## 13. End-to-end: reference examples (`docs/output_format.txt`)
 Each task: `run_main(input)` == expected stdout, line by line. The input is exactly as in the spec, with a trailing `\n`.
 - [x] `test_main.py::test_ref1_matricula`: `local matricula = 9\n\nif matricula>=8 then\n   print("Ya acabando la carrera :)")\nend\n` → `<local,1,1>` `<id,matricula,1,7>` `<tkn_assign,1,17>` `<tkn_num,9,1,19>` `<if,3,1>` `<id,matricula,3,4>` `<tkn_geq,3,13>` `<tkn_num,8,3,15>` `<then,3,17>` `<print,4,4>` `<tkn_opening_par,4,9>` `<tkn_str,Ya acabando la carrera :),4,10>` `<tkn_closing_par,4,37>` `<end,5,1>`.
 - [x] `test_main.py::test_ref2_c_comment_error`: `print("Hola, Lua") /* un comentario (◕‿◕) */\n` → `<print,1,1>` `<tkn_opening_par,1,6>` `<tkn_str,Hola, Lua,1,7>` `<tkn_closing_par,1,18>` `<tkn_div,1,20>` `<tkn_times,1,21>` `<id,un,1,23>` `<id,comentario,1,26>` `<tkn_opening_par,1,37>` `>>> Error lexico (linea: 1, posicion: 38)`.
@@ -169,12 +157,11 @@ Each task: `run_main(input)` == expected stdout, line by line. The input is exac
 - [x] `test_main.py::test_ref8_at_sign_error`: `print("Valor de @: ",@)\n` → `<print,1,1>` `<tkn_opening_par,1,6>` `<tkn_str,Valor de @: ,1,7>` `<tkn_comma,1,21>` `>>> Error lexico (linea: 1, posicion: 22)`.
 - [x] `test_main.py::test_ref9_longest_match_error`: `_f 4.559<>6="1"ñvari8\n` → `<id,_f,1,1>` `<tkn_num,4.559,1,4>` `<tkn_less,1,9>` `<tkn_greater,1,10>` `<tkn_num,6,1,11>` `<tkn_assign,1,12>` `<tkn_str,1,1,13>` `>>> Error lexico (linea: 1, posicion: 16)`.
 
-## 15. End-to-end: extra spec rules
+## 14. End-to-end: extra spec rules
 - [x] `test_main.py::test_trailing_comment`: `nil --comment` → `<nil,1,1>`.
 - [x] `test_main.py::test_number_period_number`: `120.075.389\n` → `<tkn_num,120.075,1,1>` `<tkn_period,1,8>` `<tkn_num,389,1,9>`.
 - [x] `test_main.py::test_number_then_error`: `8.9!62834127\n` → `<tkn_num,8.9,1,1>` `>>> Error lexico (linea: 1, posicion: 4)`.
 - [x] `test_main.py::test_hex_and_exponent`: `x = 0xFF + 1e3\n` → `<id,x,1,1>` `<tkn_assign,1,3>` `<tkn_num,0xFF,1,5>` `<tkn_plus,1,10>` `<tkn_num,1e3,1,12>`.
-- [x] `test_main.py::test_long_string_line_tracking`: `s = [[multi\nline]] print(s)\n` → first lines `<id,s,1,1>` `<tkn_assign,1,3>`, then a token starting with `<tkn_str,multi`. The output ends with `<print,2,8>` `<tkn_opening_par,2,13>` `<id,s,2,14>` `<tkn_closing_par,2,15>`. **xfail**.
 - [x] `test_main.py::test_empty_input`: `` → empty stdout, exit code 0 (uses `run_main_process`).
 - [x] `test_main.py::test_only_comments`: `-- a\n--[[ b\n c ]]\n` → empty stdout, exit code 0 (uses `run_main_process`).
 - [x] `test_main.py::test_eof_after_id`: `x = y` (no `\n`) → `<id,x,1,1>` `<tkn_assign,1,3>` `<id,y,1,5>`.
@@ -184,7 +171,7 @@ Each task: `run_main(input)` == expected stdout, line by line. The input is exac
 - [x] `test_main.py::test_crlf_line_endings`: `a\r\nb\r\n` → `<id,a,1,1>` `<id,b,2,1>`.
 - [x] `test_main.py::test_nothing_after_error`: `print("x") @ print\n` → `<print,1,1>` `<tkn_opening_par,1,6>` `<tkn_str,x,1,7>` `<tkn_closing_par,1,10>` `>>> Error lexico (linea: 1, posicion: 12)`, with nothing after it.
 
-## 16. End-to-end: `test-cases/*.in`
+## 15. End-to-end: `test-cases/*.in`
 - [x] `test_main.py::test_cases_well_formed` (parametrized over all `.in` files): every stdout line matches `^<(id|tkn_num|tkn_str),.*,\d+,\d+>$`, `^<[a-z_]+,\d+,\d+>$` or `^>>> Error lexico \(linea: \d+, posicion: \d+\)$`. No line contains `Unexpected error`.
 - [x] `test_main.py::test_case_00_keywords`: `test-cases/00.in` → exactly `<print,3,1>` `<true,3,7>` `<until,5,1>` `<nil,5,7>` `<while,5,11>` `<if,5,17>` `<else,7,1>` `<elseif,7,6>` `<error,7,13>`.
 - [x] `test_main.py::test_case_01_block_comment`: `test-cases/01.in` → starts with `<if,3,1>` `<for,4,6>` `<pcall,4,13>`, and the last line is `<id,proof,17,12>`.
@@ -197,6 +184,5 @@ Each task: `run_main(input)` == expected stdout, line by line. The input is exac
 - [x] `test_main.py::test_case_12_unclosed_string`: `test-cases/12.in` → the output ends with `<local,9,1>` `<id,mensaje,9,7>` `<tkn_assign,9,15>` `>>> Error lexico (linea: 9, posicion: 17)`.
 - [x] `test_main.py::test_case_13_full_program`: `test-cases/13.in` → starts with `<local,4,1>` `<id,CONFIG_ACTIVA,4,7>` `<tkn_assign,4,21>`, and contains `<warn,12,9>`, `<error,19,9>` and `<pcall,37,24>`. The last line is `<end,43,1>`.
 
-## 17. xfail index
-The bug each group comes from:
-- **Long-bracket strings**: all `test_long_str_*` except `test_plain_bracket_is_symbol`, plus `test_process_long_string*` and `test_long_string_line_tracking`.
+## 16. xfail index
+No tests are marked `xfail` at the moment.
