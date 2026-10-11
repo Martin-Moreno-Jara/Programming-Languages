@@ -1,0 +1,10 @@
+--[[ A pesar de que Lua es basado en C
+posee una estructura poco común para la definición de comentarios]]
+####### print("valido")
+// print('"valido"')
+
+--[[]] consola.escribir("'Igual válido'")
+
+-- ¡Error léxico! Falta la comilla de cierre al final
+local mensaje = "Hola, mundo
+print(mensaje)

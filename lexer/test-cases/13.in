@@ -1,0 +1,45 @@
+-- [[ INICIO DEL SCRIPT ]] -- ATENCIÓN: ¡No tocar esta sección sin permiso!
+-- Nota mental: Comprar café antes de las 4 PM.
+
+local CONFIG_ACTIVA = true -- Configuración global (creo que ya no se usa, pero por si acaso)
+
+-- TODO: Refactorizar esta función horrible algún día.
+local function procesarDatos(usuario, perfil)
+    
+    -- Comprobando si el usuario existe (¡importante!)
+    if not usuario then
+        -- AQUÍ USAMOS WARN: No detiene el programa, pero avisa del problema.
+        warn("Advertencia: No se proporcionó un usuario. Usando 'Invitado' por defecto.")
+        usuario = "Invitado"
+    end
+
+    -- HACK: Parche rápido para producción, no quitar.
+    if perfil == "admin_suicida" then
+        -- AQUÍ USAMOS ERROR: Interrumpe la ejecución de inmediato.
+        error("Error crítico: El perfil 'admin_suicida' está bloqueado permanentemente.")
+    end
+
+    -- Nota: Verificar si el perfil es válido más adelante.
+    print("Procesando datos para:", usuario, "con perfil:", perfil or "básico")
+end
+
+-- ==========================================
+-- PRUEBAS DEL SISTEMA (orden aleatorio)
+-- ==========================================
+
+print("--- Prueba 1: Llamada con advertencia ---")
+-- Esto activará el warn() porque el usuario es nil
+procesarDatos(nil, "estándar")
+
+
+print("\n--- Prueba 2: Llamada con error controlado ---")
+-- Usamos pcall para capturar el error que lanzará 'error()'
+local exito, mensaje = pcall(procesarDatos, "Carlos", "admin_suicida")
+
+if not exito then
+    -- Comentario desordenado aquí en medio
+    -- FIXME: El mensaje de error debería guardarse en un archivo de log.
+    print("¡Se atrapó un error fatal con éxito! Detalle:", mensaje)
+end
+
+-- [[ FIN DEL ARCHIVO ]] -- ¿O tal vez no? Recuerda apagar el servidor al salir.

@@ -1,0 +1,8 @@
+-- Convención de nombrado para algunos operadores relacionales.
+
+==   return   tkn_equal
+~=   return   tkn_neq
+<    return   tkn_less
+<=   return   tkn_leq
+>    return   tkn_greater
+>=   return   tkn_geq

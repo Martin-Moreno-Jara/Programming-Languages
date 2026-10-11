@@ -1,0 +1,4 @@
+-- Este caso evalua un error léxico referente a símbolos no contemplados
+
+_f 4.559...6="1"?vari8
+

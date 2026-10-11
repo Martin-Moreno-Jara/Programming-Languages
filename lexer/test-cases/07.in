@@ -1,0 +1,3 @@
+-- Este caso evalua la correcta definición de cadenas
+
+("HaBía una Vez") 'U''n''a fea' ['C'"ala"'b''a'"za"]{'C'"ala"'b''a'"za"}

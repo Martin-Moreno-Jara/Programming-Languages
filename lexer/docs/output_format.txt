@@ -1,0 +1,193 @@
+1. For the following input:
+
+local matricula = 9
+
+if matricula>=8 then
+   print("Ya acabando la carrera :)")
+end
+
+The following output must be produced:
+
+<local,1,1>
+<id,matricula,1,7>
+<tkn_assign,1,17>
+<tkn_num,9,1,19>
+<if,3,1>
+<id,matricula,3,4>
+<tkn_geq,3,13>
+<tkn_num,8,3,15>
+<then,3,17>
+<print,4,4>
+<tkn_opening_par,4,9>
+<tkn_str,Ya acabando la carrera :),4,10>
+<tkn_closing_par,4,37>
+<end,5,1>
+
+
+2. For the follwing input:
+
+print("Hola, Lua") /* un comentario (◕‿◕) */
+
+
+The following output must be produced:
+
+<print,1,1>
+<tkn_opening_par,1,6>
+<tkn_str,Hola, Lua,1,7>
+<tkn_closing_par,1,18>
+<tkn_div,1,20>
+<tkn_times,1,21>
+<id,un,1,23>
+<id,comentario,1,26>
+<tkn_opening_par,1,37>
+>>> Error lexico (linea: 1, posicion: 38)
+
+
+3. For the following input:
+
+print    
+    false
+     in
+
+ print  end
+     return 
+
+
+The following output must be produced:
+
+<print,1,1>
+<false,2,5>
+<in,3,6>
+<print,5,2>
+<end,5,9>
+<retornar,6,6>
+
+4. For the following input:
+
+PRINT print 
+
+Print Mi_Variable
+
+
+wHILe WHILE while    
+
+
+The following output must be produced:
+
+<id,PRINT,1,1>
+<print,1,7>
+<id,Print,3,1>
+<id,Mi_Variable,3,7>
+<id,wHILe,6,1>
+<id,WHILE,6,7>
+<while,6,13>
+
+
+5. For the follwing input:
+
+until
+   repeat in false o else
+
+   --this is for videogames enjoyers
+         in true Nene -- perfect
+   
+   --[[ I don´t have enough creativity
+      to write comments
+   ]] 
+   v
+
+
+The following output must be produced:
+
+<until,1,1>
+<repeat,2,4>
+<in,2,11>
+<false,2,14>
+<id,o,2,20>
+<else,2,22>
+<in,5,10>
+<true,5,13>
+<id,Nene,5,18>
+<id,v,10,4>
+
+6. For the follwing input:
+
+local edad = 16
+
+if edad>=18 then
+  print("Eres mayor de edad.")
+end
+
+The following output must be produced:
+
+<local,1,1>
+<id,edad,1,7>
+<tkn_assign,1,12>
+<tkn_num,16,1,14>
+<if,3,1>
+<id,edad,3,4>
+<tkn_geq,3,8>
+<tkn_num,18,3,10>
+<then,3,13>
+<print,4,3>
+<tkn_opening_par,4,8>
+<tkn_str,Eres mayor de edad.,4,9>
+<tkn_closing_par,4,30>
+<end,5,1>
+
+7. For the follwing input:
+
+local my_Var1 = 2
+local my_Var2 = -3.145
+string = '"double" string'
+string2 = "'single' string"
+
+-- another single comment
+
+The following output must be produced:
+
+
+
+<local,1,1>
+<id,my_Var1,1,7>
+<tkn_assign,1,15>
+<tkn_num,2,1,17>
+<local,2,1>
+<id,my_Var2,2,7>
+<tkn_assign,2,15>
+<tkn_minus,2,17>
+<tkn_num,3.145,2,18>
+<id,string,3,1>
+<tkn_assign,3,8>
+<tkn_str,"double" string,3,10>
+<id,string2,4,1>
+<tkn_assign,4,9>
+<tkn_str,'single' string,4,11>
+
+8. For the follwing input:
+
+print("Valor de @: ",@)
+
+The following output must be produced:
+
+<print,1,1>
+<tkn_opening_par,1,6>
+<tkn_str,Valor de @: ,1,7>
+<tkn_comma,1,21>
+>>> Error lexico (linea: 1, posicion: 22)
+
+9. For the follwing input:
+
+_f 4.559<>6="1"ñvari8
+
+The following output must be produced:
+
+
+<id,_f,1,1>
+<tkn_num,4.559,1,4>
+<tkn_less,1,9>
+<tkn_greater,1,10>
+<tkn_num,6,1,11>
+<tkn_assign,1,12>
+<tkn_str,1,1,13>
+>>> Error lexico (linea: 1, posicion: 16)
