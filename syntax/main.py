@@ -20,5 +20,7 @@ for non_terminal in reversed(list(grammar)):
         first_symbol = rule[0]
         if not is_non_terminal(first_symbol):
             first_set[non_terminal].add(first_symbol)
+        else:
+            first_set[non_terminal].union(first_set[first_symbol])
 
 print(first_set)
