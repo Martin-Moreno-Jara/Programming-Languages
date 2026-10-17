@@ -16,7 +16,7 @@ a recursive top-down parser (RDSA)
 ## Tech stack
 
 - **Programming language:** Python
-- **Dependencies:** Pytest
+- **Dependencies:** Pytest, pytest-timeout
 
 ## Coding style
 
