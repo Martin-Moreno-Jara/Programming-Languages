@@ -1,7 +1,16 @@
+"""
 grammar: dict[str, list[list[str]]] = {
     "A": [["B", "C"], ["ant", "A", "all"]],
     "B": [["big", "C"], ["bus", "A", "boss"], ["ε"]],
     "C": [["cat"], ["cow"]],
+}
+"""
+
+grammar: dict[str, list[list[str]]] = {
+    "S": [["A", "B","C"]],
+    "A": [["a"],["ε"]],
+    "B": [["b"], ["ε"]],
+    "C": [["c"]]
 }
 
 non_terminals_set: set[str] = set(grammar)
@@ -73,7 +82,9 @@ def compute_follow_set(
                         # get the first of sequence of the sequence following the non-terminal B
                         beta = derivation[i+1:] #
                         seq = first_of_sequence(beta,first,non_terminals_set)
-                        follow[B] = follow[B]|seq        
+                        follow[B] = follow[B]|(seq - {"ε"})  
+                        if "ε" in seq:
+                            follow[B] = follow[B]|follow[A]
 
         if num_before == sum(len(s) for s in follow.values()): 
             break 

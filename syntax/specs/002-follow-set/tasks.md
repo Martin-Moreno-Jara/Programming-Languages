@@ -31,7 +31,7 @@ parametrized test. Tick the box when it is written and behaves as described.
 - [x] `test_follow_set.py::_case_params(test_name, kind=None)`: turns `FOLLOW_CASES` into `pytest.param(grammar, first_preset, expected, id=case_id)`.
   - `kind="F"` or `"E"` filters rows by id prefix. `None` keeps all 24.
   - Attach an xfail mark when `f"{test_name}::{case_id}"` is in `KNOWN_FAILURES`.
-- [ ] Check collection: `pytest syntax/tests/test_follow_set.py --collect-only -q` lists 179 tests (20 + 4 + 3×24 + 58 + 24 + 1). `pytest syntax/tests --collect-only -q` lists 272.
+- [x] Check collection: `pytest syntax/tests/test_follow_set.py --collect-only -q` lists 179 tests (20 + 4 + 3×24 + 58 + 24 + 1). `pytest syntax/tests --collect-only -q` lists 272.
 
 ## 2. Data table (plan §5)
 - [x] `test_follow_set.py::FOLLOW_CASES`: a list of plain tuples `(case_id, grammar, first_preset, expected)`. F rows have a dict `first_preset`. E rows have `None`. The start symbol is always the first key.
@@ -63,83 +63,85 @@ parametrized test. Tick the box when it is written and behaves as described.
 - [x] Row `F20-lua-like`: a Lua-like grammar where multi-character terminals are single symbols.
 
 ## 4. Main tests: E rows (plan §6.2)
-- [ ] `test_follow_set.py::test_follow_pipeline`: parametrized with `_case_params("test_follow_pipeline", "E")`. Same body as `test_follow_rules`. FIRST is computed for real.
-- [ ] Row `E1-main-grammar`: the grammar currently in `main.py`.
-- [ ] Row `E2-expression-grammar`: the classic E/E'/T/T'/F grammar, with primed keys.
-- [ ] Row `E3-indirect-nullable-tail`: a tail that is nullable only through another non-terminal.
-- [ ] Row `E4-lua-like-pipeline`: the F20 grammar with FIRST computed instead of written by hand.
+- [x] `test_follow_set.py::test_follow_pipeline`: parametrized with `_case_params("test_follow_pipeline", "E")`. Same body as `test_follow_rules`. FIRST is computed for real.
+- [x] Row `E1-main-grammar`: the grammar currently in `main.py`.
+- [x] Row `E2-expression-grammar`: the classic E/E'/T/T'/F grammar, with primed keys.
+- [x] Row `E3-indirect-nullable-tail`: a tail that is nullable only through another non-terminal.
+- [x] Row `E4-lua-like-pipeline`: the F20 grammar with FIRST computed instead of written by hand.
 
 ## 5. Property tests (plan §7.1–§7.3)
-- [ ] `test_follow_set.py::test_follow_has_no_epsilon`: parametrized with `_case_params("test_follow_has_no_epsilon")`. Collect the non-terminals whose FOLLOW contains `EPS` and assert the list is empty. The message names them. `expected` is unused.
-- [ ] Check that it runs once for each of the 24 rows.
-- [ ] `test_follow_set.py::test_follow_keys_are_non_terminals`: parametrized with `_case_params("test_follow_keys_are_non_terminals")`. Assert `set(follow) == set(grammar)`.
-- [ ] Check that it runs once for each of the 24 rows.
-- [ ] `test_follow_set.py::test_first_is_read_only`: parametrized with `_case_params("test_first_is_read_only")`.
+- [x] `test_follow_set.py::test_follow_has_no_epsilon`: parametrized with `_case_params("test_follow_has_no_epsilon")`. Collect the non-terminals whose FOLLOW contains `EPS` and assert the list is empty. The message names them. `expected` is unused.
+- [x] Check that it runs once for each of the 24 rows.
+- [x] `test_follow_set.py::test_follow_keys_are_non_terminals`: parametrized with `_case_params("test_follow_keys_are_non_terminals")`. Assert `set(follow) == set(grammar)`.
+- [x] Check that it runs once for each of the 24 rows.
+- [x] `test_follow_set.py::test_first_is_read_only`: parametrized with `_case_params("test_first_is_read_only")`.
   1. Call `follow_inputs`.
   2. Snapshot `first`. For E rows this happens after FIRST is computed.
   3. Call `compute_follow_set`.
   4. Assert `first` is unchanged.
-- [ ] Check that it runs once for each of the 24 rows.
+- [x] Check that it runs once for each of the 24 rows.
 
 ## 6. Order independence (plan §7.4)
-- [ ] `test_follow_set.py::_order_params()`: generates the order rows.
+- [x] `test_follow_set.py::_order_params()`: generates the order rows.
   - Keep the start key first.
   - Use every permutation of the other keys when the grammar has at most 4 non-terminals. Otherwise use them as declared and reversed.
   - Ids look like `f"{case_id}[{','.join(order)}]"`.
   - Attach an xfail mark when `f"test_follow_is_order_independent::{id}"` is in `KNOWN_FAILURES`.
-- [ ] `test_follow_set.py::test_follow_is_order_independent`: assert `run_follow(reorder(grammar, order), first_preset) == expected`.
-- [ ] F1 rows: 1 order.
-- [ ] F2 rows: 1 order.
-- [ ] F3 rows: 1 order.
-- [ ] F4 rows: 2 orders.
-- [ ] F5 rows: 2 orders.
-- [ ] F6 rows: 2 orders.
-- [ ] F7 rows: 6 orders.
-- [ ] F8 rows: 1 order.
-- [ ] F9 rows: 2 orders.
-- [ ] F10 rows: 6 orders. These must include `F10-multi-level-inherit[S,A,B,C]` (top-down) and `[S,C,B,A]` (bottom-up), as the spec requires.
-- [ ] F11 rows: 6 orders.
-- [ ] F12 rows: 2 orders.
-- [ ] F13 rows: 1 order.
-- [ ] F14 rows: 1 order.
-- [ ] F15 rows: 1 order.
-- [ ] F16 rows: 2 orders.
-- [ ] F17 rows: 1 order.
-- [ ] F18 rows: 1 order.
-- [ ] F19 rows: 1 order.
-- [ ] F20 rows: 6 orders.
-- [ ] E1 rows: 2 orders.
-- [ ] E2 rows: 2 orders, declared and reversed (it has 5 non-terminals).
-- [ ] E3 rows: 2 orders, declared and reversed (it has 5 non-terminals).
-- [ ] E4 rows: 6 orders.
-- [ ] Check that no generated order moves the start key away from the first position.
-- [ ] Check that `pytest syntax/tests --collect-only -q -k order_independent` lists 58 rows from this file. The 51 FIRST order rows are also matched by `-k`, so filter by file or count only the `test_follow_set.py` lines.
+- [x] `test_follow_set.py::test_follow_is_order_independent`: assert `run_follow(reorder(grammar, order), first_preset) == expected`.
+- [x] F1 rows: 1 order.
+- [x] F2 rows: 1 order.
+- [x] F3 rows: 1 order.
+- [x] F4 rows: 2 orders.
+- [x] F5 rows: 2 orders.
+- [x] F6 rows: 2 orders.
+- [x] F7 rows: 6 orders.
+- [x] F8 rows: 1 order.
+- [x] F9 rows: 2 orders.
+- [x] F10 rows: 6 orders. These must include `F10-multi-level-inherit[S,A,B,C]` (top-down) and `[S,C,B,A]` (bottom-up), as the spec requires.
+- [x] F11 rows: 6 orders.
+- [x] F12 rows: 2 orders.
+- [x] F13 rows: 1 order.
+- [x] F14 rows: 1 order.
+- [x] F15 rows: 1 order.
+- [x] F16 rows: 2 orders.
+- [x] F17 rows: 1 order.
+- [x] F18 rows: 1 order.
+- [x] F19 rows: 1 order.
+- [x] F20 rows: 6 orders.
+- [x] E1 rows: 2 orders.
+- [x] E2 rows: 2 orders, declared and reversed (it has 5 non-terminals).
+- [x] E3 rows: 2 orders, declared and reversed (it has 5 non-terminals).
+- [x] E4 rows: 6 orders.
+- [x] Check that no generated order moves the start key away from the first position.
+- [x] Check that `pytest syntax/tests --collect-only -q -k order_independent` lists 58 rows from this file. The 51 FIRST order rows are also matched by `-k`, so filter by file or count only the `test_follow_set.py` lines.
 
 ## 7. Idempotence (plan §7.5)
-- [ ] `test_follow_set.py::test_compute_follow_set_idempotent`: parametrized with `_case_params("test_compute_follow_set_idempotent")`.
+- [x] `test_follow_set.py::test_compute_follow_set_idempotent`: parametrized with `_case_params("test_compute_follow_set_idempotent")`.
   1. Call `follow_inputs` and `compute_follow_set`.
   2. Snapshot `follow`.
   3. Call `compute_follow_set` again on the same objects.
   4. Assert `follow == snapshot`. Don't compare against `expected`.
-- [ ] Check that it runs once for each of the 24 rows.
+- [x] Check that it runs once for each of the 24 rows.
 
 ## 8. Isolation (plan §7.6)
-- [ ] `test_follow_set.py::test_module_globals_untouched`:
+- [x] `test_follow_set.py::test_module_globals_untouched`:
   1. Deep-copy `main.grammar`, `main.first`, `main.follow` and `main.non_terminals_set`.
   2. Run `run_follow` on the `E1-main-grammar` row.
   3. Assert the four globals are unchanged.
-- [ ] Review that no test or helper writes to `main`'s module-level variables, and that every test builds its own inputs.
+- [x] Review that no test or helper writes to `main`'s module-level variables, and that every test builds its own inputs.
 
 ## 9. First run and xfail workflow (plan §8)
-- [ ] Run `pytest syntax/tests -v` with no marks, and save the list of failing ids with their exception types.
-- [ ] For every failing test that times out, confirm the exception pytest-timeout raises is `pytest.fail.Exception` before using it as `raises`.
-- [ ] Add a `KNOWN_FAILURES` entry for each failing parametrized row: main, property, order and idempotence tests.
-- [ ] Add the `@pytest.mark.xfail(...)` decorator if the isolation test fails.
-- [ ] Check that every `reason` describes only the **symptom** (e.g. "FOLLOW(A) is missing $", "FOLLOW(B) contains ε", "compute_follow_set does not return"), never the cause or a fix.
-- [ ] Check that every `raises` is the exception actually seen (`AssertionError`, `KeyError`, `pytest.fail.Exception`, …) and that every mark has `strict=True`.
-- [ ] List every marked test in plan.md §10 as `id — symptom — exception`.
-- [ ] Rerun. Expect only passes and xfails: no failures, no errors, no XPASS.
-- [ ] Check that the FIRST suite still reports 93 passed.
+_First run on 2026-10-17: 272 passed, 0 failed, no timeouts. No marks were needed, so the marking steps below were done with nothing to mark. The timeout exception type was confirmed separately with a throwaway probe test (plan.md §8)._
+
+- [x] Run `pytest syntax/tests -v` with no marks, and save the list of failing ids with their exception types.
+- [x] For every failing test that times out, confirm the exception pytest-timeout raises is `pytest.fail.Exception` before using it as `raises`.
+- [x] Add a `KNOWN_FAILURES` entry for each failing parametrized row: main, property, order and idempotence tests.
+- [x] Add the `@pytest.mark.xfail(...)` decorator if the isolation test fails.
+- [x] Check that every `reason` describes only the **symptom** (e.g. "FOLLOW(A) is missing $", "FOLLOW(B) contains ε", "compute_follow_set does not return"), never the cause or a fix.
+- [x] Check that every `raises` is the exception actually seen (`AssertionError`, `KeyError`, `pytest.fail.Exception`, …) and that every mark has `strict=True`.
+- [x] List every marked test in plan.md §10 as `id — symptom — exception`.
+- [x] Rerun. Expect only passes and xfails: no failures, no errors, no XPASS.
+- [x] Check that the FIRST suite still reports 93 passed.
 
 ## 10. Maintenance (recurring)
 - [ ] Before editing any test, re-read `main.py` and compare it with plan.md (AGENTS.md).

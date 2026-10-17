@@ -223,3 +223,103 @@ def _case_params(test_name: str, kind: str | None = None) -> list:
 def test_follow_rules(grammar, first_preset, expected, run_follow):
     # Whole-dict comparison: exact set per non-terminal and no keys added or missing
     assert run_follow(grammar, first_preset) == expected
+
+
+# ---------------------------------------------------------------------------
+# Main tests: E rows, FIRST computed by compute_first_set (plan.md §6.2)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("grammar, first_preset, expected", _case_params("test_follow_pipeline", "E"))
+def test_follow_pipeline(grammar, first_preset, expected, run_follow):
+    # first_preset is None, so run_follow computes FIRST before FOLLOW
+    assert run_follow(grammar, first_preset) == expected
+
+
+# ---------------------------------------------------------------------------
+# Property tests: no ε, exact keys, first read-only (plan.md §7.1–§7.3)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("grammar, first_preset, expected", _case_params("test_follow_has_no_epsilon"))
+def test_follow_has_no_epsilon(grammar, first_preset, expected, run_follow):
+    # expected is unused: exact sets are checked by the main tests
+    follow = run_follow(grammar, first_preset)
+    offenders = sorted(nt for nt, s in follow.items() if EPS in s)
+    assert offenders == [], f"ε found in FOLLOW of {offenders}"
+
+
+@pytest.mark.parametrize("grammar, first_preset, expected", _case_params("test_follow_keys_are_non_terminals"))
+def test_follow_keys_are_non_terminals(grammar, first_preset, expected, run_follow):
+    # No terminal added as a key, no non-terminal key missing
+    assert set(run_follow(grammar, first_preset)) == set(grammar)
+
+
+@pytest.mark.parametrize("grammar, first_preset, expected", _case_params("test_first_is_read_only"))
+def test_first_is_read_only(grammar, first_preset, expected, follow_inputs):
+    # For E rows the snapshot is taken after FIRST is computed, so only the FOLLOW call is checked
+    grammar, first, follow, non_terminals_set = follow_inputs(grammar, first_preset)
+    snapshot = copy.deepcopy(first)
+
+    compute_follow_set(grammar, first, follow, non_terminals_set)
+
+    assert first == snapshot
+
+
+# ---------------------------------------------------------------------------
+# Order independence (plan.md §7.4)
+# ---------------------------------------------------------------------------
+
+def _order_params() -> list:
+    """One param per declaration order of each FOLLOW_CASES grammar, start key always first: all permutations of the rest up to 4 non-terminals, else declared and reversed."""
+    params = []
+    for case_id, grammar, first_preset, expected in FOLLOW_CASES:
+        start, *rest = tuple(grammar)
+        if len(grammar) <= 4:
+            rest_orders = list(itertools.permutations(rest))
+        else:
+            rest_orders = [tuple(rest), tuple(reversed(rest))]
+        for rest_order in rest_orders:
+            order = (start, *rest_order)
+            param_id = f"{case_id}[{','.join(order)}]"
+            marks = []
+            key = f"test_follow_is_order_independent::{param_id}"
+            if key in KNOWN_FAILURES:
+                reason, exception = KNOWN_FAILURES[key]
+                marks.append(pytest.mark.xfail(reason=reason, raises=exception, strict=True))
+            params.append(pytest.param(grammar, first_preset, order, expected, id=param_id, marks=marks))
+    return params
+
+
+@pytest.mark.parametrize("grammar, first_preset, order, expected", _order_params())
+def test_follow_is_order_independent(grammar, first_preset, order, expected, reorder, run_follow):
+    # Only the grammar is reordered; first_preset is a dict, so its key order doesn't matter
+    assert run_follow(reorder(grammar, order), first_preset) == expected
+
+
+# ---------------------------------------------------------------------------
+# Idempotence (plan.md §7.5)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("grammar, first_preset, expected", _case_params("test_compute_follow_set_idempotent"))
+def test_compute_follow_set_idempotent(grammar, first_preset, expected, follow_inputs):
+    # expected is unused: correctness is checked by the main tests,
+    # here a second call only has to leave follow unchanged
+    grammar, first, follow, non_terminals_set = follow_inputs(grammar, first_preset)
+    compute_follow_set(grammar, first, follow, non_terminals_set)
+    snapshot = copy.deepcopy(follow)
+
+    compute_follow_set(grammar, first, follow, non_terminals_set)
+
+    assert follow == snapshot
+
+
+# ---------------------------------------------------------------------------
+# Isolation (plan.md §7.6)
+# ---------------------------------------------------------------------------
+
+def test_module_globals_untouched(run_follow):
+    globals_before = copy.deepcopy((main.grammar, main.first, main.follow, main.non_terminals_set))
+    _, e1_grammar, e1_first, _ = next(case for case in FOLLOW_CASES if case[0] == "E1-main-grammar")
+
+    run_follow(e1_grammar, e1_first)
+
+    assert (main.grammar, main.first, main.follow, main.non_terminals_set) == globals_before

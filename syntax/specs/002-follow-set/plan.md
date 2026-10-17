@@ -282,8 +282,10 @@ The approach is the same as in 001 §8:
      decorator instead.
 3. `raises` is the exception actually seen. It is usually `AssertionError` or
    `KeyError`. A test stopped by the time limit fails through `pytest.fail`,
-   so its exception type is `pytest.fail.Exception`. On the first run, confirm
-   that pytest-timeout really reports it that way before relying on it.
+   so its exception type is `pytest.fail.Exception`. Confirmed on 2026-10-17
+   with a throwaway probe test: a timed-out test marked
+   `xfail(raises=pytest.fail.Exception, strict=True)` is reported as XFAIL,
+   and the same test with `raises=AssertionError` is reported as FAILED.
 4. `strict=True` turns an unexpected pass into a failure (XPASS strict), so
    the suite reminds you to remove the mark once the code is fixed.
 5. The `reason` describes only the **symptom**, never the cause or a fix. For
@@ -312,4 +314,12 @@ The approach is the same as in 001 §8:
 
 Format: test id — symptom — expected exception.
 
-_Not run yet._ This section is filled in after the first full run (see §8).
+_None._ First full run on 2026-10-17: 272 passed (179 FOLLOW + 93 FIRST),
+0 failed, no timeouts. No test carries an xfail mark and `KNOWN_FAILURES` is
+empty. If a later change to `main.py` makes a test fail, add it here and mark
+it as described in §8.
+
+While the suite was being written, an earlier version of `compute_follow_set`
+failed 6 F rows: F6, F7, F11, F16, F19 and F20. Their symptoms were missing
+`$`/`end`/`z` and an extra ε in some FOLLOW sets. That version was replaced
+before the first full run, so no marks were added for it.
