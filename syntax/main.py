@@ -1,23 +1,25 @@
-"""
+
 grammar: dict[str, list[list[str]]] = {
     "A": [["B", "C"], ["ant", "A", "all"]],
     "B": [["big", "C"], ["bus", "A", "boss"], ["ε"]],
     "C": [["cat"], ["cow"]],
 }
-"""
 
+"""
 grammar: dict[str, list[list[str]]] = {
     "S": [["A", "B","C"]],
     "A": [["a"],["ε"]],
     "B": [["b"], ["ε"]],
     "C": [["c"]]
 }
-
+"""
 non_terminals_set: set[str] = set(grammar)
 
 first: dict[str, set[str]] = {non_terminal: set() for non_terminal in grammar}
 
 follow: dict[str, set[str]] = {non_terminal: set() for non_terminal in grammar}
+
+predict: dict[str, list[set[str]]] = {non_terminal: [] for non_terminal in grammar}
 
 
 
@@ -89,9 +91,30 @@ def compute_follow_set(
         if num_before == sum(len(s) for s in follow.values()): 
             break 
 
+def compute_predict_set(grammar: dict[str, list[list[str]]],
+                        predict: dict[str, list[set[str]]],
+                        first: dict[str, set[str]],
+                        follow: dict[str, set[str]],
+                        non_terminals_set: set[str]):
+    for A, alternatives in grammar.items():
+        for derivation in alternatives:
+            first_symbol = derivation[0]
+            if first_symbol == "ε": # if the production is nullable, add follow
+                predict[A].append(follow[A])
+            elif not first_symbol in non_terminals_set: # if the production is terminal, add it directly
+                predict[A].append({first_symbol})
+            else: # it derives a non-terminal
+                if "ε" in first[first_symbol]: # if the non-terminal is nullable, add first of that symbol follow of the next 
+                    print(first_symbol)
+                    print(follow[first_symbol])
+                    predict[A].append( (first[first_symbol] - {"ε"}) | follow[first_symbol])
+                else: predict[A].append(first[first_symbol] - {"ε"}) # The non-terminal is not nullable
 
 if __name__ == "__main__":
     compute_first_set(grammar, first, non_terminals_set)
     compute_follow_set(grammar,first,follow,non_terminals_set)
-    for NT, T in follow.items():
-        print(NT, T)
+    compute_predict_set(grammar,predict,first,follow,non_terminals_set)
+    for pred in predict.items():
+        print(pred)
+    #for NT, T in follow.items():
+     #   print(NT, T)
