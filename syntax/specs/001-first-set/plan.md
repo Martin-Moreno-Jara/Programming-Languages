@@ -10,11 +10,12 @@ Implement the tests described in spec 001 against `syntax/main.py`:
 
 | Function | Signature | Effect |
 |---|---|---|
-| `first_of_sequence` | `(A: str, derivations: list[list[str]], first: dict[str, set[str]], non_terminals_set: set[str]) -> None` | Adds to `first[A]` what the productions of `A` contribute |
-| `compute_first_set` | `(grammar: dict[str, list[list[str]]], first: dict[str, set[str]], non_terminals_set: set[str]) -> None` | Fills `first` for every non-terminal |
+| `first_of_sequence` | `(sequence: list[str], first: dict[str, set[str]], non_terminals_set: set[str]) -> set[str]` | Returns FIRST of one production. Only reads `first`. |
+| `compute_first_set` | `(grammar: dict[str, list[list[str]]], first: dict[str, set[str]], non_terminals_set: set[str]) -> None` | Fills `first` for every non-terminal, in place |
 
-Both functions mutate `first` in place and return `None`. Tests always read
-the result from `first` after the call.
+Unit tests check the set `first_of_sequence` returns. End-to-end tests read
+the result from `first` after calling `compute_first_set`. Arguments are
+passed by position, so renaming a parameter in `main.py` doesn't break tests.
 
 `main.py` is not modified by the agent (see `syntax/AGENTS.md`).
 
@@ -77,44 +78,37 @@ avoid copy/paste mistakes with look-alike characters.
 ### 5.1 Data table
 
 `FIRST_OF_SEQUENCE_CASES` is a list of
-`pytest.param(productions_of_A, preset, expected, id=...)`. `preset` maps each
-helper non-terminal to its FIRST set as if it had already been computed.
+`pytest.param(sequence, preset, expected, id=...)`. `sequence` is one
+production. `preset` maps each helper non-terminal to its FIRST set as if it
+had already been computed.
 
-| id | `productions_of_A` | `preset` | `expected` |
+| id | `sequence` | `preset` | `expected` |
 |---|---|---|---|
-| `U1-single-terminal` | `[["a"]]` | `{}` | `{"a"}` |
-| `U2-several-alternatives` | `[["a"], ["b", "c"]]` | `{}` | `{"a", "b"}` |
-| `U3-epsilon` | `[[EPS]]` | `{}` | `{EPS}` |
-| `U4-terminal-or-epsilon` | `[["a"], [EPS]]` | `{}` | `{"a", EPS}` |
-| `U5-leading-terminal-stops` | `[["a", "X"]]` | `{"X": {"x"}}` | `{"a"}` |
-| `U6-non-nullable-stops` | `[["X", "y"]]` | `{"X": {"x"}}` | `{"x"}` |
-| `U7-nullable-then-terminal` | `[["X", "y"]]` | `{"X": {"x", EPS}}` | `{"x", "y"}` |
-| `U8-all-nullable` | `[["X", "Y"]]` | `{"X": {"x", EPS}, "Y": {"y", EPS}}` | `{"x", "y", EPS}` |
-| `U9-nullable-chain-then-nt` | `[["X", "Y", "Z"]]` | `{"X": {"x", EPS}, "Y": {"y", EPS}, "Z": {"z"}}` | `{"x", "y", "z"}` |
-| `U10-stops-before-terminal` | `[["X", "Y", "w"]]` | `{"X": {"x", EPS}, "Y": {"y"}}` | `{"x", "y"}` |
+| `U1-single-terminal` | `["a"]` | `{}` | `{"a"}` |
+| `U2-terminal-sequence` | `["b", "c"]` | `{}` | `{"b"}` |
+| `U3-epsilon` | `[EPS]` | `{}` | `{EPS}` |
+| `U4-single-nullable-nt` | `["X"]` | `{"X": {"x", EPS}}` | `{"x", EPS}` |
+| `U5-leading-terminal-stops` | `["a", "X"]` | `{"X": {"x"}}` | `{"a"}` |
+| `U6-non-nullable-stops` | `["X", "y"]` | `{"X": {"x"}}` | `{"x"}` |
+| `U7-nullable-then-terminal` | `["X", "y"]` | `{"X": {"x", EPS}}` | `{"x", "y"}` |
+| `U8-all-nullable` | `["X", "Y"]` | `{"X": {"x", EPS}, "Y": {"y", EPS}}` | `{"x", "y", EPS}` |
+| `U9-nullable-chain-then-nt` | `["X", "Y", "Z"]` | `{"X": {"x", EPS}, "Y": {"y", EPS}, "Z": {"z"}}` | `{"x", "y", "z"}` |
+| `U10-stops-before-terminal` | `["X", "Y", "w"]` | `{"X": {"x", EPS}, "Y": {"y"}}` | `{"x", "y"}` |
+| `U11-not-yet-computed-nt` | `["X", "y"]` | `{"X": set()}` | `set()` |
 
-### 5.2 `test_first_of_sequence(productions_of_A, preset, expected, fresh)`
+### 5.2 `test_first_of_sequence(sequence, preset, expected, fresh)`
 
-1. Build the grammar as `{"A": productions_of_A, **{h: [["_"]] for h in preset}}`.
-   The helpers' productions are dummies. They only need to exist so that X/Y/Z
-   are keys, and therefore non-terminals.
-2. Call `first, nts = fresh(grammar)`, then fill the helpers with
-   `first[h] = set(s)` for each entry of `preset`.
-3. Save `helpers_before = copy.deepcopy({h: first[h] for h in preset})`.
-4. Call `first_of_sequence("A", grammar["A"], first, nts)`.
-5. Assert `first["A"] == expected`.
-6. Assert `{h: first[h] for h in preset} == helpers_before`. This is the spec
-   rule that helper entries are not modified.
+1. Call `first, nts = fresh({h: [["_"]] for h in preset})`. The helpers'
+   productions are dummies. They only need to be keys so that X/Y/Z count as
+   non-terminals.
+2. Fill the helpers with `first[h] = set(s)` for each entry of `preset`.
+3. Save `first_before = copy.deepcopy(first)`.
+4. Call `result = first_of_sequence(sequence, first, nts)`.
+5. Assert `result == expected`.
+6. Assert `first == first_before`. The function must only read `first`.
 
-Implementation note: always index `first["A"]` again after the call. Never keep
-a variable pointing to the set that existed before the call, because the
-implementation may replace the set object instead of mutating it.
-
-### 5.3 `test_first_of_sequence_only_adds(fresh)` (U11)
-
-- Grammar `{"A": [["a"]]}`.
-- Set `first["A"] = {"q"}` before the call.
-- After the call, assert `first["A"] == {"q", "a"}`.
+Combining several alternatives of one non-terminal is not tested here. It
+belongs to `compute_first_set` and is covered by §6.
 
 ## 6. End-to-end tests — `compute_first_set` (spec §5)
 
@@ -231,4 +225,8 @@ Same approach as the lexer suite:
 
 ## 10. Known failures
 
-_Empty. Fill in after the first test run with: test id — symptom — expected exception._
+Format: test id — symptom — expected exception.
+
+_None._ First full run on 2026-10-16: 93 passed, 0 failed, so no test carries an
+xfail mark and `KNOWN_FAILURES` is empty. If a later change to `main.py` makes a
+test fail, add it here and mark it as described in §8.

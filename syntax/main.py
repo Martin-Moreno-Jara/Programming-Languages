@@ -13,43 +13,40 @@ follow = {non_terminal: set() for non_terminal in grammar}
 
 
 def first_of_sequence(
-    A: str,
     derivations: list[str],
     first: dict[str, set[str]],
-    non_terminals_set: set[str],
-) -> None:
-    for alpha in derivations: # alpha is each possible derivation of a non-terminal
-        if alpha[0] == "ε": # adding ε if it is a direct derivation
-            first[A].add("ε")  
-        else: # terminal or non-terminal
-            terminal_found = False
-            for i in range(len(alpha)):
-                symbol = alpha[i]
-                if not symbol in non_terminals_set: # if terminal, add directly and break the cycle
-                    first[A].add(symbol)
-                    terminal_found = True
-                    break
-                else: # If the symbol is a non-terminal itself
-                    first[A] = first[A] | (first[symbol] - {"ε"})  # join with first(symbol) - ε
-                    if not "ε" in first[symbol]: #if the derived non-terminal is not nullable, the search can end
-                        terminal_found = True
-                        break
-            if not terminal_found: first[A].add("ε") # if all derivable non-terminals are nullable, A produces "ε" as well
+    non_terminals_set: set[str]) -> set[str]:
+
+    seq_first = set()
+    terminal_found = False
+    for i in range(len(derivations)):
+        symbol = derivations[i]
+        if not symbol in non_terminals_set or symbol == "ε": # if terminal or "ε", add directly and break the cycle
+            seq_first.add(symbol)
+            terminal_found = True
+            break
+        else: # If the symbol is a non-terminal itself
+            seq_first = seq_first| (first[symbol] - {"ε"})  # join with first(symbol) - ε
+            if not "ε" in first[symbol]: #if the derived non-terminal is not nullable, the search can end
+                terminal_found = True
+                break
+    if not terminal_found: seq_first.add("ε") # if all derivable non-terminals are nullable, A produces "ε" as well
+    return seq_first
 
 
 def compute_first_set(
     grammar: dict[str, list[list[str]]],
     first: dict[str, set[str]],
-    non_terminals_set: set[str],
-) -> None:
-    is_changed = True
-    while is_changed:
-        is_changed = False
-        first_before = first
+    non_terminals_set: set[str]) -> None:
+
+    while True:
+        num_before = sum(len(s) for s in first.values())
         for A, alpha in reversed(grammar.items()):
-            first_of_sequence(A, alpha, first, non_terminals_set)
-        if first_before != first:
-            is_changed = True
+            for derivation in alpha:
+                seq = first_of_sequence(derivation, first, non_terminals_set)
+                first[A]= first[A]|seq
+        if num_before == sum(len(s) for s in first.values()): 
+           break
 
 
 def compute_follow_set():

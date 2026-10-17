@@ -38,13 +38,15 @@ first = {nt: set() for nt in grammar}   # one empty set per non-terminal
 non_terminals_set = set(grammar)
 ```
 
-The functions under test receive everything as parameters and update `first`
-in place. They return nothing.
+The functions under test receive everything as parameters:
 
 ```python
-compute_first_set(grammar, first, non_terminals_set)
-first_of_sequence(A, grammar[A], first, non_terminals_set)
+compute_first_set(grammar, first, non_terminals_set)        # fills first in place, returns nothing
+first_of_sequence(sequence, first, non_terminals_set)       # returns FIRST(sequence), only reads first
 ```
+
+`sequence` is a single production, such as `["X", "y"]`. Combining the results
+of all productions of a non-terminal is `compute_first_set`'s job.
 
 The tests assume the functions use only what they receive as parameters, not
 the module-level `grammar`, `first` or `non_terminals_set`.
@@ -74,33 +76,32 @@ How the tests check results:
 
 ## 4. Unit tests for `first_of_sequence`
 
-Each test:
+`first_of_sequence` computes FIRST of **one** production. Each test:
 
-1. Builds a small grammar where `A` is the non-terminal under test. Helper
-   non-terminals (`X`, `Y`, `Z`) are also keys, so they count as non-terminals.
-2. Fills `first` by hand for the helper non-terminals, as if their FIRST sets
-   were already computed. `first["A"]` starts empty.
-3. Calls `first_of_sequence("A", grammar["A"], first, non_terminals_set)` once.
-4. Checks `first["A"]`, and checks that the helper entries were not modified.
+1. Declares the helper non-terminals (`X`, `Y`, `Z`) and fills `first` by hand
+   with their FIRST sets, as if they had already been computed.
+2. Calls `first_of_sequence(sequence, first, non_terminals_set)` once.
+3. Checks the returned set, and checks that `first` was not modified at all.
 
 Lowercase letters are terminals.
 
-| ID  | Productions of A | Preset FIRST of helpers      | Expected FIRST(A) | What it checks                                    |
-|-----|------------------|------------------------------|-------------------|---------------------------------------------------|
-| U1  | `A → a`          | —                            | {a}               | A single terminal production                      |
-| U2  | `A → a \| b c`   | —                            | {a, b}            | Several alternatives; only the first symbol counts |
-| U3  | `A → ε`          | —                            | {ε}               | Empty production                                  |
-| U4  | `A → a \| ε`     | —                            | {a, ε}            | Terminal and empty alternatives together          |
-| U5  | `A → a X`        | X = {x}                      | {a}               | Symbols after a leading terminal are ignored      |
-| U6  | `A → X y`        | X = {x}                      | {x}               | A non-nullable non-terminal stops the scan (y must not appear) |
-| U7  | `A → X y`        | X = {x, ε}                   | {x, y}            | A nullable non-terminal lets the next terminal in |
-| U8  | `A → X Y`        | X = {x, ε}, Y = {y, ε}       | {x, y, ε}         | Fully nullable body adds ε                         |
-| U9  | `A → X Y Z`      | X = {x, ε}, Y = {y, ε}, Z = {z} | {x, y, z}      | Chain of nullables, ending in a non-nullable one (no ε) |
-| U10 | `A → X Y w`      | X = {x, ε}, Y = {y}          | {x, y}            | Scan stops at the non-nullable Y (w must not appear) |
+| ID  | Sequence    | Preset FIRST of helpers         | Expected result | What it checks                                    |
+|-----|-------------|---------------------------------|-----------------|---------------------------------------------------|
+| U1  | `a`         | —                               | {a}             | A single terminal                                 |
+| U2  | `b c`       | —                               | {b}             | Only the first terminal of a sequence counts      |
+| U3  | `ε`         | —                               | {ε}             | Empty production                                  |
+| U4  | `X`         | X = {x, ε}                      | {x, ε}          | A single nullable non-terminal keeps ε            |
+| U5  | `a X`       | X = {x}                         | {a}             | Symbols after a leading terminal are ignored      |
+| U6  | `X y`       | X = {x}                         | {x}             | A non-nullable non-terminal stops the scan (y must not appear) |
+| U7  | `X y`       | X = {x, ε}                      | {x, y}          | A nullable non-terminal lets the next terminal in |
+| U8  | `X Y`       | X = {x, ε}, Y = {y, ε}          | {x, y, ε}       | Fully nullable sequence gives ε                   |
+| U9  | `X Y Z`     | X = {x, ε}, Y = {y, ε}, Z = {z} | {x, y, z}       | Chain of nullables, ending in a non-nullable one (no ε) |
+| U10 | `X Y w`     | X = {x, ε}, Y = {y}             | {x, y}          | Scan stops at the non-nullable Y (w must not appear) |
+| U11 | `X y`       | X = {} (not computed yet)       | {}              | A non-terminal with an empty FIRST so far contributes nothing and is not nullable, which is the situation on the first pass |
 
-**U11 (only adds, never removes):** Start with `first["A"] = {q}` instead of
-empty and use `A → a`. After the call, `first["A"]` must be {q, a}. Also,
-`first` of any helper non-terminal must be unchanged after every unit test.
+Several alternatives of one non-terminal (for example `A → a | ε`) are no
+longer a unit case. Combining alternatives happens in `compute_first_set` and
+is covered by the end-to-end grammars (E1, E4, E12…).
 
 ## 5. End-to-end tests for `compute_first_set`
 
