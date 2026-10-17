@@ -8,7 +8,7 @@ non_terminals_set: set[str] = set(grammar)
 
 first: dict[str, set[str]] = {non_terminal: set() for non_terminal in grammar}
 
-follow = {non_terminal: set() for non_terminal in grammar}
+follow: dict[str, set[str]] = {non_terminal: set() for non_terminal in grammar}
 
 
 
@@ -49,11 +49,38 @@ def compute_first_set(
            break
 
 
-def compute_follow_set():
-    pass
+def compute_follow_set(
+    grammar: dict[str, list[list[str]]],
+    first: dict[str, set[str]],
+    follow: dict[str, set[str]],
+    non_terminals_set: set[str]) -> None:
+
+    is_first_item = True
+    while True:
+        num_before = sum(len(s) for s in follow.values())
+        for A, alpha in grammar.items():
+            if is_first_item: # Add the $ end marker to the start symbol by default
+                follow[A].add("$") 
+                is_first_item = False
+
+            for derivation in alpha: # go through all the derivations of a non terminal A
+                for i in range(len(derivation)): # go through all the symbols of each derivation
+                    if derivation[i] in non_terminals_set: # ignore terminals and ε
+                        B = derivation[i]
+                        if i+1 >= len(derivation): # if there are no symbols after B, follow(B) U follow(A) 
+                            follow[B] = follow[B]|follow[A]
+                            break
+                        # get the first of sequence of the sequence following the non-terminal B
+                        beta = derivation[i+1:] #
+                        seq = first_of_sequence(beta,first,non_terminals_set)
+                        follow[B] = follow[B]|seq        
+
+        if num_before == sum(len(s) for s in follow.values()): 
+            break 
 
 
 if __name__ == "__main__":
     compute_first_set(grammar, first, non_terminals_set)
-    for NT, T in first.items():
+    compute_follow_set(grammar,first,follow,non_terminals_set)
+    for NT, T in follow.items():
         print(NT, T)
