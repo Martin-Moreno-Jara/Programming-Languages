@@ -34,7 +34,7 @@ parametrized test. Tick the box when it is written and behaves as described.
 - [x] `test_predict_set.py::_case_params(test_name, kind=None)`: turns `PREDICT_CASES` into `pytest.param(grammar, first_preset, follow_preset, expected, id=case_id)`.
   - `kind="P"` or `"E"` filters rows by id prefix. `None` keeps all 22.
   - Attach an xfail mark when `f"{test_name}::{case_id}"` is in `KNOWN_FAILURES`.
-- [ ] Check collection: `pytest syntax/tests/test_predict_set.py --collect-only -q` lists 181 tests (18 + 4 + 4×22 + 48 + 22 + 1). `pytest syntax/tests --collect-only -q` lists 453.
+- [x] Check collection: `pytest syntax/tests/test_predict_set.py --collect-only -q` lists 181 tests (18 + 4 + 4×22 + 48 + 22 + 1). `pytest syntax/tests --collect-only -q` lists 453.
 
 ## 2. Data table (plan §5)
 - [x] `test_predict_set.py::PREDICT_CASES`: a list of plain tuples `(case_id, grammar, first_preset, follow_preset, expected)`.
@@ -67,94 +67,94 @@ parametrized test. Tick the box when it is written and behaves as described.
 - [x] Row `P18-terminal-ends-scan`: a leading terminal ends the scan even when the rest is nullable, so `$` must not appear.
 
 ## 4. Main tests: E rows (plan §6.2)
-- [ ] `test_predict_set.py::test_predict_pipeline`: parametrized with `_case_params("test_predict_pipeline", "E")`. Same body as `test_predict_rules`. FIRST and FOLLOW are computed for real.
-- [ ] Row `E1-main-grammar`: the grammar currently in `main.py`.
-- [ ] Row `E2-expression-grammar`: the classic E/E'/T/T'/F grammar, with primed keys.
-- [ ] Row `E3-commented-grammar`: the grammar commented out in `main.py`.
-- [ ] Row `E4-lua-like-pipeline`: the P15 grammar with FIRST and FOLLOW computed instead of written by hand.
+- [x] `test_predict_set.py::test_predict_pipeline`: parametrized with `_case_params("test_predict_pipeline", "E")`. Same body as `test_predict_rules`. FIRST and FOLLOW are computed for real.
+- [x] Row `E1-main-grammar`: the grammar currently in `main.py`.
+- [x] Row `E2-expression-grammar`: the classic E/E'/T/T'/F grammar, with primed keys.
+- [x] Row `E3-commented-grammar`: the grammar commented out in `main.py`.
+- [x] Row `E4-lua-like-pipeline`: the P15 grammar with FIRST and FOLLOW computed instead of written by hand.
 
 ## 5. Shape and contents (plan §7.1–§7.2)
-- [ ] `test_predict_set.py::test_predict_shape`: parametrized with `_case_params("test_predict_shape")`.
+- [x] `test_predict_set.py::test_predict_shape`: parametrized with `_case_params("test_predict_shape")`.
   1. Assert the keys equal the grammar's non-terminals.
   2. Assert each `predict[A]` has one entry per production. The message names A and both lengths.
   3. Assert every entry is a `set`. The message lists `(A, i, type name)`.
-- [ ] Check that it runs once for each of the 22 rows.
-- [ ] `test_predict_set.py::test_predict_contents`: parametrized with `_case_params("test_predict_contents")`. Collect `(A, i, symbol)` for every symbol that is `EPS` or a non-terminal, and assert the list is empty. The message lists them.
-- [ ] Check that it runs once for each of the 22 rows.
+- [x] Check that it runs once for each of the 22 rows.
+- [x] `test_predict_set.py::test_predict_contents`: parametrized with `_case_params("test_predict_contents")`. Collect `(A, i, symbol)` for every symbol that is `EPS` or a non-terminal, and assert the list is empty. The message lists them.
+- [x] Check that it runs once for each of the 22 rows.
 
 ## 6. Inputs unchanged (plan §7.3)
-- [ ] `test_predict_set.py::test_inputs_are_read_only`: parametrized with `_case_params("test_inputs_are_read_only")`.
+- [x] `test_predict_set.py::test_inputs_are_read_only`: parametrized with `_case_params("test_inputs_are_read_only")`.
   1. Call `predict_inputs`.
   2. Snapshot `(grammar, first, follow)`. For E rows this happens after FIRST and FOLLOW are computed.
   3. Call `compute_predict_set`.
   4. Assert the three are unchanged.
-- [ ] Check that it runs once for each of the 22 rows.
+- [x] Check that it runs once for each of the 22 rows.
 
 ## 7. Output independent of inputs (plan §7.4)
-- [ ] `test_predict_set.py::test_predict_independent_of_inputs`: parametrized with `_case_params("test_predict_independent_of_inputs")`.
+- [x] `test_predict_set.py::test_predict_independent_of_inputs`: parametrized with `_case_params("test_predict_independent_of_inputs")`.
   1. Call `predict_inputs` and `compute_predict_set`.
   2. Snapshot `(first, follow)`.
   3. Add `PROBE` to every entry of every `predict[A]`.
   4. Assert `(first, follow)` are unchanged. The message names the non-terminals whose FIRST or FOLLOW gained `PROBE`.
-- [ ] Check that it runs once for each of the 22 rows.
+- [x] Check that it runs once for each of the 22 rows.
 
 ## 8. Order independence (plan §7.5)
-- [ ] `test_predict_set.py::_order_params()`: generates the order rows.
+- [x] `test_predict_set.py::_order_params()`: generates the order rows.
   - Keep the start key first.
   - Use every permutation of the other keys when the grammar has at most 4 non-terminals. Otherwise use them as declared and reversed.
   - Never reorder the productions inside a non-terminal.
   - Ids look like `f"{case_id}[{','.join(order)}]"`.
   - Attach an xfail mark when `f"test_predict_is_order_independent::{id}"` is in `KNOWN_FAILURES`.
-- [ ] `test_predict_set.py::test_predict_is_order_independent`: assert `run_predict(reorder(grammar, order), first_preset, follow_preset) == expected`.
-- [ ] P1 rows: 1 order.
-- [ ] P2 rows: 1 order.
-- [ ] P3 rows: 1 order.
-- [ ] P4 rows: 1 order.
-- [ ] P5 rows: 1 order.
-- [ ] P6 rows: 2 orders.
-- [ ] P7 rows: 2 orders.
-- [ ] P8 rows: 6 orders.
-- [ ] P9 rows: 2 orders.
-- [ ] P10 rows: 2 orders.
-- [ ] P11 rows: 1 order.
-- [ ] P12 rows: 1 order.
-- [ ] P13 rows: 1 order.
-- [ ] P14 rows: 1 order.
-- [ ] P15 rows: 6 orders.
-- [ ] P16 rows: 1 order.
-- [ ] P17 rows: 1 order.
-- [ ] P18 rows: 1 order.
-- [ ] E1 rows: 2 orders.
-- [ ] E2 rows: 2 orders, declared and reversed (it has 5 non-terminals).
-- [ ] E3 rows: 6 orders.
-- [ ] E4 rows: 6 orders.
-- [ ] Check that no generated order moves the start key away from the first position.
-- [ ] Check that `test_predict_set.py` produces 48 order rows. `-k order_independent` also matches the FIRST and FOLLOW order tests, so count only the lines from this file.
+- [x] `test_predict_set.py::test_predict_is_order_independent`: assert `run_predict(reorder(grammar, order), first_preset, follow_preset) == expected`.
+- [x] P1 rows: 1 order.
+- [x] P2 rows: 1 order.
+- [x] P3 rows: 1 order.
+- [x] P4 rows: 1 order.
+- [x] P5 rows: 1 order.
+- [x] P6 rows: 2 orders.
+- [x] P7 rows: 2 orders.
+- [x] P8 rows: 6 orders.
+- [x] P9 rows: 2 orders.
+- [x] P10 rows: 2 orders.
+- [x] P11 rows: 1 order.
+- [x] P12 rows: 1 order.
+- [x] P13 rows: 1 order.
+- [x] P14 rows: 1 order.
+- [x] P15 rows: 6 orders.
+- [x] P16 rows: 1 order.
+- [x] P17 rows: 1 order.
+- [x] P18 rows: 1 order.
+- [x] E1 rows: 2 orders.
+- [x] E2 rows: 2 orders, declared and reversed (it has 5 non-terminals).
+- [x] E3 rows: 6 orders.
+- [x] E4 rows: 6 orders.
+- [x] Check that no generated order moves the start key away from the first position.
+- [x] Check that `test_predict_set.py` produces 48 order rows. `-k order_independent` also matches the FIRST and FOLLOW order tests, so count only the lines from this file.
 
 ## 9. Same result on fresh runs (plan §7.6)
-- [ ] `test_predict_set.py::test_predict_same_on_fresh_runs`: parametrized with `_case_params("test_predict_same_on_fresh_runs")`.
+- [x] `test_predict_set.py::test_predict_same_on_fresh_runs`: parametrized with `_case_params("test_predict_same_on_fresh_runs")`.
   1. Call `predict_inputs` once.
   2. Build a second empty `predict`.
   3. Call `compute_predict_set` on each, using the same input objects.
   4. Assert the two results are equal.
-- [ ] Check that it runs once for each of the 22 rows.
+- [x] Check that it runs once for each of the 22 rows.
 
 ## 10. Isolation (plan §7.7)
-- [ ] `test_predict_set.py::test_module_globals_untouched`:
+- [x] `test_predict_set.py::test_module_globals_untouched`:
   1. Deep-copy `main.grammar`, `main.first`, `main.follow`, `main.predict` and `main.non_terminals_set`.
   2. Run `run_predict` on the `E1-main-grammar` row.
   3. Assert the five globals are unchanged.
-- [ ] Review that no test or helper writes to `main`'s module-level variables, and that every test builds its own inputs.
+- [x] Review that no test or helper writes to `main`'s module-level variables, and that every test builds its own inputs.
 
 ## 11. First run and xfail workflow (plan §8)
-- [ ] Run `pytest syntax/tests -v` with no marks, and save the list of failing ids with their exception types.
-- [ ] Add a `KNOWN_FAILURES` entry for each failing parametrized row: main, shape, contents, inputs, independence, order and fresh-run tests.
-- [ ] Add the `@pytest.mark.xfail(...)` decorator if the isolation test fails.
-- [ ] Check that every `reason` describes only the **symptom** (e.g. "prediction set of S → A B contains d", "changing predict changes FOLLOW(A)"), never the cause or a fix.
-- [ ] Check that every `raises` is the exception actually seen (`AssertionError`, `KeyError`, `IndexError`, `AttributeError`, `pytest.fail.Exception`, …) and that every mark has `strict=True`.
-- [ ] List every marked test in plan.md §10 as `id — symptom — exception`.
-- [ ] Rerun. Expect only passes and xfails: no failures, no errors, no XPASS.
-- [ ] Check that the FIRST (93) and FOLLOW (179) suites still all pass.
+- [x] Run `pytest syntax/tests -v` with no marks, and save the list of failing ids with their exception types.
+- [x] Add a `KNOWN_FAILURES` entry for each failing parametrized row: main, shape, contents, inputs, independence, order and fresh-run tests.
+- [x] Add the `@pytest.mark.xfail(...)` decorator if the isolation test fails.
+- [x] Check that every `reason` describes only the **symptom** (e.g. "prediction set of S → A B contains d", "changing predict changes FOLLOW(A)"), never the cause or a fix.
+- [x] Check that every `raises` is the exception actually seen (`AssertionError`, `KeyError`, `IndexError`, `AttributeError`, `pytest.fail.Exception`, …) and that every mark has `strict=True`.
+- [x] List every marked test in plan.md §10 as `id — symptom — exception`.
+- [x] Rerun. Expect only passes and xfails: no failures, no errors, no XPASS.
+- [x] Check that the FIRST (93) and FOLLOW (179) suites still all pass.
 
 ## 12. Maintenance (recurring)
 - [ ] Before editing any test, re-read `main.py` and compare it with plan.md (AGENTS.md).

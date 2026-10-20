@@ -321,4 +321,7 @@ The approach is the same as in 002 §8:
 
 Format: test id — symptom — expected exception.
 
-_Not run yet._ This section is filled in after the first full run (see §8).
+None. On the first full run (2026-10-19), all 181 prediction tests passed
+against the current `compute_predict_set`, which builds each entry from
+`first_of_sequence`. `KNOWN_FAILURES` is empty and the isolation test has no
+xfail decorator.

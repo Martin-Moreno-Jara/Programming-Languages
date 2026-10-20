@@ -246,3 +246,138 @@ def _case_params(test_name: str, kind: str | None = None) -> list:
 def test_predict_rules(grammar, first_preset, follow_preset, expected, run_predict):
     # Whole-dict comparison includes the lists: entry count, order and each set exactly
     assert run_predict(grammar, first_preset, follow_preset) == expected
+
+
+# ---------------------------------------------------------------------------
+# Main tests: E rows, FIRST and FOLLOW computed by main.py (plan.md §6.2)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_predict_pipeline", "E"))
+def test_predict_pipeline(grammar, first_preset, follow_preset, expected, run_predict):
+    # Same check as test_predict_rules; a failure only here points at how the three functions work together
+    assert run_predict(grammar, first_preset, follow_preset) == expected
+
+
+# ---------------------------------------------------------------------------
+# Property tests: shape and contents of predict (plan.md §7.1–§7.2)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_predict_shape"))
+def test_predict_shape(grammar, first_preset, follow_preset, expected, run_predict):
+    predict = run_predict(grammar, first_preset, follow_preset)
+    assert set(predict) == set(grammar)
+    for A in grammar:
+        assert len(predict[A]) == len(grammar[A]), (
+            f"predict[{A}] has {len(predict[A])} entries, grammar[{A}] has {len(grammar[A])} productions"
+        )
+    not_sets = [(A, i, type(entry).__name__) for A, entries in predict.items() for i, entry in enumerate(entries) if not isinstance(entry, set)]
+    assert not_sets == [], f"entries that are not sets: {not_sets}"
+
+
+@pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_predict_contents"))
+def test_predict_contents(grammar, first_preset, follow_preset, expected, run_predict):
+    predict = run_predict(grammar, first_preset, follow_preset)
+    # A prediction set holds only terminals and $, never ε or a non-terminal
+    offenders = [
+        (A, i, sym)
+        for A, entries in predict.items()
+        for i, entry in enumerate(entries)
+        for sym in entry
+        if sym == EPS or sym in grammar
+    ]
+    assert offenders == [], f"ε or non-terminals found as (non-terminal, production index, symbol): {offenders}"
+
+
+# ---------------------------------------------------------------------------
+# Property tests: grammar, FIRST and FOLLOW are read-only (plan.md §7.3)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_inputs_are_read_only"))
+def test_inputs_are_read_only(grammar, first_preset, follow_preset, expected, predict_inputs):
+    # For E rows the snapshot is taken after FIRST and FOLLOW are computed, so only the prediction call is checked
+    grammar, first, follow, predict, non_terminals_set = predict_inputs(grammar, first_preset, follow_preset)
+    snapshot = copy.deepcopy((grammar, first, follow))
+
+    compute_predict_set(grammar, predict, first, follow, non_terminals_set)
+
+    assert (grammar, first, follow) == snapshot
+
+
+# ---------------------------------------------------------------------------
+# Property tests: changing predict never reaches FIRST or FOLLOW (plan.md §7.4)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_predict_independent_of_inputs"))
+def test_predict_independent_of_inputs(grammar, first_preset, follow_preset, expected, predict_inputs):
+    grammar, first, follow, predict, non_terminals_set = predict_inputs(grammar, first_preset, follow_preset)
+    compute_predict_set(grammar, predict, first, follow, non_terminals_set)
+    snapshot = copy.deepcopy((first, follow))
+
+    # Checks behavior, not identity: a predict entry sharing an object with an input shows up here
+    for entries in predict.values():
+        for entry in entries:
+            entry.add(PROBE)
+
+    leaked_first = sorted(A for A, s in first.items() if PROBE in s)
+    leaked_follow = sorted(A for A, s in follow.items() if PROBE in s)
+    assert (first, follow) == snapshot, f"PROBE reached FIRST of {leaked_first} and FOLLOW of {leaked_follow}"
+
+
+# ---------------------------------------------------------------------------
+# Order independence (plan.md §7.5)
+# ---------------------------------------------------------------------------
+
+def _order_params() -> list:
+    """One param per declaration order of each PREDICT_CASES grammar, start key always first: all permutations of the rest up to 4 non-terminals, else declared and reversed."""
+    params = []
+    for case_id, grammar, first_preset, follow_preset, expected in PREDICT_CASES:
+        start, *rest = tuple(grammar)
+        if len(grammar) <= 4:
+            rest_orders = list(itertools.permutations(rest))
+        else:
+            rest_orders = [tuple(rest), tuple(reversed(rest))]
+        for rest_order in rest_orders:
+            order = (start, *rest_order)
+            param_id = f"{case_id}[{','.join(order)}]"
+            marks = []
+            key = f"test_predict_is_order_independent::{param_id}"
+            if key in KNOWN_FAILURES:
+                reason, exception = KNOWN_FAILURES[key]
+                marks.append(pytest.mark.xfail(reason=reason, raises=exception, strict=True))
+            params.append(pytest.param(grammar, first_preset, follow_preset, order, expected, id=param_id, marks=marks))
+    return params
+
+
+@pytest.mark.parametrize("grammar, first_preset, follow_preset, order, expected", _order_params())
+def test_predict_is_order_independent(grammar, first_preset, follow_preset, order, expected, reorder, run_predict):
+    # Only the keys move; each non-terminal keeps its productions in order, so expected stays valid
+    assert run_predict(reorder(grammar, order), first_preset, follow_preset) == expected
+
+
+# ---------------------------------------------------------------------------
+# Same result on fresh runs (plan.md §7.6)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_predict_same_on_fresh_runs"))
+def test_predict_same_on_fresh_runs(grammar, first_preset, follow_preset, expected, predict_inputs):
+    # Both calls share the same input objects; only the predict dict is fresh each time
+    grammar, first, follow, predict_1, non_terminals_set = predict_inputs(grammar, first_preset, follow_preset)
+    predict_2 = {nt: [] for nt in grammar}
+
+    compute_predict_set(grammar, predict_1, first, follow, non_terminals_set)
+    compute_predict_set(grammar, predict_2, first, follow, non_terminals_set)
+
+    assert predict_1 == predict_2
+
+
+# ---------------------------------------------------------------------------
+# Isolation (plan.md §7.7)
+# ---------------------------------------------------------------------------
+
+def test_module_globals_untouched(run_predict):
+    globals_before = copy.deepcopy((main.grammar, main.first, main.follow, main.predict, main.non_terminals_set))
+    _, e1_grammar, e1_first, e1_follow, _ = next(case for case in PREDICT_CASES if case[0] == "E1-main-grammar")
+
+    run_predict(e1_grammar, e1_first, e1_follow)
+
+    assert (main.grammar, main.first, main.follow, main.predict, main.non_terminals_set) == globals_before

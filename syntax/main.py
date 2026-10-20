@@ -96,19 +96,16 @@ def compute_predict_set(grammar: dict[str, list[list[str]]],
                         first: dict[str, set[str]],
                         follow: dict[str, set[str]],
                         non_terminals_set: set[str]):
+    
     for A, alternatives in grammar.items():
         for derivation in alternatives:
-            first_symbol = derivation[0]
-            if first_symbol == "ε": # if the production is nullable, add follow
-                predict[A].append(follow[A])
-            elif not first_symbol in non_terminals_set: # if the production is terminal, add it directly
-                predict[A].append({first_symbol})
-            else: # it derives a non-terminal
-                if "ε" in first[first_symbol]: # if the non-terminal is nullable, add first of that symbol follow of the next 
-                    print(first_symbol)
-                    print(follow[first_symbol])
-                    predict[A].append( (first[first_symbol] - {"ε"}) | follow[first_symbol])
-                else: predict[A].append(first[first_symbol] - {"ε"}) # The non-terminal is not nullable
+            fa = first_of_sequence(derivation,first,non_terminals_set)
+            #print(f"{A} -> {derivation} ----- {fa}")
+            if "ε" in fa:
+                fa = (fa-{"ε"})|follow[A] 
+                predict[A].append(fa)
+            else:
+                predict[A].append(fa-{"ε"})
 
 if __name__ == "__main__":
     compute_first_set(grammar, first, non_terminals_set)
