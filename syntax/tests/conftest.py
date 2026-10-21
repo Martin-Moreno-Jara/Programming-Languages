@@ -78,6 +78,13 @@ def _run_predict(
     return g.get_predict_set()
 
 
+def _ll1_grammar(predict_preset: dict[str, list[set[str]]]) -> Grammar:
+    """Build a Grammar whose predict is a private copy of predict_preset; its productions are placeholders, one per set."""
+    g = _new_grammar({A: [["_"] for _ in sets] for A, sets in predict_preset.items()})
+    g.predict.update(copy.deepcopy(predict_preset))
+    return g
+
+
 @pytest.fixture
 def new_grammar():
     return _new_grammar
@@ -111,3 +118,8 @@ def predict_grammar():
 @pytest.fixture
 def run_predict():
     return _run_predict
+
+
+@pytest.fixture
+def ll1_grammar():
+    return _ll1_grammar
