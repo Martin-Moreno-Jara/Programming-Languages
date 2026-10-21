@@ -16,22 +16,25 @@ parametrized test. Tick the box when it is written and behaves as described.
 
 ## 1. Setup (plan §2–§4)
 - [x] Create `syntax/tests/` files `conftest.py` and `test_first_set.py`. Don't add an `__init__.py`.
-- [x] `conftest.py`: define `SYNTAX_ROOT = Path(__file__).resolve().parent.parent`, insert it into `sys.path` if missing, then `from main import compute_first_set`.
-- [x] `conftest.py::_fresh(grammar)`: returns `({nt: set() for nt in grammar}, set(grammar))`.
+- [x] `conftest.py`: define `SYNTAX_ROOT = Path(__file__).resolve().parent.parent`, insert it into `sys.path` if missing, then `from grammar import Grammar`.
+- [x] `conftest.py::_new_grammar(grammar)`: returns `Grammar(copy.deepcopy(grammar))`.
 - [x] `conftest.py::_reorder(grammar, order)`: returns `{nt: grammar[nt] for nt in order}`.
-- [x] `conftest.py::_run_first(grammar)`: deep-copies the grammar, calls `_fresh`, calls `compute_first_set`, and returns `first`.
-- [x] `conftest.py`: add fixtures `fresh`, `reorder` and `run_first`, each returning the matching helper.
-- [x] `test_first_set.py::EPS = "ε"`: used in every table instead of the literal symbol.
-- [x] `test_first_set.py`: import `first_of_sequence`, `compute_first_set`, `copy` and `itertools`.
+- [x] `conftest.py::_run_first(grammar)`: builds a Grammar with `_new_grammar`, calls `compute_first_set()`, and returns `g.first`.
+- [x] `conftest.py`: add fixtures `new_grammar`, `reorder` and `run_first`, each returning the matching helper.
+- [x] `test_first_set.py::EPS = "ε"` and `END = "$"`: used instead of the literal symbols.
+- [x] `test_first_set.py`: import `Grammar`, `copy` and `itertools`.
 - [x] `test_first_set.py::_grammar_params()`: turns `GRAMMAR_CASES` into `pytest.param(grammar, expected, id=case_id)`.
-- [ ] Check collection: `pytest syntax/tests --collect-only -q` lists 93 tests (11 unit + 15 end-to-end + 51 order + 15 idempotence + 1 isolation).
+- [x] Check collection: `pytest tests/test_first_set.py --collect-only -q` lists 109 tests (15 init + 11 unit + 15 end-to-end + 51 order + 15 idempotence + 2 isolation).
+
+## 2.0 Unit tests: `Grammar.__init__` (plan §5.0)
+- [x] `test_first_set.py::test_grammar_init`: parametrized with `_grammar_params()`. Assert `grammar`, `non_terminals_set`, empty `first`, `EPS` and `END`.
 
 ## 2. Unit tests: `first_of_sequence` (plan §5)
 - [x] `test_first_set.py::FIRST_OF_SEQUENCE_CASES`: a list of `pytest.param(sequence, preset, expected, id=...)`. `sequence` is one production.
 - [x] `test_first_set.py::test_first_of_sequence`: the test body.
-  1. Call `fresh({h: [["_"]] for h in preset})` and fill in the preset sets.
-  2. Deep-copy `first`.
-  3. Call `result = first_of_sequence(sequence, first, non_terminals_set)`.
+  1. Call `new_grammar({h: [["_"]] for h in preset})` and fill in the preset sets in `g.first`.
+  2. Deep-copy `g.first`.
+  3. Call `result = g.first_of_sequence(sequence)`.
   4. Assert `result == expected`.
   5. Assert `first` is unchanged.
 - [x] Row `U1-single-terminal`: a single terminal.
@@ -91,18 +94,16 @@ parametrized test. Tick the box when it is written and behaves as described.
 
 ## 5. Idempotence (plan §7.2)
 - [x] `test_first_set.py::test_compute_first_set_idempotent`: parametrized with `_grammar_params()`.
-  1. Deep-copy the grammar, then call `fresh` and `compute_first_set`.
-  2. Snapshot `first`.
-  3. Call `compute_first_set` again on the same objects.
+  1. Build `g = new_grammar(grammar)` and call `g.compute_first_set()`.
+  2. Snapshot `g.first`.
+  3. Call `g.compute_first_set()` again on the same object.
   4. Assert `first == snapshot`. Don't compare against `expected`.
 - [x] Check that it runs once for each of E1–E15 (15 rows).
 
 ## 6. Isolation (plan §7.3)
-- [x] `test_first_set.py::test_module_globals_untouched`:
-  1. Deep-copy `main.grammar`, `main.first` and `main.non_terminals_set`.
-  2. Run `run_first` on the E4 grammar.
-  3. Assert the three globals are unchanged.
-- [x] Review that no test or helper writes to `main`'s module-level variables, and that every test builds its own inputs.
+- [x] `test_first_set.py::test_input_grammar_untouched`: `Grammar(grammar).compute_first_set()` on a copy of E4 leaves that dict unchanged.
+- [x] `test_first_set.py::test_instances_do_not_share_state`: computing FIRST on an E4 object leaves an E2 object's `first` empty.
+- [x] Review that every test builds its own `Grammar` object on a grammar copy.
 
 ## 7. First run and xfail workflow (plan §8)
 _First run on 2026-10-16: 93 passed, 0 failed. No marks were needed, so the marking steps below were done with nothing to mark._
@@ -118,7 +119,7 @@ _First run on 2026-10-16: 93 passed, 0 failed. No marks were needed, so the mark
 - [x] Rerun. Expect only passes and xfails: no failures, no errors, no XPASS.
 
 ## 8. Maintenance (recurring)
-- [ ] Before editing any test, re-read `main.py` and compare it with plan.md (AGENTS.md).
+- [ ] Before editing any test, re-read `grammar.py` and compare it with plan.md (AGENTS.md).
 - [ ] When a function in the FIRST computation is added, removed, renamed or changes signature, update spec.md, plan.md, this file and the tests in the same change. A new function gets its own unit-test section, and a removed one has its tests deleted.
 - [ ] When a bug is fixed and its test turns XPASS (strict), remove the xfail mark, its `KNOWN_FAILURES` entry and its plan.md §10 line.
 - [ ] Don't add tests for the out-of-scope inputs in spec §7 unless the spec is updated first.

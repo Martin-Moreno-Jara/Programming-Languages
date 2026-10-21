@@ -6,22 +6,24 @@ failures are handled. It does not contain the test code itself.
 
 ## 1. Goal and code under test
 
-Implement the tests described in spec 002 against `syntax/main.py`:
+Implement the tests described in spec 002 against the `Grammar` class in
+`syntax/grammar.py`:
 
-| Function | Signature | Effect |
+| Member | Signature | Effect |
 |---|---|---|
-| `compute_follow_set` | `(grammar: dict[str, list[list[str]]], first: dict[str, set[str]], follow: dict[str, set[str]], non_terminals_set: set[str]) -> None` | Fills `follow` for every non-terminal, in place. Only reads `first`. The first key of `grammar` is the start symbol. |
+| `__init__` | `(self, grammar: dict[str, list[list[str]]])` | Among other state (tested by spec 001), sets `self.follow = {nt: set() for nt in grammar}` |
+| `compute_follow_set` | `(self) -> None` | Fills `self.follow` for every non-terminal, in place. Only reads `self.first`. The first key of `self.grammar` is the start symbol. |
 
-`compute_follow_set` calls `first_of_sequence` internally. That function is
-already unit-tested by spec 001, so it gets no new tests here. Arguments are
-passed by position, so renaming a parameter in `main.py` doesn't break tests.
+`compute_follow_set` calls `first_of_sequence` internally. That method is
+already unit-tested by spec 001, so it gets no new tests here.
 
-`main.py` is not modified by the agent (see `syntax/AGENTS.md`).
+`grammar.py` and `main.py` are not modified by the agent (see `syntax/AGENTS.md`).
 
 ## 2. File layout and dependencies
 
 ```
 syntax/
+├── grammar.py
 ├── main.py
 ├── specs/002-follow-set/{spec.md, plan.md}
 └── tests/
@@ -42,26 +44,23 @@ syntax/
 
 ## 3. `conftest.py` additions
 
-The existing `_fresh`, `_reorder` and `_run_first` helpers and their fixtures
-stay exactly as they are, so the FIRST suite is not affected. New code follows
-the same pattern: private helper functions, each exposed through a fixture that
-returns the function.
-
-```python
-from main import compute_first_set, compute_follow_set  # noqa: E402
-```
+The existing `_new_grammar`, `_reorder` and `_run_first` helpers (spec 001)
+and their fixtures stay exactly as they are, so the FIRST suite is not
+affected. New code follows the same pattern: private helper functions, each
+exposed through a fixture that returns the function.
 
 | Helper | Signature | Behavior |
 |---|---|---|
-| `_follow_inputs` | `(grammar, first_preset) -> tuple[grammar, first, follow, non_terminals_set]` | 1. `g = copy.deepcopy(grammar)`. 2. `follow = {nt: set() for nt in g}`, `non_terminals_set = set(g)`. 3. If `first_preset` is a dict (F case): `first = copy.deepcopy(first_preset)`. If it is `None` (E case): `first, _ = _fresh(g)`, then `compute_first_set(g, first, non_terminals_set)`. Returns all four, ready for a call. |
-| `_run_follow` | `(grammar, first_preset) -> dict[str, set[str]]` | `g, first, follow, nts = _follow_inputs(grammar, first_preset)`, then `compute_follow_set(g, first, follow, nts)`, then returns `follow`. |
+| `_follow_grammar` | `(grammar, first_preset) -> Grammar` | 1. `g = _new_grammar(grammar)` (deep copy of the grammar). 2. If `first_preset` is a dict (F case): `g.first.update(copy.deepcopy(first_preset))`. If it is `None` (E case): `g.compute_first_set()`. Returns `g`, ready for `compute_follow_set`. |
+| `_run_follow` | `(grammar, first_preset) -> dict[str, set[str]]` | `g = _follow_grammar(grammar, first_preset)`, then `g.compute_follow_set()`, then returns `g.follow`. |
 
 The deep copies make sure that if the code under test changes the grammar or
 the given FIRST sets, the change can't leak into other rows that share the same
 table entry.
 
-Fixtures: `follow_inputs` and `run_follow`, each returning the matching helper.
-The order tests reuse the existing `reorder` fixture unchanged.
+Fixtures: `follow_grammar` and `run_follow`, each returning the matching helper.
+The order tests reuse the existing `reorder` fixture unchanged, and the
+initial-state test reuses `new_grammar`.
 
 ## 4. Shared constants in `test_follow_set.py`
 
@@ -87,7 +86,7 @@ pytestmark = pytest.mark.timeout(2)
 
 - **F rows** have a dict `first_preset` with the correct FIRST sets written by
   hand (spec §4).
-- **E rows** have `first_preset = None`. `_follow_inputs` then computes FIRST
+- **E rows** have `first_preset = None`. `_follow_grammar` then computes FIRST
   with `compute_first_set` (spec §5).
 - In every grammar the start symbol is the **first key**.
 
@@ -143,6 +142,12 @@ of them changes, update both files.
 
 ## 6. Main tests — exact FOLLOW sets (spec §4, §5)
 
+### 6.0 `test_follow_starts_empty(grammar, first_preset, expected, new_grammar)`
+
+Parametrized over all 24 rows with `_case_params("test_follow_starts_empty")`.
+Assert `new_grammar(grammar).follow == {nt: set() for nt in grammar}`.
+`first_preset` and `expected` are unused (spec §6, Initial state).
+
 ### 6.1 `test_follow_rules(grammar, first_preset, expected, run_follow)`
 
 Parametrized with `_case_params("test_follow_rules", "F")`, which gives 20 rows.
@@ -183,12 +188,12 @@ Assert `set(run_follow(grammar, first_preset)) == set(grammar)`. No terminal
 was added as a key, and no non-terminal key is missing (F15 has a key whose set
 is empty).
 
-### 7.3 `test_first_is_read_only(grammar, first_preset, expected, follow_inputs)`
+### 7.3 `test_first_is_read_only(grammar, first_preset, expected, follow_grammar)`
 
-1. `g, first, follow, nts = follow_inputs(grammar, first_preset)`.
-2. `snapshot = copy.deepcopy(first)`.
-3. `compute_follow_set(g, first, follow, nts)`.
-4. Assert `first == snapshot`.
+1. `g = follow_grammar(grammar, first_preset)`.
+2. `snapshot = copy.deepcopy(g.first)`.
+3. `g.compute_follow_set()`.
+4. Assert `g.first == snapshot`.
 
 For E rows the snapshot is taken **after** `compute_first_set`, so only the
 FOLLOW call is checked.
@@ -226,33 +231,43 @@ reordered.
 
 Test body: assert `run_follow(reorder(grammar, order), first_preset) == expected`.
 
-### 7.5 Idempotence — `test_compute_follow_set_idempotent(grammar, first_preset, expected, follow_inputs)`
+### 7.5 Idempotence — `test_compute_follow_set_idempotent(grammar, first_preset, expected, follow_grammar)`
 
-1. `g, first, follow, nts = follow_inputs(grammar, first_preset)`.
-2. `compute_follow_set(g, first, follow, nts)`.
-3. `snapshot = copy.deepcopy(follow)`.
-4. Call `compute_follow_set(g, first, follow, nts)` again on the same objects.
-5. Assert `follow == snapshot`.
+1. `g = follow_grammar(grammar, first_preset)`.
+2. `g.compute_follow_set()`.
+3. `snapshot = copy.deepcopy(g.follow)`.
+4. Call `g.compute_follow_set()` again on the same object.
+5. Assert `g.follow == snapshot`.
 
 This test does not compare against `expected`, so an error in the first call
 is not reported twice.
 
-### 7.6 Isolation — `test_module_globals_untouched(run_follow)`
+### 7.6 Isolation
 
-1. Run `import main` and save deep copies of `main.grammar`, `main.first`,
-   `main.follow` and `main.non_terminals_set`.
-2. Call `run_follow` on the `E1-main-grammar` row, which also runs
-   `compute_first_set`.
-3. Assert the four globals are equal to their saved copies.
+A helper `_case(case_id)` returns the grammar of a `FOLLOW_CASES` row.
+
+`test_input_grammar_untouched()`:
+1. Deep-copy the `E1-main-grammar` grammar into `grammar` and save
+   `grammar_before`.
+2. Build `Grammar(grammar)` directly (no `new_grammar`, so the checked object
+   is the one the class received), then call `compute_first_set()` and
+   `compute_follow_set()`.
+3. Assert `grammar == grammar_before`.
+
+`test_instances_do_not_share_state(follow_grammar)`:
+1. Build `g_e1` from E1 and `g_e2` from E2, both with FIRST computed.
+2. Call `g_e1.compute_follow_set()`.
+3. Assert `g_e2.follow` is still one empty set per E2 non-terminal.
 
 As in 001, isolation also comes from how the tests are built. Every test gets
-its own copies through `follow_inputs` and `run_follow`, and no test writes to
-module-level state.
+its own `Grammar` object on a grammar copy through `follow_grammar` and
+`run_follow`.
 
 ### 7.7 Expected collection count
 
 | Test | Rows |
 |---|---|
+| `test_follow_starts_empty` | 24 |
 | `test_follow_rules` | 20 |
 | `test_follow_pipeline` | 4 |
 | `test_follow_has_no_epsilon` | 24 |
@@ -260,11 +275,9 @@ module-level state.
 | `test_first_is_read_only` | 24 |
 | `test_follow_is_order_independent` | 58 |
 | `test_compute_follow_set_idempotent` | 24 |
-| `test_module_globals_untouched` | 1 |
-| **Total in `test_follow_set.py`** | **179** |
-
-Together with the 93 FIRST tests, `pytest syntax/tests --collect-only -q`
-lists 272 tests.
+| `test_input_grammar_untouched` | 1 |
+| `test_instances_do_not_share_state` | 1 |
+| **Total in `test_follow_set.py`** | **204** |
 
 ## 8. Handling failing tests (xfail)
 
@@ -278,7 +291,7 @@ The approach is the same as in 001 §8:
    - `_case_params` and `_order_params` look the key up and attach
      `pytest.mark.xfail(reason=..., raises=..., strict=True)`. Every
      parametrized test then uses one shared mechanism.
-   - The non-parametrized isolation test uses the `@pytest.mark.xfail(...)`
+   - The non-parametrized isolation tests use the `@pytest.mark.xfail(...)`
      decorator instead.
 3. `raises` is the exception actually seen. It is usually `AssertionError` or
    `KeyError`. A test stopped by the time limit fails through `pytest.fail`,
@@ -295,7 +308,7 @@ The approach is the same as in 001 §8:
 
 ## 9. Keeping the plan in sync
 
-- Before changing any test, re-read `main.py` and compare it with this plan
+- Before changing any test, re-read `grammar.py` and compare it with this plan
   (`syntax/AGENTS.md`).
 - If `compute_follow_set` is renamed or its signature changes, update spec.md,
   this plan and the tests together. The same applies if a helper is extracted
@@ -315,9 +328,10 @@ The approach is the same as in 001 §8:
 Format: test id — symptom — expected exception.
 
 _None._ First full run on 2026-10-17: 272 passed (179 FOLLOW + 93 FIRST),
-0 failed, no timeouts. No test carries an xfail mark and `KNOWN_FAILURES` is
-empty. If a later change to `main.py` makes a test fail, add it here and mark
-it as described in §8.
+0 failed, no timeouts. After the move to the `Grammar` class, run on
+2026-10-20: 204 FOLLOW tests passed, 0 failed, no timeouts. No test carries an
+xfail mark and `KNOWN_FAILURES` is empty. If a later change to `grammar.py`
+makes a test fail, add it here and mark it as described in §8.
 
 While the suite was being written, an earlier version of `compute_follow_set`
 failed 6 F rows: F6, F7, F11, F16, F19 and F20. Their symptoms were missing

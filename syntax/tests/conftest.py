@@ -4,17 +4,12 @@ from pathlib import Path
 
 import pytest
 
-# The syntax folder (the one holding main.py) must be importable
+# The syntax folder (the one holding grammar.py) must be importable
 SYNTAX_ROOT = Path(__file__).resolve().parent.parent
 if str(SYNTAX_ROOT) not in sys.path:
     sys.path.insert(0, str(SYNTAX_ROOT))
 
-from main import compute_first_set, compute_follow_set, compute_predict_set  # noqa: E402
-
-
-def _fresh(grammar: dict[str, list[list[str]]]) -> tuple[dict[str, set[str]], set[str]]:
-    """Build the inputs the caller must prepare: an empty FIRST set per non-terminal, and the non-terminal set."""
-    return {nt: set() for nt in grammar}, set(grammar)
+from grammar import Grammar  # noqa: E402
 
 
 def _reorder(grammar: dict[str, list[list[str]]], order: tuple[str, ...]) -> dict[str, list[list[str]]]:
@@ -22,56 +17,54 @@ def _reorder(grammar: dict[str, list[list[str]]], order: tuple[str, ...]) -> dic
     return {nt: grammar[nt] for nt in order}
 
 
+def _new_grammar(grammar: dict[str, list[list[str]]]) -> Grammar:
+    """Build a Grammar object on a private copy of grammar."""
+    return Grammar(copy.deepcopy(grammar))
+
+
 def _run_first(grammar: dict[str, list[list[str]]]) -> dict[str, set[str]]:
-    """Compute FIRST on a private copy of grammar and return the resulting first dict."""
-    grammar = copy.deepcopy(grammar)
-    first, non_terminals_set = _fresh(grammar)
-    compute_first_set(grammar, first, non_terminals_set)
-    return first
+    """Compute FIRST with a fresh Grammar object and return its first dict."""
+    g = _new_grammar(grammar)
+    g.compute_first_set()
+    return g.first
 
 
-def _follow_inputs(
+def _follow_grammar(
     grammar: dict[str, list[list[str]]],
     first_preset: dict[str, set[str]] | None,
-) -> tuple[dict[str, list[list[str]]], dict[str, set[str]], dict[str, set[str]], set[str]]:
-    """Build private inputs for compute_follow_set; first is copied from first_preset, or computed if it is None."""
-    grammar = copy.deepcopy(grammar)
-    follow = {nt: set() for nt in grammar}
-    non_terminals_set = set(grammar)
+) -> Grammar:
+    """Build a Grammar ready for compute_follow_set; first is copied from first_preset, or computed if it is None."""
+    g = _new_grammar(grammar)
     if first_preset is None:
-        first, _ = _fresh(grammar)
-        compute_first_set(grammar, first, non_terminals_set)
+        g.compute_first_set()
     else:
-        first = copy.deepcopy(first_preset)
-    return grammar, first, follow, non_terminals_set
+        g.first.update(copy.deepcopy(first_preset))
+    return g
 
 
 def _run_follow(
     grammar: dict[str, list[list[str]]],
     first_preset: dict[str, set[str]] | None,
 ) -> dict[str, set[str]]:
-    """Compute FOLLOW on private inputs and return the resulting follow dict."""
-    grammar, first, follow, non_terminals_set = _follow_inputs(grammar, first_preset)
-    compute_follow_set(grammar, first, follow, non_terminals_set)
-    return follow
+    """Compute FOLLOW with a fresh Grammar object and return its follow dict."""
+    g = _follow_grammar(grammar, first_preset)
+    g.compute_follow_set()
+    return g.follow
 
 
-def _predict_inputs(
+def _predict_grammar(
     grammar: dict[str, list[list[str]]],
     first_preset: dict[str, set[str]] | None,
     follow_preset: dict[str, set[str]] | None,
-) -> tuple[dict[str, list[list[str]]], dict[str, set[str]], dict[str, set[str]], dict[str, list[set[str]]], set[str]]:
-    """Build private inputs for compute_predict_set; first/follow are copied from the presets, or computed if they are None."""
+) -> Grammar:
+    """Build a Grammar ready for compute_predict_set; first/follow are copied from the presets, or computed if they are None."""
     if first_preset is None:
-        grammar, first, follow, non_terminals_set = _follow_inputs(grammar, None)
-        compute_follow_set(grammar, first, follow, non_terminals_set)
+        g = _follow_grammar(grammar, None)
+        g.compute_follow_set()
     else:
-        grammar = copy.deepcopy(grammar)
-        first = copy.deepcopy(first_preset)
-        follow = copy.deepcopy(follow_preset)
-        non_terminals_set = set(grammar)
-    predict = {nt: [] for nt in grammar}
-    return grammar, first, follow, predict, non_terminals_set
+        g = _follow_grammar(grammar, first_preset)
+        g.follow.update(copy.deepcopy(follow_preset))
+    return g
 
 
 def _run_predict(
@@ -79,15 +72,15 @@ def _run_predict(
     first_preset: dict[str, set[str]] | None,
     follow_preset: dict[str, set[str]] | None,
 ) -> dict[str, list[set[str]]]:
-    """Compute the prediction sets on private inputs and return the resulting predict dict."""
-    grammar, first, follow, predict, non_terminals_set = _predict_inputs(grammar, first_preset, follow_preset)
-    compute_predict_set(grammar, predict, first, follow, non_terminals_set)
-    return predict
+    """Compute the prediction sets with a fresh Grammar object and return them through get_predict_set."""
+    g = _predict_grammar(grammar, first_preset, follow_preset)
+    g.compute_predict_set()
+    return g.get_predict_set()
 
 
 @pytest.fixture
-def fresh():
-    return _fresh
+def new_grammar():
+    return _new_grammar
 
 
 @pytest.fixture
@@ -101,8 +94,8 @@ def run_first():
 
 
 @pytest.fixture
-def follow_inputs():
-    return _follow_inputs
+def follow_grammar():
+    return _follow_grammar
 
 
 @pytest.fixture
@@ -111,8 +104,8 @@ def run_follow():
 
 
 @pytest.fixture
-def predict_inputs():
-    return _predict_inputs
+def predict_grammar():
+    return _predict_grammar
 
 
 @pytest.fixture

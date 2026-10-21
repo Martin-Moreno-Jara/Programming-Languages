@@ -3,13 +3,12 @@ import itertools
 
 import pytest
 
-import main
-from main import compute_follow_set
+from grammar import Grammar
 
 EPS = "ε"
 END = "$"
 
-# Every test in this file fails instead of hanging if compute_follow_set never returns (spec §6)
+# Every test in this file fails instead of hanging if Grammar.compute_follow_set never returns (spec §6)
 pytestmark = pytest.mark.timeout(2)
 
 # "<test function>::<param id>" -> (reason, expected exception type); filled in by the xfail workflow (tasks.md §9)
@@ -216,6 +215,16 @@ def _case_params(test_name: str, kind: str | None = None) -> list:
 
 
 # ---------------------------------------------------------------------------
+# Initial state: Grammar.__init__ builds an empty follow (plan.md §6.0)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("grammar, first_preset, expected", _case_params("test_follow_starts_empty"))
+def test_follow_starts_empty(grammar, first_preset, expected, new_grammar):
+    # first_preset and expected are unused: only the keys of the grammar matter here
+    assert new_grammar(grammar).follow == {nt: set() for nt in grammar}
+
+
+# ---------------------------------------------------------------------------
 # Main tests: F rows, hand-written FIRST (plan.md §6.1)
 # ---------------------------------------------------------------------------
 
@@ -226,7 +235,7 @@ def test_follow_rules(grammar, first_preset, expected, run_follow):
 
 
 # ---------------------------------------------------------------------------
-# Main tests: E rows, FIRST computed by compute_first_set (plan.md §6.2)
+# Main tests: E rows, FIRST computed by Grammar.compute_first_set (plan.md §6.2)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("grammar, first_preset, expected", _case_params("test_follow_pipeline", "E"))
@@ -254,14 +263,14 @@ def test_follow_keys_are_non_terminals(grammar, first_preset, expected, run_foll
 
 
 @pytest.mark.parametrize("grammar, first_preset, expected", _case_params("test_first_is_read_only"))
-def test_first_is_read_only(grammar, first_preset, expected, follow_inputs):
+def test_first_is_read_only(grammar, first_preset, expected, follow_grammar):
     # For E rows the snapshot is taken after FIRST is computed, so only the FOLLOW call is checked
-    grammar, first, follow, non_terminals_set = follow_inputs(grammar, first_preset)
-    snapshot = copy.deepcopy(first)
+    g = follow_grammar(grammar, first_preset)
+    snapshot = copy.deepcopy(g.first)
 
-    compute_follow_set(grammar, first, follow, non_terminals_set)
+    g.compute_follow_set()
 
-    assert first == snapshot
+    assert g.first == snapshot
 
 
 # ---------------------------------------------------------------------------
@@ -300,26 +309,43 @@ def test_follow_is_order_independent(grammar, first_preset, order, expected, reo
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("grammar, first_preset, expected", _case_params("test_compute_follow_set_idempotent"))
-def test_compute_follow_set_idempotent(grammar, first_preset, expected, follow_inputs):
+def test_compute_follow_set_idempotent(grammar, first_preset, expected, follow_grammar):
     # expected is unused: correctness is checked by the main tests,
     # here a second call only has to leave follow unchanged
-    grammar, first, follow, non_terminals_set = follow_inputs(grammar, first_preset)
-    compute_follow_set(grammar, first, follow, non_terminals_set)
-    snapshot = copy.deepcopy(follow)
+    g = follow_grammar(grammar, first_preset)
+    g.compute_follow_set()
+    snapshot = copy.deepcopy(g.follow)
 
-    compute_follow_set(grammar, first, follow, non_terminals_set)
+    g.compute_follow_set()
 
-    assert follow == snapshot
+    assert g.follow == snapshot
 
 
 # ---------------------------------------------------------------------------
 # Isolation (plan.md §7.6)
 # ---------------------------------------------------------------------------
 
-def test_module_globals_untouched(run_follow):
-    globals_before = copy.deepcopy((main.grammar, main.first, main.follow, main.non_terminals_set))
-    _, e1_grammar, e1_first, _ = next(case for case in FOLLOW_CASES if case[0] == "E1-main-grammar")
+def _case(case_id: str) -> dict[str, list[list[str]]]:
+    """Return the grammar of the FOLLOW_CASES row with the given id."""
+    return next(grammar for cid, grammar, _, _ in FOLLOW_CASES if cid == case_id)
 
-    run_follow(e1_grammar, e1_first)
 
-    assert (main.grammar, main.first, main.follow, main.non_terminals_set) == globals_before
+def test_input_grammar_untouched():
+    # No deep copy here on purpose: the object passed to Grammar is the one checked
+    grammar = copy.deepcopy(_case("E1-main-grammar"))
+    grammar_before = copy.deepcopy(grammar)
+
+    g = Grammar(grammar)
+    g.compute_first_set()
+    g.compute_follow_set()
+
+    assert grammar == grammar_before
+
+
+def test_instances_do_not_share_state(follow_grammar):
+    g_e1 = follow_grammar(_case("E1-main-grammar"), None)
+    g_e2 = follow_grammar(_case("E2-expression-grammar"), None)
+
+    g_e1.compute_follow_set()
+
+    assert g_e2.follow == {nt: set() for nt in _case("E2-expression-grammar")}

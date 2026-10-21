@@ -6,22 +6,26 @@ failures are handled. It does not contain the test code itself.
 
 ## 1. Goal and code under test
 
-Implement the tests described in spec 003 against `syntax/main.py`:
+Implement the tests described in spec 003 against the `Grammar` class in
+`syntax/grammar.py`:
 
-| Function | Signature | Effect |
+| Member | Signature | Effect |
 |---|---|---|
-| `compute_predict_set` | `(grammar: dict[str, list[list[str]]], predict: dict[str, list[set[str]]], first: dict[str, set[str]], follow: dict[str, set[str]], non_terminals_set: set[str]) -> None` | Fills `predict` in place: `predict[A][i]` is the prediction set of `grammar[A][i]`. Only reads `grammar`, `first` and `follow`. |
+| `__init__` | `(self, grammar: dict[str, list[list[str]]])` | Among other state (tested by specs 001 and 002), sets `self.predict = {nt: [] for nt in grammar}` |
+| `compute_predict_set` | `(self) -> None` | Fills `self.predict` in place: `predict[A][i]` is the prediction set of `grammar[A][i]`. Only reads `self.grammar`, `self.first` and `self.follow`. |
+| `get_predict_set` | `(self) -> dict[str, list[set[str]]]` | Returns `self.predict` |
 
-`compute_predict_set` may use `first_of_sequence` internally. That function is
-already unit-tested by spec 001, so it gets no new tests here. Arguments are
-passed by position, so renaming a parameter in `main.py` doesn't break tests.
+`compute_predict_set` uses `first_of_sequence` internally. That method is
+already unit-tested by spec 001, so it gets no new tests here.
+`check_LL1_condition` is out of scope (§9).
 
-`main.py` is not modified by the agent (see `syntax/AGENTS.md`).
+`grammar.py` and `main.py` are not modified by the agent (see `syntax/AGENTS.md`).
 
 ## 2. File layout and dependencies
 
 ```
 syntax/
+├── grammar.py
 ├── main.py
 ├── specs/003-prediction-sets/{spec.md, plan.md}
 └── tests/
@@ -39,27 +43,26 @@ syntax/
 
 ## 3. `conftest.py` additions
 
-The existing helpers (`_fresh`, `_reorder`, `_run_first`, `_follow_inputs`,
-`_run_follow`) and their fixtures stay exactly as they are. New code follows
-the same pattern: private helper functions, each exposed through a fixture that
-returns the function.
-
-```python
-from main import compute_first_set, compute_follow_set, compute_predict_set  # noqa: E402
-```
+The existing helpers (`_new_grammar`, `_reorder`, `_run_first`,
+`_follow_grammar`, `_run_follow`) and their fixtures stay exactly as they are.
+New code follows the same pattern: private helper functions, each exposed
+through a fixture that returns the function. No test imports `main` any more,
+so `conftest.py` only imports `Grammar`.
 
 | Helper | Signature | Behavior |
 |---|---|---|
-| `_predict_inputs` | `(grammar, first_preset, follow_preset) -> tuple[grammar, first, follow, predict, non_terminals_set]` | 1. If both presets are dicts (P case): `g = copy.deepcopy(grammar)`, `first = copy.deepcopy(first_preset)`, `follow = copy.deepcopy(follow_preset)`, `non_terminals_set = set(g)`. 2. If both are `None` (E case): `g, first, follow, non_terminals_set = _follow_inputs(grammar, None)`, which copies the grammar and computes FIRST, then `compute_follow_set(g, first, follow, non_terminals_set)`. 3. In both cases `predict = {nt: [] for nt in g}`. Returns all five, ready for a call. |
-| `_run_predict` | `(grammar, first_preset, follow_preset) -> dict[str, list[set[str]]]` | `g, first, follow, predict, nts = _predict_inputs(...)`, then `compute_predict_set(g, predict, first, follow, nts)`, then returns `predict`. |
+| `_predict_grammar` | `(grammar, first_preset, follow_preset) -> Grammar` | 1. If both presets are dicts (P case): `g = _follow_grammar(grammar, first_preset)`, then `g.follow.update(copy.deepcopy(follow_preset))`. 2. If both are `None` (E case): `g = _follow_grammar(grammar, None)`, which copies the grammar and computes FIRST, then `g.compute_follow_set()`. Returns `g`, ready for `compute_predict_set`. |
+| `_run_predict` | `(grammar, first_preset, follow_preset) -> dict[str, list[set[str]]]` | `g = _predict_grammar(...)`, then `g.compute_predict_set()`, then returns `g.get_predict_set()`. |
 
 The deep copies make sure that if the code under test changes the grammar or
 the given sets, the change can't leak into other rows that share the same table
-entry. Reusing `_follow_inputs` keeps one single way of computing FIRST for
-the pipeline rows.
+entry. Reusing `_follow_grammar` keeps one single way of computing FIRST for
+the pipeline rows. `_run_predict` reads the result through the getter, so every
+test that uses it also exercises `get_predict_set`.
 
-Fixtures: `predict_inputs` and `run_predict`, each returning the matching
-helper. The order tests reuse the existing `reorder` fixture unchanged.
+Fixtures: `predict_grammar` and `run_predict`, each returning the matching
+helper. The order tests reuse the existing `reorder` fixture unchanged, and the
+initial-state test reuses `new_grammar`.
 
 ## 4. Shared constants in `test_predict_set.py`
 
@@ -88,7 +91,7 @@ parameters.
 
 - **P rows** have dict presets with the correct FIRST and FOLLOW sets, written
   by hand (spec §4).
-- **E rows** have `first_preset = follow_preset = None`. `_predict_inputs` then
+- **E rows** have `first_preset = follow_preset = None`. `_predict_grammar` then
   computes both (spec §5).
 - `expected` maps each non-terminal to a **list** of sets, one per production,
   in production order.
@@ -145,6 +148,17 @@ against an independent reference computation when the spec was written.
 
 ## 6. Main tests — exact prediction sets (spec §4, §5)
 
+### 6.0 Initial state and getter (spec §6)
+
+Both are parametrized over all 22 rows; presets and `expected` are unused.
+
+- `test_predict_starts_empty(grammar, first_preset, follow_preset, expected, new_grammar)`:
+  assert `new_grammar(grammar).predict == {nt: [] for nt in grammar}`.
+- `test_get_predict_set(grammar, first_preset, follow_preset, expected, predict_grammar)`:
+  with `g = predict_grammar(...)`, assert `g.get_predict_set() is g.predict`,
+  call `g.compute_predict_set()`, and assert it again. `is` checks that the
+  getter hands out the object itself, not a copy.
+
 ### 6.1 `test_predict_rules(grammar, first_preset, follow_preset, expected, run_predict)`
 
 Parametrized with `_case_params("test_predict_rules", "P")`, which gives 18 rows.
@@ -160,7 +174,7 @@ Parametrized with `_case_params("test_predict_pipeline", "E")`, which gives 4
 rows. The body is the same as 6.1. FIRST and FOLLOW are computed for real.
 
 There are two functions so that the spec's split stays visible in pytest output.
-A failure only in `test_predict_pipeline` points at how the three functions
+A failure only in `test_predict_pipeline` points at how the three methods
 work together.
 
 ## 7. Property tests (spec §3, §6)
@@ -185,29 +199,29 @@ the main tests' job.
 3. Assert `offenders == []`. The message lists them: the non-terminal, the
    production index and the bad symbol.
 
-### 7.3 `test_inputs_are_read_only(grammar, first_preset, follow_preset, expected, predict_inputs)`
+### 7.3 `test_inputs_are_read_only(grammar, first_preset, follow_preset, expected, predict_grammar)`
 
-1. `g, first, follow, predict, nts = predict_inputs(grammar, first_preset, follow_preset)`.
-2. `snapshot = copy.deepcopy((g, first, follow))`.
-3. `compute_predict_set(g, predict, first, follow, nts)`.
-4. Assert `(g, first, follow) == snapshot`.
+1. `g = predict_grammar(grammar, first_preset, follow_preset)`.
+2. `snapshot = copy.deepcopy((g.grammar, g.first, g.follow))`.
+3. `g.compute_predict_set()`.
+4. Assert `(g.grammar, g.first, g.follow) == snapshot`.
 
 For E rows the snapshot is taken **after** FIRST and FOLLOW are computed, so
 only the prediction call is checked.
 
-### 7.4 `test_predict_independent_of_inputs(grammar, first_preset, follow_preset, expected, predict_inputs)`
+### 7.4 `test_predict_independent_of_inputs(grammar, first_preset, follow_preset, expected, predict_grammar)`
 
 Checks the spec §6 property "Output independent of inputs".
 
-1. `g, first, follow, predict, nts = predict_inputs(...)`.
-2. `compute_predict_set(g, predict, first, follow, nts)`.
-3. `snapshot = copy.deepcopy((first, follow))`.
-4. For every entry of every `predict[A]`: `entry.add(PROBE)`.
-5. Assert `(first, follow) == snapshot`. When it fails, the message names the
-   non-terminals whose FIRST or FOLLOW gained `PROBE`.
+1. `g = predict_grammar(...)`.
+2. `g.compute_predict_set()`.
+3. `snapshot = copy.deepcopy((g.first, g.follow))`.
+4. For every entry of every `g.predict[A]`: `entry.add(PROBE)`.
+5. Assert `(g.first, g.follow) == snapshot`. When it fails, the message names
+   the non-terminals whose FIRST or FOLLOW gained `PROBE`.
 
 This test checks behavior, not object identity. It doesn't care how the
-function builds its sets, only that changing them can't reach the inputs. If
+method builds its sets, only that changing them can't reach the inputs. If
 an entry is not a set, `add` raises. `test_predict_shape` then shows the real
 symptom.
 
@@ -239,34 +253,44 @@ Total: 12 + 12 + 24 = **48 rows**.
 
 Test body: assert `run_predict(reorder(grammar, order), first_preset, follow_preset) == expected`.
 
-### 7.6 Same result on fresh runs — `test_predict_same_on_fresh_runs(grammar, first_preset, follow_preset, expected, predict_inputs)`
+### 7.6 Same result on fresh runs — `test_predict_same_on_fresh_runs(grammar, first_preset, follow_preset, expected, predict_grammar)`
 
-1. `g, first, follow, predict_1, nts = predict_inputs(...)`.
-2. `predict_2 = {nt: [] for nt in g}`.
-3. `compute_predict_set(g, predict_1, first, follow, nts)`, then
-   `compute_predict_set(g, predict_2, first, follow, nts)`. Both use the
-   **same** input objects.
-4. Assert `predict_1 == predict_2`.
+1. `g_1 = predict_grammar(...)` and `g_2 = predict_grammar(...)`, from the
+   same row.
+2. `g_1.compute_predict_set()`, then `g_2.compute_predict_set()`.
+3. Assert `g_1.predict == g_2.predict`.
 
-Calling it a second time on an already-filled `predict` is out of scope
-(spec §7), so it is not tested.
+Calling it a second time on the same object, whose `predict` is already
+filled, is out of scope (spec §7), so it is not tested.
 
-### 7.7 Isolation — `test_module_globals_untouched(run_predict)`
+### 7.7 Isolation
 
-1. Run `import main` and save deep copies of `main.grammar`, `main.first`,
-   `main.follow`, `main.predict` and `main.non_terminals_set`.
-2. Call `run_predict` on the `E1-main-grammar` row, which runs the full
-   pipeline.
-3. Assert the five globals are equal to their saved copies.
+A helper `_case(case_id)` returns the grammar of a `PREDICT_CASES` row.
+
+`test_input_grammar_untouched()`:
+1. Deep-copy the `E1-main-grammar` grammar into `grammar` and save
+   `grammar_before`.
+2. Build `Grammar(grammar)` directly (no `new_grammar`, so the checked object
+   is the one the class received), then run `compute_first_set()`,
+   `compute_follow_set()` and `compute_predict_set()`.
+3. Assert `grammar == grammar_before`.
+
+`test_instances_do_not_share_state(predict_grammar)`:
+1. Build `g_e1` from E1 and `g_e2` from E2, both with FIRST and FOLLOW
+   computed.
+2. Call `g_e1.compute_predict_set()`.
+3. Assert `g_e2.predict` is still one empty list per E2 non-terminal.
 
 As in 001 and 002, isolation also comes from how the tests are built. Every
-test gets its own copies through `predict_inputs` and `run_predict`, and no
-test writes to module-level state.
+test gets its own `Grammar` object on a grammar copy through `predict_grammar`
+and `run_predict`.
 
 ### 7.8 Expected collection count
 
 | Test | Rows |
 |---|---|
+| `test_predict_starts_empty` | 22 |
+| `test_get_predict_set` | 22 |
 | `test_predict_rules` | 18 |
 | `test_predict_pipeline` | 4 |
 | `test_predict_shape` | 22 |
@@ -275,11 +299,12 @@ test writes to module-level state.
 | `test_predict_independent_of_inputs` | 22 |
 | `test_predict_is_order_independent` | 48 |
 | `test_predict_same_on_fresh_runs` | 22 |
-| `test_module_globals_untouched` | 1 |
-| **Total in `test_predict_set.py`** | **181** |
+| `test_input_grammar_untouched` | 1 |
+| `test_instances_do_not_share_state` | 1 |
+| **Total in `test_predict_set.py`** | **226** |
 
-Together with the 93 FIRST tests and the 179 FOLLOW tests,
-`pytest syntax/tests --collect-only -q` lists 453 tests.
+Together with the 109 FIRST tests and the 204 FOLLOW tests,
+`pytest syntax/tests --collect-only -q` lists 539 tests.
 
 ## 8. Handling failing tests (xfail)
 
@@ -291,7 +316,7 @@ The approach is the same as in 002 §8:
    `"test_predict_rules::P6-rest-not-follow-of-symbol"`. `_case_params` and
    `_order_params` attach
    `pytest.mark.xfail(reason=..., raises=..., strict=True)` from it. The
-   isolation test uses the `@pytest.mark.xfail(...)` decorator instead.
+   isolation tests use the `@pytest.mark.xfail(...)` decorator instead.
 3. `raises` is the exception actually seen: usually `AssertionError`,
    sometimes `KeyError`, `IndexError` or `AttributeError`. A timeout raises
    `pytest.fail.Exception`; 002 §8 confirmed that this works with xfail.
@@ -303,7 +328,7 @@ The approach is the same as in 002 §8:
 
 ## 9. Keeping the plan in sync
 
-- Before changing any test, re-read `main.py` and compare it with this plan
+- Before changing any test, re-read `grammar.py` and compare it with this plan
   (`syntax/AGENTS.md`).
 - If `compute_predict_set` is renamed or its signature changes, update
   spec.md, this plan and the tests together. The same applies if the output
@@ -312,7 +337,8 @@ The approach is the same as in 002 §8:
 - The E rows depend on `first_of_sequence`, `compute_first_set` and
   `compute_follow_set`. When any of them changes, re-run all three suites.
 - An LL(1) conflict check or parse-table function is out of scope here. If
-  one is added, it gets its own spec.
+  one is added, it gets its own spec. `Grammar.check_LL1_condition` now
+  exists and has no spec or tests yet.
 - When a known failure is fixed, remove its `KNOWN_FAILURES` entry or
   decorator and its line in §10.
 - Out of scope: the inputs listed in spec §7. No tests are written for them.
@@ -323,5 +349,6 @@ Format: test id — symptom — expected exception.
 
 None. On the first full run (2026-10-19), all 181 prediction tests passed
 against the current `compute_predict_set`, which builds each entry from
-`first_of_sequence`. `KNOWN_FAILURES` is empty and the isolation test has no
-xfail decorator.
+`first_of_sequence`. After the move to the `Grammar` class, run on
+2026-10-20: 226 prediction tests passed (539 in the whole suite).
+`KNOWN_FAILURES` is empty and the isolation tests have no xfail decorator.

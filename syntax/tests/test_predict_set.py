@@ -3,15 +3,14 @@ import itertools
 
 import pytest
 
-import main
-from main import compute_predict_set
+from grammar import Grammar
 
 EPS = "ε"
 END = "$"
 # A token that appears in no grammar; added to predict entries by the independence test
 PROBE = "<probe>"
 
-# Every test in this file fails instead of hanging if compute_predict_set never returns (spec §6)
+# Every test in this file fails instead of hanging if Grammar.compute_predict_set never returns (spec §6)
 pytestmark = pytest.mark.timeout(2)
 
 # "<test function>::<param id>" -> (reason, expected exception type); filled in by the xfail workflow (tasks.md §11)
@@ -239,6 +238,27 @@ def _case_params(test_name: str, kind: str | None = None) -> list:
 
 
 # ---------------------------------------------------------------------------
+# Initial state and getter: Grammar.__init__, Grammar.get_predict_set (plan.md §6.0)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_predict_starts_empty"))
+def test_predict_starts_empty(grammar, first_preset, follow_preset, expected, new_grammar):
+    # Presets and expected are unused: only the keys of the grammar matter here
+    assert new_grammar(grammar).predict == {nt: [] for nt in grammar}
+
+
+@pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_get_predict_set"))
+def test_get_predict_set(grammar, first_preset, follow_preset, expected, predict_grammar):
+    # expected is unused: the getter must hand out the object's own predict dict, not a copy
+    g = predict_grammar(grammar, first_preset, follow_preset)
+    assert g.get_predict_set() is g.predict
+
+    g.compute_predict_set()
+
+    assert g.get_predict_set() is g.predict
+
+
+# ---------------------------------------------------------------------------
 # Main tests: P rows, hand-written FIRST and FOLLOW (plan.md §6.1)
 # ---------------------------------------------------------------------------
 
@@ -249,12 +269,12 @@ def test_predict_rules(grammar, first_preset, follow_preset, expected, run_predi
 
 
 # ---------------------------------------------------------------------------
-# Main tests: E rows, FIRST and FOLLOW computed by main.py (plan.md §6.2)
+# Main tests: E rows, FIRST and FOLLOW computed by Grammar (plan.md §6.2)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_predict_pipeline", "E"))
 def test_predict_pipeline(grammar, first_preset, follow_preset, expected, run_predict):
-    # Same check as test_predict_rules; a failure only here points at how the three functions work together
+    # Same check as test_predict_rules; a failure only here points at how the three methods work together
     assert run_predict(grammar, first_preset, follow_preset) == expected
 
 
@@ -293,14 +313,14 @@ def test_predict_contents(grammar, first_preset, follow_preset, expected, run_pr
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_inputs_are_read_only"))
-def test_inputs_are_read_only(grammar, first_preset, follow_preset, expected, predict_inputs):
+def test_inputs_are_read_only(grammar, first_preset, follow_preset, expected, predict_grammar):
     # For E rows the snapshot is taken after FIRST and FOLLOW are computed, so only the prediction call is checked
-    grammar, first, follow, predict, non_terminals_set = predict_inputs(grammar, first_preset, follow_preset)
-    snapshot = copy.deepcopy((grammar, first, follow))
+    g = predict_grammar(grammar, first_preset, follow_preset)
+    snapshot = copy.deepcopy((g.grammar, g.first, g.follow))
 
-    compute_predict_set(grammar, predict, first, follow, non_terminals_set)
+    g.compute_predict_set()
 
-    assert (grammar, first, follow) == snapshot
+    assert (g.grammar, g.first, g.follow) == snapshot
 
 
 # ---------------------------------------------------------------------------
@@ -308,19 +328,19 @@ def test_inputs_are_read_only(grammar, first_preset, follow_preset, expected, pr
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_predict_independent_of_inputs"))
-def test_predict_independent_of_inputs(grammar, first_preset, follow_preset, expected, predict_inputs):
-    grammar, first, follow, predict, non_terminals_set = predict_inputs(grammar, first_preset, follow_preset)
-    compute_predict_set(grammar, predict, first, follow, non_terminals_set)
-    snapshot = copy.deepcopy((first, follow))
+def test_predict_independent_of_inputs(grammar, first_preset, follow_preset, expected, predict_grammar):
+    g = predict_grammar(grammar, first_preset, follow_preset)
+    g.compute_predict_set()
+    snapshot = copy.deepcopy((g.first, g.follow))
 
     # Checks behavior, not identity: a predict entry sharing an object with an input shows up here
-    for entries in predict.values():
+    for entries in g.predict.values():
         for entry in entries:
             entry.add(PROBE)
 
-    leaked_first = sorted(A for A, s in first.items() if PROBE in s)
-    leaked_follow = sorted(A for A, s in follow.items() if PROBE in s)
-    assert (first, follow) == snapshot, f"PROBE reached FIRST of {leaked_first} and FOLLOW of {leaked_follow}"
+    leaked_first = sorted(A for A, s in g.first.items() if PROBE in s)
+    leaked_follow = sorted(A for A, s in g.follow.items() if PROBE in s)
+    assert (g.first, g.follow) == snapshot, f"PROBE reached FIRST of {leaked_first} and FOLLOW of {leaked_follow}"
 
 
 # ---------------------------------------------------------------------------
@@ -359,25 +379,43 @@ def test_predict_is_order_independent(grammar, first_preset, follow_preset, orde
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("grammar, first_preset, follow_preset, expected", _case_params("test_predict_same_on_fresh_runs"))
-def test_predict_same_on_fresh_runs(grammar, first_preset, follow_preset, expected, predict_inputs):
-    # Both calls share the same input objects; only the predict dict is fresh each time
-    grammar, first, follow, predict_1, non_terminals_set = predict_inputs(grammar, first_preset, follow_preset)
-    predict_2 = {nt: [] for nt in grammar}
+def test_predict_same_on_fresh_runs(grammar, first_preset, follow_preset, expected, predict_grammar):
+    # Two objects built from the same inputs; a second call on one object is out of scope (spec §7)
+    g_1 = predict_grammar(grammar, first_preset, follow_preset)
+    g_2 = predict_grammar(grammar, first_preset, follow_preset)
 
-    compute_predict_set(grammar, predict_1, first, follow, non_terminals_set)
-    compute_predict_set(grammar, predict_2, first, follow, non_terminals_set)
+    g_1.compute_predict_set()
+    g_2.compute_predict_set()
 
-    assert predict_1 == predict_2
+    assert g_1.predict == g_2.predict
 
 
 # ---------------------------------------------------------------------------
 # Isolation (plan.md §7.7)
 # ---------------------------------------------------------------------------
 
-def test_module_globals_untouched(run_predict):
-    globals_before = copy.deepcopy((main.grammar, main.first, main.follow, main.predict, main.non_terminals_set))
-    _, e1_grammar, e1_first, e1_follow, _ = next(case for case in PREDICT_CASES if case[0] == "E1-main-grammar")
+def _case(case_id: str) -> dict[str, list[list[str]]]:
+    """Return the grammar of the PREDICT_CASES row with the given id."""
+    return next(grammar for cid, grammar, _, _, _ in PREDICT_CASES if cid == case_id)
 
-    run_predict(e1_grammar, e1_first, e1_follow)
 
-    assert (main.grammar, main.first, main.follow, main.predict, main.non_terminals_set) == globals_before
+def test_input_grammar_untouched():
+    # No deep copy here on purpose: the object passed to Grammar is the one checked
+    grammar = copy.deepcopy(_case("E1-main-grammar"))
+    grammar_before = copy.deepcopy(grammar)
+
+    g = Grammar(grammar)
+    g.compute_first_set()
+    g.compute_follow_set()
+    g.compute_predict_set()
+
+    assert grammar == grammar_before
+
+
+def test_instances_do_not_share_state(predict_grammar):
+    g_e1 = predict_grammar(_case("E1-main-grammar"), None, None)
+    g_e2 = predict_grammar(_case("E2-expression-grammar"), None, None)
+
+    g_e1.compute_predict_set()
+
+    assert g_e2.predict == {nt: [] for nt in _case("E2-expression-grammar")}

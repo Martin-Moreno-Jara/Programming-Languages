@@ -3,9 +3,10 @@
 ## 1. Purpose and scope
 
 This spec describes how to test that the FOLLOW sets of a grammar are computed
-correctly by `syntax/main.py`.
+correctly by the `Grammar` class in `syntax/grammar.py`.
 
-- **In scope:** the function `compute_follow_set`.
+- **In scope:** the method `Grammar.compute_follow_set`, and the empty
+  `follow` dictionary the constructor builds for it.
 - **Out of scope:** the FIRST computation (covered by spec 001), checking
   whether the grammar is LL(1), prediction sets and the parser itself. A
   grammar that is not LL(1) (left recursive, with common prefixes...) still has
@@ -18,26 +19,23 @@ The grammar format is the same as in spec 001 §2: a dictionary
 production `["ε"]`, and any symbol that is not a key is a terminal.
 
 One extra rule matters for FOLLOW: **the first key of the dictionary is the
-start symbol.** The function has no start-symbol parameter, so the order of
+start symbol.** The method has no start-symbol parameter, so the order of
 the first key carries that meaning.
 
 The end-of-input marker is the string `"$"`.
 
-The caller prepares these values before calling the function:
+The caller builds a `Grammar` object and makes sure its FIRST sets are
+complete and correct before computing FOLLOW:
 
 ```python
-first = {...}                            # FIRST sets, already complete and correct
-follow = {nt: set() for nt in grammar}   # one empty set per non-terminal
-non_terminals_set = set(grammar)
+g = Grammar(grammar)    # g.follow == {nt: set() for nt in grammar}
+g.compute_first_set()   # or fill g.first by hand
+g.compute_follow_set()  # fills g.follow in place, returns nothing
 ```
 
-```python
-compute_follow_set(grammar, first, follow, non_terminals_set)   # fills follow in place, returns nothing
-```
-
-The function only **reads** `first` and must not change it. The tests assume
-it uses only what it receives as parameters, not the module-level `grammar`,
-`first`, `follow` or `non_terminals_set`.
+The method only **reads** `g.first` and must not change it. The tests assume
+it uses only the object's own state, so two `Grammar` objects never affect
+each other.
 
 ## 3. What "correct" means
 
@@ -70,8 +68,8 @@ Most tests do not call `compute_first_set`. They give the correct FIRST sets,
 written by hand, so that a failure here can only come from the FOLLOW
 computation. Each test:
 
-1. Builds the grammar, the hand-written `first`, an empty `follow` and
-   `non_terminals_set`.
+1. Builds a `Grammar` object and fills its `first` with the hand-written
+   sets.
 2. Calls `compute_follow_set` once.
 3. Compares the whole `follow` dictionary against the expected one, and checks
    the properties in §3.
@@ -104,9 +102,9 @@ non-terminal listed is the start symbol.
 
 ## 5. Full-pipeline tests (E cases)
 
-A smaller group runs the real pipeline: build fresh `first` and `follow`,
-call `compute_first_set`, then call `compute_follow_set`, and compare the whole
-`follow` dictionary. These tests check that the two functions work together,
+A smaller group runs the real pipeline: build a new `Grammar` object, call
+`compute_first_set`, then call `compute_follow_set`, and compare the whole
+`follow` dictionary. These tests check that the two methods work together,
 the way the parser will use them.
 
 **E1. The grammar currently in `main.py`.**
@@ -142,10 +140,13 @@ Expected: S = {$}, A = {d, c, $}, B = {c, $}, C = {$}, D = {c, $}
 by hand. Expected: the same FOLLOW sets as F20.
 
 If an E case fails while the matching F case (or the FIRST tests of spec 001)
-pass, the problem is in how the two functions connect, not in the FOLLOW rules
+pass, the problem is in how the two methods connect, not in the FOLLOW rules
 themselves.
 
 ## 6. Properties checked across all grammars
+
+**Initial state.** For every F and E grammar, a new `Grammar` object has one
+empty FOLLOW set per non-terminal.
 
 **Termination.** Every test has a time limit. If `compute_follow_set` never
 returns, the test fails instead of hanging the whole suite. This matters most
@@ -164,10 +165,11 @@ and reversed. F10 must explicitly be tested in the bottom-up order (`S`, then
 **Idempotence.** Calling `compute_follow_set` a second time on the same
 `follow` dictionary must not change the result.
 
-**Isolation.** Every test builds its own `grammar`, `first`, `follow` and
-`non_terminals_set`. No test depends on the module-level variables of
-`main.py` or on another test having run before it, and running the function
-leaves those module-level variables unchanged.
+**Isolation.** Every test builds its own `Grammar` object from a private copy
+of the grammar. Computing FIRST and FOLLOW must not modify the dictionary
+passed to the constructor, and computing FOLLOW on one object must not change
+another object's `follow`. No test depends on another test having run before
+it.
 
 ## 7. Out of scope (well-formed inputs only)
 
@@ -187,8 +189,8 @@ These inputs are not tested. Their behavior is not defined yet:
 ## 8. Test organization
 
 - File: `syntax/tests/test_follow_set.py`.
-- Reuse the `fresh` and `reorder` helpers from `conftest.py`, extended so they
-  also build an empty `follow` dictionary.
+- Reuse the `new_grammar` and `reorder` helpers from `conftest.py`, plus a
+  `follow_grammar` helper that also fills `first` (hand-written or computed).
 - Use `pytest.mark.parametrize` for the F table (section 4), the E table
   (section 5) and the key orders (section 6).
 - Failing tests get an xfail mark as in spec 001. The reason text describes

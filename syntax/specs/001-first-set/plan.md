@@ -6,23 +6,26 @@ failures are handled. It does not contain the test code itself.
 
 ## 1. Goal and code under test
 
-Implement the tests described in spec 001 against `syntax/main.py`:
+Implement the tests described in spec 001 against the `Grammar` class in
+`syntax/grammar.py`:
 
-| Function | Signature | Effect |
+| Member | Signature | Effect |
 |---|---|---|
-| `first_of_sequence` | `(sequence: list[str], first: dict[str, set[str]], non_terminals_set: set[str]) -> set[str]` | Returns FIRST of one production. Only reads `first`. |
-| `compute_first_set` | `(grammar: dict[str, list[list[str]]], first: dict[str, set[str]], non_terminals_set: set[str]) -> None` | Fills `first` for every non-terminal, in place |
+| `__init__` | `(self, grammar: dict[str, list[list[str]]])` | Stores `grammar`, sets `non_terminals_set`, an empty `first` set per non-terminal, `EPS` and `END` |
+| `first_of_sequence` | `(self, sequence: list[str]) -> set[str]` | Returns FIRST of one production. Only reads `self.first`. |
+| `compute_first_set` | `(self) -> None` | Fills `self.first` for every non-terminal, in place |
 
-Unit tests check the set `first_of_sequence` returns. End-to-end tests read
-the result from `first` after calling `compute_first_set`. Arguments are
-passed by position, so renaming a parameter in `main.py` doesn't break tests.
+Unit tests check the constructor's state and the set `first_of_sequence`
+returns. End-to-end tests read `g.first` after calling `compute_first_set`.
+Arguments are passed by position, so renaming a parameter doesn't break tests.
 
-`main.py` is not modified by the agent (see `syntax/AGENTS.md`).
+`grammar.py` and `main.py` are not modified by the agent (see `syntax/AGENTS.md`).
 
 ## 2. File layout
 
 ```
 syntax/
+├── grammar.py
 ├── main.py
 ├── specs/001-first-set/{spec.md, plan.md}
 └── tests/
@@ -43,22 +46,22 @@ It follows the same pattern as `lexer/test-strategy/conftest.py`: private
 helper functions, each exposed through a fixture that returns the function.
 
 ```python
-SYNTAX_ROOT = Path(__file__).resolve().parent.parent   # folder holding main.py
+SYNTAX_ROOT = Path(__file__).resolve().parent.parent   # folder holding grammar.py
 # inserted at sys.path[0] if missing, then:
-from main import compute_first_set  # noqa: E402
+from grammar import Grammar  # noqa: E402
 ```
 
 | Helper | Signature | Behavior |
 |---|---|---|
-| `_fresh` | `(grammar) -> tuple[dict[str, set[str]], set[str]]` | Returns `({nt: set() for nt in grammar}, set(grammar))`. These are the inputs the spec says the caller must prepare. |
+| `_new_grammar` | `(grammar) -> Grammar` | Returns `Grammar(copy.deepcopy(grammar))`. |
 | `_reorder` | `(grammar, order: tuple[str, ...]) -> dict` | Returns `{nt: grammar[nt] for nt in order}`. Same productions, different key order. |
-| `_run_first` | `(grammar) -> dict[str, set[str]]` | `g = copy.deepcopy(grammar)`, then `first, nts = _fresh(g)`, then `compute_first_set(g, first, nts)`, then returns `first`. |
+| `_run_first` | `(grammar) -> dict[str, set[str]]` | `g = _new_grammar(grammar)`, then `g.compute_first_set()`, then returns `g.first`. |
 
-The deep copy in `_run_first` makes sure that if the code under test changes
+The deep copy in `_new_grammar` makes sure that if the code under test changes
 its input grammar, the change can't leak into other rows that share the same
 table entry.
 
-Fixtures: `fresh`, `reorder`, `run_first`, each returning the matching helper.
+Fixtures: `new_grammar`, `reorder`, `run_first`, each returning the matching helper.
 
 Constants and tables live in `test_first_set.py`, not in fixtures, because
 `pytest.mark.parametrize` arguments are evaluated at import time and cannot use
@@ -73,7 +76,15 @@ EPS = "ε"
 Every grammar and expected set uses `EPS` instead of the literal symbol, to
 avoid copy/paste mistakes with look-alike characters.
 
-## 5. Unit tests — `first_of_sequence` (spec §4)
+## 5.0 Unit tests — `Grammar.__init__` (spec §4.1)
+
+`test_grammar_init(grammar, expected, new_grammar)`, parametrized over
+`GRAMMAR_CASES` (`expected` unused). With `g = new_grammar(grammar)`, assert
+`g.grammar == grammar`, `g.non_terminals_set == set(grammar)`,
+`g.first == {nt: set() for nt in grammar}`, `g.EPS == EPS` and `g.END == END`
+(`END = "$"` is a module constant next to `EPS`). 15 rows.
+
+## 5. Unit tests — `first_of_sequence` (spec §4.2)
 
 ### 5.1 Data table
 
@@ -96,16 +107,16 @@ had already been computed.
 | `U10-stops-before-terminal` | `["X", "Y", "w"]` | `{"X": {"x", EPS}, "Y": {"y"}}` | `{"x", "y"}` |
 | `U11-not-yet-computed-nt` | `["X", "y"]` | `{"X": set()}` | `set()` |
 
-### 5.2 `test_first_of_sequence(sequence, preset, expected, fresh)`
+### 5.2 `test_first_of_sequence(sequence, preset, expected, new_grammar)`
 
-1. Call `first, nts = fresh({h: [["_"]] for h in preset})`. The helpers'
+1. Call `g = new_grammar({h: [["_"]] for h in preset})`. The helpers'
    productions are dummies. They only need to be keys so that X/Y/Z count as
    non-terminals.
-2. Fill the helpers with `first[h] = set(s)` for each entry of `preset`.
-3. Save `first_before = copy.deepcopy(first)`.
-4. Call `result = first_of_sequence(sequence, first, nts)`.
+2. Fill the helpers with `g.first[h] = set(s)` for each entry of `preset`.
+3. Save `first_before = copy.deepcopy(g.first)`.
+4. Call `result = g.first_of_sequence(sequence)`.
 5. Assert `result == expected`.
-6. Assert `first == first_before`. The function must only read `first`.
+6. Assert `g.first == first_before`. The method must only read `first`.
 
 Combining several alternatives of one non-terminal is not tested here. It
 belongs to `compute_first_set` and is covered by §6.
@@ -164,32 +175,36 @@ Parameters are generated at import time by `_order_params()`:
 
 Test body: assert `run_first(reorder(grammar, order)) == expected`.
 
-### 7.2 Idempotence — `test_compute_first_set_idempotent(grammar, expected, fresh)`
+### 7.2 Idempotence — `test_compute_first_set_idempotent(grammar, expected, new_grammar)`
 
 Parametrized over `GRAMMAR_CASES`.
 
-1. Run `g = copy.deepcopy(grammar)`, then `first, nts = fresh(g)`, then
-   `compute_first_set(g, first, nts)`.
-2. Save `snapshot = copy.deepcopy(first)`.
-3. Call `compute_first_set(g, first, nts)` again on the same objects.
-4. Assert `first == snapshot`.
+1. Run `g = new_grammar(grammar)`, then `g.compute_first_set()`.
+2. Save `snapshot = copy.deepcopy(g.first)`.
+3. Call `g.compute_first_set()` again on the same object.
+4. Assert `g.first == snapshot`.
 
 This test does not compare against `expected`. That is §6.2's job. Here it
 only checks that a second call changes nothing, so an error in the first call
 is not reported twice.
 
-### 7.3 Isolation — `test_module_globals_untouched(run_first)`
+### 7.3 Isolation
 
-1. Run `import main` and save deep copies of `main.grammar`, `main.first` and
-   `main.non_terminals_set`.
-2. Call `run_first` on the E4 grammar.
-3. Assert the three globals are equal to their saved copies.
+A helper `_case(case_id)` returns the grammar of a `GRAMMAR_CASES` row.
 
-This backs the spec's assumption that the functions only use their parameters.
+`test_input_grammar_untouched()`:
+1. Deep-copy the E4 grammar into `grammar` and save `grammar_before`.
+2. Call `Grammar(grammar).compute_first_set()` directly (no `new_grammar`, so
+   the checked object is the one the class received).
+3. Assert `grammar == grammar_before`.
+
+`test_instances_do_not_share_state(new_grammar)`:
+1. Build `g_e4` from E4 and `g_e2` from E2.
+2. Call `g_e4.compute_first_set()`.
+3. Assert `g_e2.first` is still one empty set per E2 non-terminal.
 
 Isolation also comes from how the tests are built. Every test gets its own
-grammar copy, `first` and `non_terminals_set` through `fresh` and `run_first`,
-and no test writes to module-level state.
+`Grammar` object on a grammar copy through `new_grammar` and `run_first`.
 
 ## 8. Handling failing tests (xfail)
 
@@ -213,7 +228,7 @@ Same approach as the lexer suite:
 
 ## 9. Keeping the plan in sync
 
-- Before changing any test, re-read `main.py` and compare it with this plan
+- Before changing any test, re-read `grammar.py` and compare it with this plan
   (`syntax/AGENTS.md`).
 - If a function is added, removed, renamed, or its signature changes, update
   spec.md, this plan and the tests together. For example, `is_non_terminal`
@@ -227,6 +242,7 @@ Same approach as the lexer suite:
 
 Format: test id — symptom — expected exception.
 
-_None._ First full run on 2026-10-16: 93 passed, 0 failed, so no test carries an
-xfail mark and `KNOWN_FAILURES` is empty. If a later change to `main.py` makes a
-test fail, add it here and mark it as described in §8.
+_None._ First full run on 2026-10-16: 93 passed, 0 failed. After the move to the
+`Grammar` class, run on 2026-10-20: 109 passed, 0 failed. No test carries an
+xfail mark and `KNOWN_FAILURES` is empty. If a later change to `grammar.py` makes
+a test fail, add it here and mark it as described in §8.

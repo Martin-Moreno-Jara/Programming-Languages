@@ -3,9 +3,10 @@
 ## 1. Purpose and scope
 
 This spec describes how to test that the FIRST sets of a grammar are computed
-correctly by `syntax/main.py`.
+correctly by the `Grammar` class in `syntax/grammar.py`.
 
-- **In scope:** the functions `first_of_sequence` and `compute_first_set`.
+- **In scope:** the constructor `Grammar.__init__` and the methods
+  `first_of_sequence` and `compute_first_set`.
 - **Out of scope:** checking whether the grammar is LL(1), FOLLOW sets,
   prediction sets and the parser itself. A grammar that is not LL(1) (left
   recursive, ambiguous, with common prefixes...) still has well-defined FIRST
@@ -31,25 +32,29 @@ grammar = {
 }
 ```
 
-The caller prepares two values before calling the functions:
+The caller builds a `Grammar` object from the dictionary. The constructor
+prepares the state the methods work on:
 
 ```python
-first = {nt: set() for nt in grammar}   # one empty set per non-terminal
-non_terminals_set = set(grammar)
+g = Grammar(grammar)
+g.grammar             # the dictionary passed in
+g.non_terminals_set   # set(grammar)
+g.first               # {nt: set() for nt in grammar}, one empty set per non-terminal
+g.EPS, g.END          # "ε" and "$"
 ```
 
-The functions under test receive everything as parameters:
+The methods under test:
 
 ```python
-compute_first_set(grammar, first, non_terminals_set)        # fills first in place, returns nothing
-first_of_sequence(sequence, first, non_terminals_set)       # returns FIRST(sequence), only reads first
+g.compute_first_set()            # fills g.first in place, returns nothing
+g.first_of_sequence(sequence)    # returns FIRST(sequence), only reads g.first
 ```
 
 `sequence` is a single production, such as `["X", "y"]`. Combining the results
 of all productions of a non-terminal is `compute_first_set`'s job.
 
-The tests assume the functions use only what they receive as parameters, not
-the module-level `grammar`, `first` or `non_terminals_set`.
+The tests assume the methods use only the object's own state, so two `Grammar`
+objects never affect each other.
 
 ## 3. What "correct" means
 
@@ -74,14 +79,23 @@ How the tests check results:
 - After the computation, the keys of `first` are exactly the non-terminals of
   the grammar. No terminals are added as keys.
 
-## 4. Unit tests for `first_of_sequence`
+## 4. Unit tests
+
+### 4.1 `Grammar.__init__`
+
+For every E-grammar of section 5, a new `Grammar` object must hold the
+dictionary it received, `non_terminals_set == set(grammar)`, one empty FIRST
+set per non-terminal, `EPS == "ε"` and `END == "$"`.
+
+### 4.2 `first_of_sequence`
 
 `first_of_sequence` computes FIRST of **one** production. Each test:
 
-1. Declares the helper non-terminals (`X`, `Y`, `Z`) and fills `first` by hand
-   with their FIRST sets, as if they had already been computed.
-2. Calls `first_of_sequence(sequence, first, non_terminals_set)` once.
-3. Checks the returned set, and checks that `first` was not modified at all.
+1. Builds a `Grammar` whose keys are the helper non-terminals (`X`, `Y`, `Z`)
+   and fills its `first` by hand with their FIRST sets, as if they had
+   already been computed.
+2. Calls `g.first_of_sequence(sequence)` once.
+3. Checks the returned set, and checks that `g.first` was not modified at all.
 
 Lowercase letters are terminals.
 
@@ -105,9 +119,8 @@ is covered by the end-to-end grammars (E1, E4, E12…).
 
 ## 5. End-to-end tests for `compute_first_set`
 
-Each test builds a fresh `first` and `non_terminals_set`, calls
-`compute_first_set` once, and compares the whole `first` dictionary against
-the expected one.
+Each test builds a new `Grammar` object, calls `compute_first_set` once, and
+compares the whole `first` dictionary against the expected one.
 
 **E1. Only terminals.** Base case.
 ```
@@ -236,9 +249,10 @@ top-down order.
 **Idempotence.** Calling `compute_first_set` a second time on the same
 `first` dictionary must not change the result.
 
-**Isolation.** Every test builds its own `grammar`, `first` and
-`non_terminals_set`. No test depends on the module-level variables of
-`main.py` or on another test having run before it.
+**Isolation.** Every test builds its own `Grammar` object from a private copy
+of the grammar. Computing FIRST must not modify the dictionary passed to the
+constructor, and computing FIRST on one object must not change another
+object's `first`. No test depends on another test having run before it.
 
 ## 7. Out of scope (well-formed grammars only)
 
@@ -254,8 +268,8 @@ These inputs are not tested. Their behavior is not defined yet:
 ## 8. Test organization
 
 - File: `syntax/tests/test_first_set.py`.
-- A helper `fresh(grammar)` returns `(first, non_terminals_set)`, built as in
-  section 2.
+- A helper `new_grammar(grammar)` returns a `Grammar` built on a deep copy of
+  the grammar.
 - A helper that reorders a grammar dictionary is used for the order-independence
   tests.
 - Use `pytest.mark.parametrize` for the unit-test table (section 4), the

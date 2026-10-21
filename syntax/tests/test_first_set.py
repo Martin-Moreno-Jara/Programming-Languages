@@ -3,10 +3,10 @@ import itertools
 
 import pytest
 
-import main
-from main import compute_first_set, first_of_sequence
+from grammar import Grammar
 
 EPS = "ε"
+END = "$"
 
 # (case_id, grammar, expected) rows from plan.md §6.1. Plain tuples so the
 # order-independence and idempotence tests can reuse them.
@@ -108,7 +108,23 @@ def _grammar_params() -> list:
 
 
 # ---------------------------------------------------------------------------
-# Unit tests: first_of_sequence (plan.md §5)
+# Unit tests: Grammar.__init__ (plan.md §5.0)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("grammar, expected", _grammar_params())
+def test_grammar_init(grammar, expected, new_grammar):
+    # expected is unused: only the keys of the grammar matter here
+    g = new_grammar(grammar)
+
+    assert g.grammar == grammar
+    assert g.non_terminals_set == set(grammar)
+    assert g.first == {nt: set() for nt in grammar}
+    assert g.EPS == EPS
+    assert g.END == END
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: Grammar.first_of_sequence (plan.md §5)
 # ---------------------------------------------------------------------------
 
 # (sequence, preset FIRST of helper non-terminals, expected FIRST(sequence))
@@ -143,21 +159,21 @@ FIRST_OF_SEQUENCE_CASES = [
 
 
 @pytest.mark.parametrize("sequence, preset, expected", FIRST_OF_SEQUENCE_CASES)
-def test_first_of_sequence(sequence, preset, expected, fresh):
+def test_first_of_sequence(sequence, preset, expected, new_grammar):
     # Helpers get dummy productions: they only need to be keys to count as non-terminals
-    first, non_terminals_set = fresh({h: [["_"]] for h in preset})
+    g = new_grammar({h: [["_"]] for h in preset})
     for h, s in preset.items():
-        first[h] = set(s)
-    first_before = copy.deepcopy(first)
+        g.first[h] = set(s)
+    first_before = copy.deepcopy(g.first)
 
-    result = first_of_sequence(sequence, first, non_terminals_set)
+    result = g.first_of_sequence(sequence)
 
     assert result == expected
-    assert first == first_before  # the function only reads first
+    assert g.first == first_before  # the method only reads first
 
 
 # ---------------------------------------------------------------------------
-# End-to-end tests: compute_first_set (plan.md §6)
+# End-to-end tests: Grammar.compute_first_set (plan.md §6)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("grammar, expected", _grammar_params())
@@ -203,27 +219,41 @@ def test_first_is_order_independent(grammar, order, expected, reorder, run_first
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("grammar, expected", _grammar_params())
-def test_compute_first_set_idempotent(grammar, expected, fresh):
+def test_compute_first_set_idempotent(grammar, expected, new_grammar):
     # expected is unused: correctness is checked by test_compute_first_set,
     # here a second call only has to leave first unchanged
-    grammar = copy.deepcopy(grammar)
-    first, non_terminals_set = fresh(grammar)
-    compute_first_set(grammar, first, non_terminals_set)
-    snapshot = copy.deepcopy(first)
+    g = new_grammar(grammar)
+    g.compute_first_set()
+    snapshot = copy.deepcopy(g.first)
 
-    compute_first_set(grammar, first, non_terminals_set)
+    g.compute_first_set()
 
-    assert first == snapshot
+    assert g.first == snapshot
 
 
 # ---------------------------------------------------------------------------
 # Isolation (plan.md §7.3)
 # ---------------------------------------------------------------------------
 
-def test_module_globals_untouched(run_first):
-    globals_before = copy.deepcopy((main.grammar, main.first, main.non_terminals_set))
-    e4_grammar = next(grammar for case_id, grammar, _ in GRAMMAR_CASES if case_id == "E4-nullable-prefix")
+def _case(case_id: str) -> dict[str, list[list[str]]]:
+    """Return the grammar of the GRAMMAR_CASES row with the given id."""
+    return next(grammar for cid, grammar, _ in GRAMMAR_CASES if cid == case_id)
 
-    run_first(e4_grammar)
 
-    assert (main.grammar, main.first, main.non_terminals_set) == globals_before
+def test_input_grammar_untouched():
+    # No deep copy here on purpose: the object passed to Grammar is the one checked
+    grammar = copy.deepcopy(_case("E4-nullable-prefix"))
+    grammar_before = copy.deepcopy(grammar)
+
+    Grammar(grammar).compute_first_set()
+
+    assert grammar == grammar_before
+
+
+def test_instances_do_not_share_state(new_grammar):
+    g_e4 = new_grammar(_case("E4-nullable-prefix"))
+    g_e2 = new_grammar(_case("E2-main-grammar"))
+
+    g_e4.compute_first_set()
+
+    assert g_e2.first == {nt: set() for nt in _case("E2-main-grammar")}

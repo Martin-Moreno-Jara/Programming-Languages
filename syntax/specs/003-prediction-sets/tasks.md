@@ -11,30 +11,29 @@ parametrized test. Tick the box when it is written and behaves as described.
   [`plan.md`](plan.md) §5.1 (P rows) and §5.2 (E rows), which are copied from
   [`spec.md`](spec.md) §4 and §5. If a value changes, edit spec.md and plan.md,
   not this file.
-- **xfail**: a test that fails against the current `main.py` gets an entry in
+- **xfail**: a test that fails against the current `grammar.py` gets an entry in
   `KNOWN_FAILURES` under `"<test function>::<param id>"`, which becomes
   `xfail(reason=<symptom>, raises=<exception>, strict=True)`. See section 11.
 
 ## 1. Setup (plan §2–§4)
 - [x] Check that `pytest-timeout` is still installed: `venv/bin/pip show pytest-timeout`, and `timeout` is listed in the pytest header.
 - [x] Create `syntax/tests/test_predict_set.py`. Don't add an `__init__.py`.
-- [x] `conftest.py`: extend the import to `from main import compute_first_set, compute_follow_set, compute_predict_set`.
-- [x] `conftest.py::_predict_inputs(grammar, first_preset, follow_preset)`:
-  - With dict presets: deep-copy the grammar and both presets.
-  - With `None, None`: reuse `_follow_inputs(grammar, None)`, then call `compute_follow_set`.
-  - In both cases build `predict = {nt: [] for nt in grammar}` and `non_terminals_set`.
-  - Return `(grammar, first, follow, predict, non_terminals_set)`.
-- [x] `conftest.py::_run_predict(grammar, first_preset, follow_preset)`: calls `_predict_inputs`, then `compute_predict_set`, and returns `predict`.
-- [x] `conftest.py`: add fixtures `predict_inputs` and `run_predict`, each returning the matching helper.
-- [x] Check that the existing helpers and fixtures are unchanged, and that the FIRST (93) and FOLLOW (179) suites still pass.
-- [x] `test_predict_set.py`: import `copy`, `itertools`, `pytest`, `main` and `compute_predict_set`.
+- [x] `conftest.py::_predict_grammar(grammar, first_preset, follow_preset)`:
+  - With dict presets: `_follow_grammar(grammar, first_preset)`, then deep-copy the FOLLOW preset into `g.follow`.
+  - With `None, None`: `_follow_grammar(grammar, None)`, then `g.compute_follow_set()`.
+  - Return the Grammar.
+- [x] `conftest.py::_run_predict(grammar, first_preset, follow_preset)`: calls `_predict_grammar`, then `g.compute_predict_set()`, and returns `g.get_predict_set()`.
+- [x] `conftest.py`: add fixtures `predict_grammar` and `run_predict`, each returning the matching helper.
+- [x] `conftest.py`: remove the functional-API helpers (`_fresh`, `_follow_inputs`, `_predict_inputs`) and the `main` import, now that no suite uses them.
+- [x] Check that the FIRST (109) and FOLLOW (204) suites still pass.
+- [x] `test_predict_set.py`: import `copy`, `itertools`, `pytest` and `Grammar`.
 - [x] `test_predict_set.py::EPS = "ε"`, `END = "$"` and `PROBE = "<probe>"`.
 - [x] `test_predict_set.py::pytestmark = pytest.mark.timeout(2)`.
 - [x] `test_predict_set.py::KNOWN_FAILURES`: a dict mapping `"<test function>::<param id>"` to `(reason, exception type)`. It starts empty.
 - [x] `test_predict_set.py::_case_params(test_name, kind=None)`: turns `PREDICT_CASES` into `pytest.param(grammar, first_preset, follow_preset, expected, id=case_id)`.
   - `kind="P"` or `"E"` filters rows by id prefix. `None` keeps all 22.
   - Attach an xfail mark when `f"{test_name}::{case_id}"` is in `KNOWN_FAILURES`.
-- [x] Check collection: `pytest syntax/tests/test_predict_set.py --collect-only -q` lists 181 tests (18 + 4 + 4×22 + 48 + 22 + 1). `pytest syntax/tests --collect-only -q` lists 453.
+- [x] Check collection: `pytest syntax/tests/test_predict_set.py --collect-only -q` lists 226 tests (2×22 + 18 + 4 + 4×22 + 48 + 22 + 2). `pytest syntax/tests --collect-only -q` lists 539.
 
 ## 2. Data table (plan §5)
 - [x] `test_predict_set.py::PREDICT_CASES`: a list of plain tuples `(case_id, grammar, first_preset, follow_preset, expected)`.
@@ -68,7 +67,7 @@ parametrized test. Tick the box when it is written and behaves as described.
 
 ## 4. Main tests: E rows (plan §6.2)
 - [x] `test_predict_set.py::test_predict_pipeline`: parametrized with `_case_params("test_predict_pipeline", "E")`. Same body as `test_predict_rules`. FIRST and FOLLOW are computed for real.
-- [x] Row `E1-main-grammar`: the grammar currently in `main.py`.
+- [x] Row `E1-main-grammar`: the grammar currently in `main.py` (data only, `main` is not imported).
 - [x] Row `E2-expression-grammar`: the classic E/E'/T/T'/F grammar, with primed keys.
 - [x] Row `E3-commented-grammar`: the grammar commented out in `main.py`.
 - [x] Row `E4-lua-like-pipeline`: the P15 grammar with FIRST and FOLLOW computed instead of written by hand.
@@ -84,18 +83,18 @@ parametrized test. Tick the box when it is written and behaves as described.
 
 ## 6. Inputs unchanged (plan §7.3)
 - [x] `test_predict_set.py::test_inputs_are_read_only`: parametrized with `_case_params("test_inputs_are_read_only")`.
-  1. Call `predict_inputs`.
-  2. Snapshot `(grammar, first, follow)`. For E rows this happens after FIRST and FOLLOW are computed.
-  3. Call `compute_predict_set`.
+  1. Call `predict_grammar`.
+  2. Snapshot `(g.grammar, g.first, g.follow)`. For E rows this happens after FIRST and FOLLOW are computed.
+  3. Call `g.compute_predict_set()`.
   4. Assert the three are unchanged.
 - [x] Check that it runs once for each of the 22 rows.
 
 ## 7. Output independent of inputs (plan §7.4)
 - [x] `test_predict_set.py::test_predict_independent_of_inputs`: parametrized with `_case_params("test_predict_independent_of_inputs")`.
-  1. Call `predict_inputs` and `compute_predict_set`.
-  2. Snapshot `(first, follow)`.
-  3. Add `PROBE` to every entry of every `predict[A]`.
-  4. Assert `(first, follow)` are unchanged. The message names the non-terminals whose FIRST or FOLLOW gained `PROBE`.
+  1. Call `predict_grammar` and `g.compute_predict_set()`.
+  2. Snapshot `(g.first, g.follow)`.
+  3. Add `PROBE` to every entry of every `g.predict[A]`.
+  4. Assert `(g.first, g.follow)` are unchanged. The message names the non-terminals whose FIRST or FOLLOW gained `PROBE`.
 - [x] Check that it runs once for each of the 22 rows.
 
 ## 8. Order independence (plan §7.5)
@@ -133,31 +132,28 @@ parametrized test. Tick the box when it is written and behaves as described.
 
 ## 9. Same result on fresh runs (plan §7.6)
 - [x] `test_predict_set.py::test_predict_same_on_fresh_runs`: parametrized with `_case_params("test_predict_same_on_fresh_runs")`.
-  1. Call `predict_inputs` once.
-  2. Build a second empty `predict`.
-  3. Call `compute_predict_set` on each, using the same input objects.
-  4. Assert the two results are equal.
+  1. Call `predict_grammar` twice on the same row.
+  2. Call `compute_predict_set()` on each object.
+  3. Assert the two `predict` dicts are equal.
 - [x] Check that it runs once for each of the 22 rows.
 
 ## 10. Isolation (plan §7.7)
-- [x] `test_predict_set.py::test_module_globals_untouched`:
-  1. Deep-copy `main.grammar`, `main.first`, `main.follow`, `main.predict` and `main.non_terminals_set`.
-  2. Run `run_predict` on the `E1-main-grammar` row.
-  3. Assert the five globals are unchanged.
-- [x] Review that no test or helper writes to `main`'s module-level variables, and that every test builds its own inputs.
+- [x] `test_predict_set.py::test_input_grammar_untouched`: the full pipeline with `Grammar(grammar)` on a copy of E1 leaves that dict unchanged.
+- [x] `test_predict_set.py::test_instances_do_not_share_state`: computing the prediction sets on an E1 object leaves an E2 object's `predict` empty.
+- [x] Review that every test builds its own `Grammar` object on a grammar copy.
 
 ## 11. First run and xfail workflow (plan §8)
 - [x] Run `pytest syntax/tests -v` with no marks, and save the list of failing ids with their exception types.
 - [x] Add a `KNOWN_FAILURES` entry for each failing parametrized row: main, shape, contents, inputs, independence, order and fresh-run tests.
-- [x] Add the `@pytest.mark.xfail(...)` decorator if the isolation test fails.
+- [x] Add the `@pytest.mark.xfail(...)` decorator if an isolation test fails.
 - [x] Check that every `reason` describes only the **symptom** (e.g. "prediction set of S → A B contains d", "changing predict changes FOLLOW(A)"), never the cause or a fix.
 - [x] Check that every `raises` is the exception actually seen (`AssertionError`, `KeyError`, `IndexError`, `AttributeError`, `pytest.fail.Exception`, …) and that every mark has `strict=True`.
 - [x] List every marked test in plan.md §10 as `id — symptom — exception`.
 - [x] Rerun. Expect only passes and xfails: no failures, no errors, no XPASS.
-- [x] Check that the FIRST (93) and FOLLOW (179) suites still all pass.
+- [x] Check that the FIRST (109) and FOLLOW (204) suites still all pass.
 
 ## 12. Maintenance (recurring)
-- [ ] Before editing any test, re-read `main.py` and compare it with plan.md (AGENTS.md).
+- [ ] Before editing any test, re-read `grammar.py` and compare it with plan.md (AGENTS.md).
 - [ ] When `compute_predict_set` is renamed, changes signature, changes its output format or gets a helper extracted from it, update spec.md, plan.md, this file and the tests in the same change. A new function gets its own unit-test section, and a removed one has its tests deleted.
 - [ ] When `first_of_sequence`, `compute_first_set` or `compute_follow_set` change, re-run all three suites.
 - [ ] When a bug is fixed and its test turns XPASS (strict), remove its `KNOWN_FAILURES` entry or decorator and its plan.md §10 line.

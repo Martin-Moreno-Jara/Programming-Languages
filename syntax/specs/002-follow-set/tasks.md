@@ -11,7 +11,7 @@ parametrized test. Tick the box when it is written and behaves as described.
   [`plan.md`](plan.md) §5.1 (F rows) and §5.2 (E rows), which are copied from
   [`spec.md`](spec.md) §4 and §5. If a value changes, edit spec.md and plan.md,
   not this file.
-- **xfail**: a test that fails against the current `main.py` gets an entry in
+- **xfail**: a test that fails against the current `grammar.py` gets an entry in
   `KNOWN_FAILURES` under `"<test function>::<param id>"`, which becomes
   `xfail(reason=<symptom>, raises=<exception>, strict=True)`. See section 9.
 
@@ -19,25 +19,27 @@ parametrized test. Tick the box when it is written and behaves as described.
 - [x] Install the plugin: `venv/bin/pip install pytest-timeout`.
 - [x] Check that `venv/bin/pip show pytest-timeout` finds it and that the header of `pytest syntax/tests -v` lists `timeout` among the plugins.
 - [x] Create `syntax/tests/test_follow_set.py`. Don't add an `__init__.py`.
-- [x] `conftest.py`: extend the import to `from main import compute_first_set, compute_follow_set`.
-- [x] `conftest.py::_follow_inputs(grammar, first_preset)`: deep-copies the grammar, builds an empty `follow` and `non_terminals_set`, then builds `first`. A dict preset is deep-copied. `None` means FIRST is computed with `_fresh` + `compute_first_set`. Returns `(grammar, first, follow, non_terminals_set)`.
-- [x] `conftest.py::_run_follow(grammar, first_preset)`: calls `_follow_inputs`, then `compute_follow_set`, and returns `follow`.
-- [x] `conftest.py`: add fixtures `follow_inputs` and `run_follow`, each returning the matching helper.
-- [x] Check that `_fresh`, `_reorder`, `_run_first` and their fixtures are unchanged, and that the 93 FIRST tests still pass.
-- [x] `test_follow_set.py`: import `copy`, `itertools`, `pytest`, `main` and `compute_follow_set`.
+- [x] `conftest.py::_follow_grammar(grammar, first_preset)`: builds a Grammar with `_new_grammar`, then fills `first`. A dict preset is deep-copied into `g.first`. `None` means `g.compute_first_set()`. Returns the Grammar.
+- [x] `conftest.py::_run_follow(grammar, first_preset)`: calls `_follow_grammar`, then `g.compute_follow_set()`, and returns `g.follow`.
+- [x] `conftest.py`: add fixtures `follow_grammar` and `run_follow`, each returning the matching helper. Keep `_follow_inputs` (no fixture) for the spec 003 helpers.
+- [x] Check that `_new_grammar`, `_reorder`, `_run_first` and their fixtures are unchanged, and that the FIRST tests still pass.
+- [x] `test_follow_set.py`: import `copy`, `itertools`, `pytest` and `Grammar`.
 - [x] `test_follow_set.py::EPS = "ε"` and `END = "$"`: used in every table instead of the literal symbols.
 - [x] `test_follow_set.py::pytestmark = pytest.mark.timeout(2)`.
 - [x] `test_follow_set.py::KNOWN_FAILURES`: a dict mapping `"<test function>::<param id>"` to `(reason, exception type)`. It starts empty.
 - [x] `test_follow_set.py::_case_params(test_name, kind=None)`: turns `FOLLOW_CASES` into `pytest.param(grammar, first_preset, expected, id=case_id)`.
   - `kind="F"` or `"E"` filters rows by id prefix. `None` keeps all 24.
   - Attach an xfail mark when `f"{test_name}::{case_id}"` is in `KNOWN_FAILURES`.
-- [x] Check collection: `pytest syntax/tests/test_follow_set.py --collect-only -q` lists 179 tests (20 + 4 + 3×24 + 58 + 24 + 1). `pytest syntax/tests --collect-only -q` lists 272.
+- [x] Check collection: `pytest syntax/tests/test_follow_set.py --collect-only -q` lists 204 tests (24 + 20 + 4 + 3×24 + 58 + 24 + 2).
 
 ## 2. Data table (plan §5)
 - [x] `test_follow_set.py::FOLLOW_CASES`: a list of plain tuples `(case_id, grammar, first_preset, expected)`. F rows have a dict `first_preset`. E rows have `None`. The start symbol is always the first key.
 - [x] Write `E4-lua-like-pipeline` so it reuses the grammar and expected objects of `F20-lua-like` instead of a copy.
 - [x] Check that the 24 ids are unique and match plan.md §5 exactly.
 - [x] Cross-check every grammar, FIRST preset and expected set against spec.md §4/§5, row by row.
+
+## 2.5 Initial state (plan §6.0)
+- [x] `test_follow_set.py::test_follow_starts_empty`: parametrized with `_case_params("test_follow_starts_empty")`. Assert `new_grammar(grammar).follow` is one empty set per non-terminal. Runs once for each of the 24 rows.
 
 ## 3. Main tests: F rows (plan §6.1)
 - [x] `test_follow_set.py::test_follow_rules`: parametrized with `_case_params("test_follow_rules", "F")`. Assert `run_follow(grammar, first_preset) == expected`, comparing the whole dict.
@@ -75,10 +77,10 @@ parametrized test. Tick the box when it is written and behaves as described.
 - [x] `test_follow_set.py::test_follow_keys_are_non_terminals`: parametrized with `_case_params("test_follow_keys_are_non_terminals")`. Assert `set(follow) == set(grammar)`.
 - [x] Check that it runs once for each of the 24 rows.
 - [x] `test_follow_set.py::test_first_is_read_only`: parametrized with `_case_params("test_first_is_read_only")`.
-  1. Call `follow_inputs`.
-  2. Snapshot `first`. For E rows this happens after FIRST is computed.
-  3. Call `compute_follow_set`.
-  4. Assert `first` is unchanged.
+  1. Call `follow_grammar`.
+  2. Snapshot `g.first`. For E rows this happens after FIRST is computed.
+  3. Call `g.compute_follow_set()`.
+  4. Assert `g.first` is unchanged.
 - [x] Check that it runs once for each of the 24 rows.
 
 ## 6. Order independence (plan §7.4)
@@ -117,18 +119,16 @@ parametrized test. Tick the box when it is written and behaves as described.
 
 ## 7. Idempotence (plan §7.5)
 - [x] `test_follow_set.py::test_compute_follow_set_idempotent`: parametrized with `_case_params("test_compute_follow_set_idempotent")`.
-  1. Call `follow_inputs` and `compute_follow_set`.
-  2. Snapshot `follow`.
-  3. Call `compute_follow_set` again on the same objects.
+  1. Call `follow_grammar` and `g.compute_follow_set()`.
+  2. Snapshot `g.follow`.
+  3. Call `g.compute_follow_set()` again on the same object.
   4. Assert `follow == snapshot`. Don't compare against `expected`.
 - [x] Check that it runs once for each of the 24 rows.
 
 ## 8. Isolation (plan §7.6)
-- [x] `test_follow_set.py::test_module_globals_untouched`:
-  1. Deep-copy `main.grammar`, `main.first`, `main.follow` and `main.non_terminals_set`.
-  2. Run `run_follow` on the `E1-main-grammar` row.
-  3. Assert the four globals are unchanged.
-- [x] Review that no test or helper writes to `main`'s module-level variables, and that every test builds its own inputs.
+- [x] `test_follow_set.py::test_input_grammar_untouched`: computing FIRST and FOLLOW with `Grammar(grammar)` on a copy of E1 leaves that dict unchanged.
+- [x] `test_follow_set.py::test_instances_do_not_share_state`: computing FOLLOW on an E1 object leaves an E2 object's `follow` empty.
+- [x] Review that every test builds its own `Grammar` object on a grammar copy.
 
 ## 9. First run and xfail workflow (plan §8)
 _First run on 2026-10-17: 272 passed, 0 failed, no timeouts. No marks were needed, so the marking steps below were done with nothing to mark. The timeout exception type was confirmed separately with a throwaway probe test (plan.md §8)._
@@ -136,15 +136,15 @@ _First run on 2026-10-17: 272 passed, 0 failed, no timeouts. No marks were neede
 - [x] Run `pytest syntax/tests -v` with no marks, and save the list of failing ids with their exception types.
 - [x] For every failing test that times out, confirm the exception pytest-timeout raises is `pytest.fail.Exception` before using it as `raises`.
 - [x] Add a `KNOWN_FAILURES` entry for each failing parametrized row: main, property, order and idempotence tests.
-- [x] Add the `@pytest.mark.xfail(...)` decorator if the isolation test fails.
+- [x] Add the `@pytest.mark.xfail(...)` decorator if an isolation test fails.
 - [x] Check that every `reason` describes only the **symptom** (e.g. "FOLLOW(A) is missing $", "FOLLOW(B) contains ε", "compute_follow_set does not return"), never the cause or a fix.
 - [x] Check that every `raises` is the exception actually seen (`AssertionError`, `KeyError`, `pytest.fail.Exception`, …) and that every mark has `strict=True`.
 - [x] List every marked test in plan.md §10 as `id — symptom — exception`.
 - [x] Rerun. Expect only passes and xfails: no failures, no errors, no XPASS.
-- [x] Check that the FIRST suite still reports 93 passed.
+- [x] Check that the FIRST suite still passes.
 
 ## 10. Maintenance (recurring)
-- [ ] Before editing any test, re-read `main.py` and compare it with plan.md (AGENTS.md).
+- [ ] Before editing any test, re-read `grammar.py` and compare it with plan.md (AGENTS.md).
 - [ ] When `compute_follow_set` is renamed, changes signature or gets a helper extracted from it, update spec.md, plan.md, this file and the tests in the same change. A new function gets its own unit-test section, and a removed one has its tests deleted.
 - [ ] When `first_of_sequence` changes, re-run both the FIRST and FOLLOW suites.
 - [ ] When a bug is fixed and its test turns XPASS (strict), remove its `KNOWN_FAILURES` entry or decorator and its plan.md §10 line.

@@ -3,12 +3,14 @@
 ## 1. Purpose and scope
 
 This spec describes how to test that the prediction sets of a grammar are
-computed correctly by `syntax/main.py`.
+computed correctly by the `Grammar` class in `syntax/grammar.py`.
 
-- **In scope:** the function `compute_predict_set`.
+- **In scope:** the method `Grammar.compute_predict_set`, the getter
+  `Grammar.get_predict_set`, and the empty `predict` dictionary the
+  constructor builds for them.
 - **Out of scope:** the FIRST and FOLLOW computations (covered by specs 001
-  and 002), checking whether the grammar is LL(1), building the parse table and
-  the parser itself.
+  and 002), checking whether the grammar is LL(1) (`check_LL1_condition`, which
+  needs its own spec), building the parse table and the parser itself.
 - A grammar that is not LL(1) still has well-defined prediction sets: the sets
   of one non-terminal simply overlap. Such grammars are valid test inputs, and
   the tests check the overlapping sets like any others. They do **not** check
@@ -24,17 +26,15 @@ The grammar format is the same as in spec 001 §2 and spec 002 §2:
 - **the first key is the start symbol**;
 - the end-of-input marker is `"$"`.
 
-The caller prepares these values before calling the function:
+The caller builds a `Grammar` object and makes sure its FIRST and FOLLOW sets
+are complete and correct before computing the prediction sets:
 
 ```python
-first = {...}                            # FIRST sets, complete and correct
-follow = {...}                           # FOLLOW sets, complete and correct
-predict = {nt: [] for nt in grammar}     # one empty list per non-terminal
-non_terminals_set = set(grammar)
-```
-
-```python
-compute_predict_set(grammar, predict, first, follow, non_terminals_set)   # fills predict in place
+g = Grammar(grammar)       # g.predict == {nt: [] for nt in grammar}
+g.compute_first_set()      # or fill g.first by hand
+g.compute_follow_set()     # or fill g.follow by hand
+g.compute_predict_set()    # fills g.predict in place, returns nothing
+predict = g.get_predict_set()   # returns g.predict itself, not a copy
 ```
 
 **Output format.** After the call, `predict[A]` is a **list of sets**:
@@ -52,9 +52,9 @@ grammar = {"S": [["a", "B"], ["ε"]], "B": [["b"]]}
 predict == {"S": [{"a"}, {"$"}], "B": [{"b"}]}
 ```
 
-The function only **reads** `grammar`, `first` and `follow` and must not change
-them. The tests assume it uses only what it receives as parameters, not the
-module-level `grammar`, `first`, `follow`, `predict` or `non_terminals_set`.
+The method only **reads** `g.grammar`, `g.first` and `g.follow` and must not
+change them. The tests assume it uses only the object's own state, so two
+`Grammar` objects never affect each other.
 
 ## 3. What "correct" means
 
@@ -94,8 +94,8 @@ Most tests do not call `compute_first_set` or `compute_follow_set`. They give
 the correct FIRST and FOLLOW sets, written by hand, so a failure here can only
 come from the prediction computation. Each test:
 
-1. Builds the grammar, the hand-written `first` and `follow`, an empty
-   `predict` and `non_terminals_set`.
+1. Builds a `Grammar` object and fills its `first` and `follow` with the
+   hand-written sets.
 2. Calls `compute_predict_set` once.
 3. Compares the whole `predict` dictionary against the expected one, and checks
    the properties in §3.
@@ -127,11 +127,10 @@ a non-terminal are listed in the order of its productions.
 
 ## 5. Full-pipeline tests (E cases)
 
-A smaller group runs the real pipeline: build fresh `first`, `follow` and
-`predict`, call `compute_first_set`, then `compute_follow_set`, then
-`compute_predict_set`, and compare the whole `predict` dictionary. These tests
-check that the three functions work together, the way the parser will use
-them.
+A smaller group runs the real pipeline: build a new `Grammar` object, call
+`compute_first_set`, then `compute_follow_set`, then `compute_predict_set`,
+and compare the whole `predict` dictionary. These tests check that the three
+methods work together, the way the parser will use them.
 
 **E1. The grammar currently in `main.py`.**
 ```
@@ -167,10 +166,16 @@ Expected: S: [{a, b, c}], A: [{a}, {b, c}], B: [{b}, {c}], C: [{c}]
 written by hand. Expected: the same prediction sets as P15.
 
 If an E case fails while the matching P case and the FIRST and FOLLOW tests
-(specs 001 and 002) pass, the problem is in how the functions connect, not in
+(specs 001 and 002) pass, the problem is in how the methods connect, not in
 the prediction rules themselves.
 
 ## 6. Properties checked across all grammars
+
+**Initial state.** For every P and E grammar, a new `Grammar` object has one
+empty list per non-terminal in `predict`.
+
+**Getter.** `get_predict_set()` returns the object's own `predict` dictionary
+(the same object, not a copy), both before and after `compute_predict_set`.
 
 **Shape.** After every P and E test:
 
@@ -200,15 +205,16 @@ permutation when the grammar has at most 4 non-terminals, otherwise as written
 and reversed. The order of the **productions** inside each non-terminal is
 never changed, because the output is aligned with it.
 
-**Same result on fresh runs.** Running `compute_predict_set` twice, each time
-on a **new** empty `predict` and the same inputs, gives equal results. What
-happens when it is called on a `predict` that is already filled is not
-defined (see §7).
+**Same result on fresh runs.** Two `Grammar` objects built from the same
+inputs give equal prediction sets. What happens when `compute_predict_set` is
+called a second time on the same object, whose `predict` is already filled,
+is not defined (see §7).
 
-**Isolation.** Every test builds its own `grammar`, `first`, `follow`,
-`predict` and `non_terminals_set`. No test depends on the module-level
-variables of `main.py` or on another test having run before it, and running
-the function leaves those module-level variables unchanged.
+**Isolation.** Every test builds its own `Grammar` object from a private copy
+of the grammar. Running the full pipeline must not modify the dictionary
+passed to the constructor, and computing the prediction sets on one object
+must not change another object's `predict`. No test depends on another test
+having run before it.
 
 **Termination.** As in spec 002, every test has a time limit, so a call that
 never returns fails instead of hanging the suite.
@@ -218,10 +224,10 @@ never returns fails instead of hanging the suite.
 These inputs and questions are not tested. Their behavior is not defined yet:
 
 - Whether the grammar is LL(1), i.e. whether the prediction sets of one
-  non-terminal are disjoint, and conflict reporting.
+  non-terminal are disjoint (`check_LL1_condition`), and conflict reporting.
 - Building the parse table from the prediction sets.
-- Calling `compute_predict_set` on a `predict` dictionary that is not empty,
-  for example a second time on the same dictionary.
+- Calling `compute_predict_set` on an object whose `predict` is not empty,
+  for example a second time on the same object.
 - An empty production `[]`.
 - ε mixed into a longer production, such as `["a", "ε"]`.
 - A non-terminal with no productions (`"A": []`).
@@ -232,9 +238,10 @@ These inputs and questions are not tested. Their behavior is not defined yet:
 ## 8. Test organization
 
 - File: `syntax/tests/test_predict_set.py`.
-- Reuse the patterns from `conftest.py`: helpers that build private copies of
-  the inputs, with FIRST and FOLLOW either copied from a hand-written preset
-  (P cases) or computed (E cases), plus the existing `reorder` helper.
+- Reuse the patterns from `conftest.py`: a helper that builds a `Grammar` on a
+  private copy of the grammar, with FIRST and FOLLOW either copied from a
+  hand-written preset (P cases) or computed (E cases), plus the existing
+  `new_grammar` and `reorder` helpers.
 - Use `pytest.mark.parametrize` for the P table (section 4), the E table
   (section 5) and the key orders (section 6).
 - Failing tests get an xfail mark as in specs 001 and 002. The reason text
