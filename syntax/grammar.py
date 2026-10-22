@@ -96,5 +96,9 @@ class Grammar():
             for pred in pred_sets:
                 if not check_set.isdisjoint(pred): return False
                 else: check_set = check_set|pred 
-
         return True
+
+    def process_grammar(self):
+        self.compute_first_set()
+        self.compute_follow_set()
+        self.compute_predict_set()
