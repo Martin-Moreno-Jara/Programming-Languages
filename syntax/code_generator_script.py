@@ -16,7 +16,7 @@ grammar1: dict[str, list[list[str]]] = {
     "C": [["cat"], ["cow"]],
 }
 
-lines = ["from ASDR_base import ASDR_base", "", "class ASDR(ASDR_base):\n"]
+lines = ["from ..exceptions.custom_exceptions import SyntacticalError","from ASDR_base import ASDR_base", "", "class ASDR(ASDR_base):\n"]
 
 def populate_lines(grammar:Grammar):
     predict = grammar.predict

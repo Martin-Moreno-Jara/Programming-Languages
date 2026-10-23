@@ -1,13 +1,6 @@
+from ..exceptions.custom_exceptions import SyntacticalError
 from ..lexer.lexer import Lexer
 
-class SyntacticalError(Exception):
-    """
-    Custom exception class to raise when there is a syntactical error
-    """
-
-    def __init__(self, message):
-        super().__init__(message)
-        self.message = message
 
 class ASDR_base():
     def __init__(self,lexer:Lexer):
