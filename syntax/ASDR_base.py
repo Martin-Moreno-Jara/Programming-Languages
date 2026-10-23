@@ -8,8 +8,7 @@ class ASDR_base():
         self.cur_tok:Token
 
     def format_error_message(self,expected):
-        print(self.cur_tok)
-        return f"<{self.cur_tok.line}:{self.cur_tok.col}> Error sintactico: se encontro: {self.cur_tok.lexeme}; se esperaba: {expected}"
+        return f"<{self.cur_tok.line}:{self.cur_tok.col}> Error sintactico: se encontro: \"{self.cur_tok.lexeme}\"; se esperaba: {expected}."
 
 
     def match(self,expected_tok:str):

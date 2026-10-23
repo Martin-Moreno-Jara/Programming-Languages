@@ -24,13 +24,17 @@ grammar3: dict[str, list[list[str]]] = {
     "S": [["A", "B","C"]],
     "A": [["tnk_str"],["ε"]],
     "B": [["id"], ["ε"]],
-    "C": [["tnk_num"],["ε"]]
+    "C": [["tkn_num"],["ε"]]
 }
 
-
+final_grammar: dict[str, list[list[str]]] = {
+    "CHUNK": [["VARDEC"]],
+    "VARDEC": [["id","tkn_assign","DATATYPE"]],
+    "DATATYPE": [["tkn_str"], ["tkn_num"], ["id"]]
+}
 
 if __name__ == "__main__":
-    myGrammar = Grammar(grammar3)
+    myGrammar = Grammar(final_grammar)
     myGrammar.process_grammar()
     if not myGrammar.check_LL1_condition():
         print("Cannot procede. Grammar is not LL1")

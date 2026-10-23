@@ -26,18 +26,22 @@ class ASDR_generator():
                         self.lines.append(f"\t\t\tself.parse_{symbol}()")
                     else:
                         self.lines.append(f"\t\t\tself.match({symbol!r})")
-                        break
             expected = sorted(set().union(*predict[A]))
+            expected_str = ""
+            for i,ex in enumerate(expected):
+                expected_str+= f"\"{ex}\""
+                if i < len(expected) -1:
+                    expected_str+=", "
 
             self.lines.append(f"\t\telse:")
-            self.lines.append(f"\t\t\traise SyntacticalError(self.format_error_message({expected}))\n")
+            self.lines.append(f"\t\t\traise SyntacticalError(self.format_error_message({expected_str!r}))\n")
 
         # main function
         self.lines.append("\tdef main(self):")
         self.lines.append("\t\tself.cur_tok = self.lexer.tokenize()")
         self.lines.append(f"\t\tself.parse_{self.grammar.get_initial_symbol()}()")
         self.lines.append("\t\tif self.cur_tok.type != \"$\":")
-        self.lines.append("\t\t\traise SyntacticalError(self.format_error_messge(\"$\"))")
+        self.lines.append("\t\t\traise SyntacticalError(self.format_error_message(\"$\"))")
 
         
 

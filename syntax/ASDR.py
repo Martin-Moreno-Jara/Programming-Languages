@@ -4,40 +4,32 @@ from .ASDR_base import ASDR_base
 
 class ASDR(ASDR_base):
 
-	def parse_S(self):
-		if self.cur_tok.type in ['$', 'id', 'tnk_num', 'tnk_str']:
-			self.parse_A()
-			self.parse_B()
-			self.parse_C()
+	def parse_CHUNK(self):
+		if self.cur_tok.type in ['id']:
+			self.parse_VARDEC()
 		else:
-			raise SyntacticalError(self.format_error_message(['$', 'id', 'tnk_num', 'tnk_str']))
+			raise SyntacticalError(self.format_error_message('"id"'))
 
-	def parse_A(self):
-		if self.cur_tok.type in ['tnk_str']:
-			self.match('tnk_str')
-		elif self.cur_tok.type in ['$', 'id', 'tnk_num']:
-			pass
-		else:
-			raise SyntacticalError(self.format_error_message(['$', 'id', 'tnk_num', 'tnk_str']))
-
-	def parse_B(self):
+	def parse_VARDEC(self):
 		if self.cur_tok.type in ['id']:
 			self.match('id')
-		elif self.cur_tok.type in ['$', 'tnk_num']:
-			pass
+			self.match('tkn_assign')
+			self.parse_DATATYPE()
 		else:
-			raise SyntacticalError(self.format_error_message(['$', 'id', 'tnk_num']))
+			raise SyntacticalError(self.format_error_message('"id"'))
 
-	def parse_C(self):
-		if self.cur_tok.type in ['tnk_num']:
-			self.match('tnk_num')
-		elif self.cur_tok.type in ['$']:
-			pass
+	def parse_DATATYPE(self):
+		if self.cur_tok.type in ['tkn_str']:
+			self.match('tkn_str')
+		elif self.cur_tok.type in ['tkn_num']:
+			self.match('tkn_num')
+		elif self.cur_tok.type in ['id']:
+			self.match('id')
 		else:
-			raise SyntacticalError(self.format_error_message(['$', 'tnk_num']))
+			raise SyntacticalError(self.format_error_message('"id", "tkn_num", "tkn_str"'))
 
 	def main(self):
 		self.cur_tok = self.lexer.tokenize()
-		self.parse_S()
+		self.parse_CHUNK()
 		if self.cur_tok.type != "$":
-			raise SyntacticalError(self.format_error_messge("$"))
+			raise SyntacticalError(self.format_error_message("$"))
