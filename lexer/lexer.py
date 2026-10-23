@@ -25,6 +25,7 @@ class Lexer:
         self.line = 1
         self.pos = 0
         self.last_pos = 0
+        self.EOFsymbol = "$"
         self.keywords_set = {
             "and",
             "break",

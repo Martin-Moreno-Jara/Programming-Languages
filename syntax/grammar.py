@@ -23,6 +23,12 @@ class Grammar():
     def get_grammar(self):
         return self.grammar
 
+    def get_initial_symbol(self):
+        first = ""
+        for A in self.grammar:
+            first= A
+            break
+        return first
     
     def first_of_sequence(self,derivations: list[str]):
         """

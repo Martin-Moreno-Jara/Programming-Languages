@@ -1,4 +1,6 @@
-from ASDR_base import ASDR_base
+from exceptions.custom_exceptions import SyntacticalError
+from lexer.lexer import Lexer
+from .ASDR_base import ASDR_base
 
 class ASDR(ASDR_base):
 
@@ -29,3 +31,6 @@ class ASDR(ASDR_base):
 		else:
 			raise SyntacticalError(['cat', 'cow'])
 
+	def main(self):
+		self.cur_tok = self.lexer.tokenize()
+		self.parse_A()
