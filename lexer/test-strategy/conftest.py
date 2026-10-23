@@ -22,8 +22,11 @@ def _lex_all(src: str) -> list:
     try:
         with contextlib.redirect_stdout(buffer):
             while True:
-                tokens.append(lexer.tokenize())
-    except (EOFError, SystemExit):
+                token = lexer.tokenize()
+                if token.type == "EOF":
+                    break
+                tokens.append(str(token))
+    except SystemExit:
         pass
     return tokens + buffer.getvalue().splitlines()
 
@@ -31,12 +34,12 @@ def _lex_all(src: str) -> list:
 def _run_main_process(stdin: str) -> subprocess.CompletedProcess:
     """Run main.py as a separate process with stdin as input; return the full result."""
     return subprocess.run(
-        [sys.executable, str(PROJECT_ROOT / "main.py")],
+        [sys.executable, "-m", "lexer.main"],
         input=stdin,
         capture_output=True,
         text=True,
         encoding="utf-8",
-        cwd=PROJECT_ROOT,
+        cwd=PROJECT_ROOT.parent,
         timeout=10,
     )
 

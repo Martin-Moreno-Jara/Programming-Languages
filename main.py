@@ -24,7 +24,7 @@ grammar2: dict[str, list[list[str]]] = {
 
 
 if __name__ == "__main__":
-    myGrammar = Grammar(grammar1)
+    myGrammar = Grammar(grammar2)
     myGrammar.process_grammar()
     if not myGrammar.check_LL1_condition():
         print("Cannot procede. Grammar is not LL1")
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         parser = ASDR(lexer)
         parser.main()
     except SyntacticalError as e:
-        print(f"Syntactical error: {e.message}")
+        print(f"Syntactical error: {e.message} {e.__traceback__}")
         exit()
 
 

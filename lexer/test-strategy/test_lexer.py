@@ -1,6 +1,6 @@
 import pytest
 
-from lexer import Lexer, LexicalError
+from lexer import Lexer, LexicalError, Token
 
 KEYWORDS = {
     # Lua reserved words
@@ -132,64 +132,64 @@ def test_calc_inline_pos_after_newline():
 # 5. _mode_keyword_id(start)
 @pytest.mark.parametrize("keyword", sorted(KEYWORDS))
 def test_keyword_each(keyword):
-    assert Lexer(keyword)._mode_keyword_id(0) == f"<{keyword},1,1>"
+    assert str(Lexer(keyword)._mode_keyword_id(0)) == f"<{keyword},1,1>"
 
 
 def test_keyword_case_upper():
-    assert Lexer("PRINT")._mode_keyword_id(0) == "<id,PRINT,1,1>"
+    assert str(Lexer("PRINT")._mode_keyword_id(0)) == "<id,PRINT,1,1>"
 
 
 def test_keyword_case_mixed():
-    assert Lexer("wHILe")._mode_keyword_id(0) == "<id,wHILe,1,1>"
+    assert str(Lexer("wHILe")._mode_keyword_id(0)) == "<id,wHILe,1,1>"
 
 
 def test_id_digits_underscore():
-    assert Lexer("my_Var1")._mode_keyword_id(0) == "<id,my_Var1,1,1>"
+    assert str(Lexer("my_Var1")._mode_keyword_id(0)) == "<id,my_Var1,1,1>"
 
 
 def test_id_leading_underscore():
-    assert Lexer("_f")._mode_keyword_id(0) == "<id,_f,1,1>"
+    assert str(Lexer("_f")._mode_keyword_id(0)) == "<id,_f,1,1>"
 
 
 def test_id_trailing_digit():
-    assert Lexer("vari8")._mode_keyword_id(0) == "<id,vari8,1,1>"
+    assert str(Lexer("vari8")._mode_keyword_id(0)) == "<id,vari8,1,1>"
 
 
 def test_id_stops_at_symbol():
     lexer = Lexer("abc(x")
-    assert lexer._mode_keyword_id(0) == "<id,abc,1,1>"
+    assert str(lexer._mode_keyword_id(0)) == "<id,abc,1,1>"
     assert lexer.pos == 3
 
 
 def test_keyword_prefix_is_id():
-    assert Lexer("ifx")._mode_keyword_id(0) == "<id,ifx,1,1>"
+    assert str(Lexer("ifx")._mode_keyword_id(0)) == "<id,ifx,1,1>"
 
 
 def test_keyword_inside_word_is_id():
-    assert Lexer("endif")._mode_keyword_id(0) == "<id,endif,1,1>"
+    assert str(Lexer("endif")._mode_keyword_id(0)) == "<id,endif,1,1>"
 
 
 def test_id_at_eof():
     lexer = Lexer("while")
-    assert lexer._mode_keyword_id(0) == "<while,1,1>"
+    assert str(lexer._mode_keyword_id(0)) == "<while,1,1>"
     assert lexer.pos == 5
 
 
 # 6. _mode_num(start) - decimal
 def test_num_integer():
     lexer = Lexer("16 ")
-    assert lexer._mode_num(0) == "<tkn_num,16,1,1>"
+    assert str(lexer._mode_num(0)) == "<tkn_num,16,1,1>"
     assert lexer.pos == 2
 
 
 def test_num_decimal():
-    assert Lexer("3.145 ")._mode_num(0) == "<tkn_num,3.145,1,1>"
+    assert str(Lexer("3.145 ")._mode_num(0)) == "<tkn_num,3.145,1,1>"
 
 
 # A dot needs at least one digit after it to be part of the number
 def test_num_trailing_dot():
     lexer = Lexer("3. ")
-    assert lexer._mode_num(0) == "<tkn_num,3,1,1>"
+    assert str(lexer._mode_num(0)) == "<tkn_num,3,1,1>"
     assert lexer.pos == 1
 
 
@@ -199,46 +199,46 @@ def test_num_followed_by_concat(lex_all):
 
 def test_num_two_dots_longest_match():
     lexer = Lexer("120.075.389")
-    assert lexer._mode_num(0) == "<tkn_num,120.075,1,1>"
+    assert str(lexer._mode_num(0)) == "<tkn_num,120.075,1,1>"
     assert lexer.pos == 7
 
 
 def test_num_stops_at_invalid_char():
     lexer = Lexer("8.9!")
-    assert lexer._mode_num(0) == "<tkn_num,8.9,1,1>"
+    assert str(lexer._mode_num(0)) == "<tkn_num,8.9,1,1>"
     assert lexer.pos == 3
 
 
 def test_num_stops_at_symbol():
     lexer = Lexer("6=")
-    assert lexer._mode_num(0) == "<tkn_num,6,1,1>"
+    assert str(lexer._mode_num(0)) == "<tkn_num,6,1,1>"
     assert lexer.pos == 1
 
 
 def test_num_at_eof():
-    assert Lexer("5")._mode_num(0) == "<tkn_num,5,1,1>"
+    assert str(Lexer("5")._mode_num(0)) == "<tkn_num,5,1,1>"
 
 
 # 6. _mode_num(start) - scientific notation
 def test_num_exp_lower():
-    assert Lexer("1e10 ")._mode_num(0) == "<tkn_num,1e10,1,1>"
+    assert str(Lexer("1e10 ")._mode_num(0)) == "<tkn_num,1e10,1,1>"
 
 
 def test_num_exp_upper():
-    assert Lexer("1E10 ")._mode_num(0) == "<tkn_num,1E10,1,1>"
+    assert str(Lexer("1E10 ")._mode_num(0)) == "<tkn_num,1E10,1,1>"
 
 
 def test_num_exp_negative():
-    assert Lexer("2.5e-3 ")._mode_num(0) == "<tkn_num,2.5e-3,1,1>"
+    assert str(Lexer("2.5e-3 ")._mode_num(0)) == "<tkn_num,2.5e-3,1,1>"
 
 
 def test_num_exp_positive():
-    assert Lexer("4E+2 ")._mode_num(0) == "<tkn_num,4E+2,1,1>"
+    assert str(Lexer("4E+2 ")._mode_num(0)) == "<tkn_num,4E+2,1,1>"
 
 
 def test_num_exp_after_trailing_dot():
     lexer = Lexer("3.e1 ")
-    assert lexer._mode_num(0) == "<tkn_num,3,1,1>"
+    assert str(lexer._mode_num(0)) == "<tkn_num,3,1,1>"
     assert lexer.pos == 1
 
 
@@ -246,75 +246,75 @@ def test_num_exp_after_trailing_dot():
 @pytest.mark.parametrize("src, lexeme, end", [("1e ", "1", 1), ("1e+ ", "1", 1), ("1ex ", "1", 1), ("2.5e- ", "2.5", 3)])
 def test_num_exp_missing_digits(src, lexeme, end):
     lexer = Lexer(src)
-    assert lexer._mode_num(0) == f"<tkn_num,{lexeme},1,1>"
+    assert str(lexer._mode_num(0)) == f"<tkn_num,{lexeme},1,1>"
     assert lexer.pos == end
 
 
 # 6. _mode_num(start) - hexadecimal
 def test_num_hex_upper_digits():
-    assert Lexer("0xFF ")._mode_num(0) == "<tkn_num,0xFF,1,1>"
+    assert str(Lexer("0xFF ")._mode_num(0)) == "<tkn_num,0xFF,1,1>"
 
 
 def test_num_hex_upper_prefix():
-    assert Lexer("0Xa1 ")._mode_num(0) == "<tkn_num,0Xa1,1,1>"
+    assert str(Lexer("0Xa1 ")._mode_num(0)) == "<tkn_num,0Xa1,1,1>"
 
 
 def test_num_hex_fraction():
-    assert Lexer("0x1.8 ")._mode_num(0) == "<tkn_num,0x1.8,1,1>"
+    assert str(Lexer("0x1.8 ")._mode_num(0)) == "<tkn_num,0x1.8,1,1>"
 
 
 def test_num_hex_binary_exp():
-    assert Lexer("0x1p4 ")._mode_num(0) == "<tkn_num,0x1p4,1,1>"
+    assert str(Lexer("0x1p4 ")._mode_num(0)) == "<tkn_num,0x1p4,1,1>"
 
 
 def test_num_hex_fraction_binary_exp():
-    assert Lexer("0x1.8P-2 ")._mode_num(0) == "<tkn_num,0x1.8P-2,1,1>"
+    assert str(Lexer("0x1.8P-2 ")._mode_num(0)) == "<tkn_num,0x1.8P-2,1,1>"
 
 
 # e is a hex digit here, not an exponent
 def test_num_hex_e_is_digit():
-    assert Lexer("0x1e2 ")._mode_num(0) == "<tkn_num,0x1e2,1,1>"
+    assert str(Lexer("0x1e2 ")._mode_num(0)) == "<tkn_num,0x1e2,1,1>"
 
 
 # No hex digits after 0x: longest match keeps only the 0, the x is left for the next token
 @pytest.mark.parametrize("src", ["0x ", "0xG "])
 def test_num_hex_malformed(src):
     lexer = Lexer(src)
-    assert lexer._mode_num(0) == "<tkn_num,0,1,1>"
+    assert str(lexer._mode_num(0)) == "<tkn_num,0,1,1>"
     assert lexer.pos == 1
 
 
 # 7. _mode_simple_string(start) - short strings
 def test_str_double_quotes():
     lexer = Lexer('"Hola, Lua"')
-    assert lexer._mode_simple_string(0) == "<tkn_str,Hola, Lua,1,1>"
+    assert str(lexer._mode_simple_string(0)) == "<tkn_str,Hola, Lua,1,1>"
     assert lexer.pos == 11
 
 
 def test_str_single_quotes():
-    assert Lexer("'abc'")._mode_simple_string(0) == "<tkn_str,abc,1,1>"
+    assert str(Lexer("'abc'")._mode_simple_string(0)) == "<tkn_str,abc,1,1>"
 
 
 def test_str_other_quote_inside():
-    assert Lexer("'\"double\" string'")._mode_simple_string(0) == '<tkn_str,"double" string,1,1>'
+    assert str(Lexer("'\"double\" string'")._mode_simple_string(0)) == '<tkn_str,"double" string,1,1>'
 
 
 def test_str_keeps_spaces():
-    assert Lexer('"Valor de @: "')._mode_simple_string(0) == "<tkn_str,Valor de @: ,1,1>"
+    assert str(Lexer('"Valor de @: "')._mode_simple_string(0)) == "<tkn_str,Valor de @: ,1,1>"
 
 
 def test_str_escaped_quote():
     lexer = Lexer('"a\\"b" ')
-    assert lexer._mode_simple_string(0) == '<tkn_str,a\\"b,1,1>'
+    assert str(lexer._mode_simple_string(0)) == '<tkn_str,a\\"b,1,1>'
     assert lexer.pos == 6
 
 
 def test_str_escaped_backslash():
-    assert Lexer('"x\\\\" ')._mode_simple_string(0) == "<tkn_str,x\\\\,1,1>"
+    assert str(Lexer('"x\\\\" ')._mode_simple_string(0)) == "<tkn_str,x\\\\,1,1>"
 
 
 def test_str_empty():
-    assert Lexer('"" ')._mode_simple_string(0) == "<tkn_str,,1,1>"
+    assert str(Lexer('"" ')._mode_simple_string(0)) == "<tkn_str,,1,1>"
 
 
 def test_str_adjacent(lex_all):
@@ -351,26 +351,26 @@ DOUBLE_SYMBOLS = sorted(s for s in OPERATORS if len(s) == 2)
 @pytest.mark.parametrize("symbol", SINGLE_SYMBOLS)
 def test_op_single_each(symbol):
     lexer = Lexer(symbol + " ")
-    assert lexer._mode_op_symbol(0) == f"<{OPERATORS[symbol]},1,1>"
+    assert str(lexer._mode_op_symbol(0)) == f"<{OPERATORS[symbol]},1,1>"
     assert lexer.pos == 1
 
 
 @pytest.mark.parametrize("symbol", DOUBLE_SYMBOLS)
 def test_op_double_each(symbol):
     lexer = Lexer(symbol + " ")
-    assert lexer._mode_op_symbol(0) == f"<{OPERATORS[symbol]},1,1>"
+    assert str(lexer._mode_op_symbol(0)) == f"<{OPERATORS[symbol]},1,1>"
     assert lexer.pos == 2
 
 
 def test_op_varargs():
     lexer = Lexer("... ")
-    assert lexer._mode_op_symbol(0) == "<tkn_varargs,1,1>"
+    assert str(lexer._mode_op_symbol(0)) == "<tkn_varargs,1,1>"
     assert lexer.pos == 3
 
 
 def test_op_no_invalid_pair():
     lexer = Lexer("<>")
-    assert lexer._mode_op_symbol(0) == "<tkn_less,1,1>"
+    assert str(lexer._mode_op_symbol(0)) == "<tkn_less,1,1>"
     assert lexer.pos == 1
 
 
@@ -383,7 +383,7 @@ def test_op_run_geq_assign(lex_all):
 
 
 def test_op_at_eof():
-    assert Lexer(")")._mode_op_symbol(0) == "<tkn_closing_par,1,1>"
+    assert str(Lexer(")")._mode_op_symbol(0)) == "<tkn_closing_par,1,1>"
 
 
 # 10. _handle_comments() and _handle_multiline_comments(...)
@@ -512,15 +512,15 @@ def test_cleanse_empty():
 
 # 12. _process_token()
 def test_process_letter():
-    assert Lexer("abc ")._process_token() == "<id,abc,1,1>"
+    assert str(Lexer("abc ")._process_token()) == "<id,abc,1,1>"
 
 
 def test_process_underscore():
-    assert Lexer("_x ")._process_token() == "<id,_x,1,1>"
+    assert str(Lexer("_x ")._process_token()) == "<id,_x,1,1>"
 
 
 def test_process_digit():
-    assert Lexer("9 ")._process_token() == "<tkn_num,9,1,1>"
+    assert str(Lexer("9 ")._process_token()) == "<tkn_num,9,1,1>"
 
 
 def test_process_leading_dot_is_period(lex_all):
@@ -528,21 +528,21 @@ def test_process_leading_dot_is_period(lex_all):
 
 
 def test_process_single_quote():
-    assert Lexer("'a' ")._process_token() == "<tkn_str,a,1,1>"
+    assert str(Lexer("'a' ")._process_token()) == "<tkn_str,a,1,1>"
 
 
 def test_process_double_quote():
-    assert Lexer('"a" ')._process_token() == "<tkn_str,a,1,1>"
+    assert str(Lexer('"a" ')._process_token()) == "<tkn_str,a,1,1>"
 
 
 def test_process_symbol():
-    assert Lexer("+ ")._process_token() == "<tkn_plus,1,1>"
+    assert str(Lexer("+ ")._process_token()) == "<tkn_plus,1,1>"
 
 
 def test_process_reads_current_pos():
     lexer = Lexer("ab cd ")
     lexer.pos = 3
-    assert lexer._process_token() == "<id,cd,1,4>"
+    assert str(lexer._process_token()) == "<id,cd,1,4>"
 
 
 # "٣" (Arabic-Indic digit) and "é" are outside the ASCII digit/letter sets
@@ -570,31 +570,50 @@ def test_process_at_eof():
 # 13. tokenize()
 def test_tokenize_sequence():
     lexer = Lexer("a b\nc")
-    assert lexer.tokenize() == "<id,a,1,1>"
-    assert lexer.tokenize() == "<id,b,1,3>"
-    assert lexer.tokenize() == "<id,c,2,1>"
+    assert str(lexer.tokenize()) == "<id,a,1,1>"
+    assert str(lexer.tokenize()) == "<id,b,1,3>"
+    assert str(lexer.tokenize()) == "<id,c,2,1>"
 
 
 def test_tokenize_eof_after_tokens():
     lexer = Lexer("a b\nc")
     for _ in range(3):
         lexer.tokenize()
-    with pytest.raises(EOFError):
-        lexer.tokenize()
+    token = lexer.tokenize()
+    assert (token.type, token.lexeme, token.line, token.col) == ("EOF", "$", 2, 2)
+
+
+def test_tokenize_eof_is_repeatable():
+    lexer = Lexer("a")
+    lexer.tokenize()
+    assert lexer.tokenize() == lexer.tokenize()
+    assert lexer.tokenize().type == "EOF"
+
+
+def test_tokenize_eof_position_after_trailing_newlines():
+    lexer = Lexer("a\n\n  b  \n\n")
+    lexer.tokenize()
+    lexer.tokenize()
+    token = lexer.tokenize()
+    assert (token.type, token.line, token.col) == ("EOF", 5, 1)
+
+
+def test_tokenize_eof_str():
+    assert str(Lexer("").tokenize()) == "<EOF,1,1>"
 
 
 def test_tokenize_position_after_cleanse():
-    assert Lexer("  -- c\n\t x ").tokenize() == "<id,x,2,3>"
+    assert str(Lexer("  -- c\n\t x ").tokenize()) == "<id,x,2,3>"
 
 
 def test_tokenize_empty():
-    with pytest.raises(EOFError):
-        Lexer("").tokenize()
+    token = Lexer("").tokenize()
+    assert (token.type, token.lexeme, token.line, token.col) == ("EOF", "$", 1, 1)
 
 
 def test_tokenize_only_comments():
-    with pytest.raises(EOFError):
-        Lexer("  -- c\n--[[x]]\n").tokenize()
+    token = Lexer("  -- c\n--[[x]]\n").tokenize()
+    assert (token.type, token.lexeme, token.line, token.col) == ("EOF", "$", 3, 1)
 
 
 def test_tokenize_error_exits(capsys):
@@ -619,3 +638,46 @@ def _crash(reason):
 )
 def test_tokenize_never_unexpected_error(lex_all, src):
     assert not any(line.startswith("Unexpected error") for line in lex_all(src))
+
+
+# ---------------------------------------------------------------------------
+# 14. Token
+# ---------------------------------------------------------------------------
+def test_token_fields():
+    token = Token("id", "abc", 2, 5)
+    assert (token.type, token.lexeme, token.line, token.col) == ("id", "abc", 2, 5)
+
+
+def test_token_str_with_lexeme():
+    assert str(Token("id", "abc", 1, 1)) == "<id,abc,1,1>"
+    assert str(Token("tkn_num", "3.14", 1, 2)) == "<tkn_num,3.14,1,2>"
+    assert str(Token("tkn_str", "hola", 3, 4)) == "<tkn_str,hola,3,4>"
+
+
+def test_token_str_keyword_omits_lexeme():
+    assert str(Token("while", "while", 1, 1)) == "<while,1,1>"
+
+
+def test_token_str_symbol_omits_lexeme():
+    assert str(Token("tkn_plus", "+", 1, 1)) == "<tkn_plus,1,1>"
+
+
+def test_token_equality():
+    assert Token("id", "a", 1, 1) == Token("id", "a", 1, 1)
+    assert Token("id", "a", 1, 1) != Token("id", "b", 1, 1)
+
+
+def test_tokenize_returns_token():
+    token = Lexer("while").tokenize()
+    assert isinstance(token, Token)
+    assert (token.type, token.lexeme) == ("while", "while")
+
+
+def test_tokenize_symbol_token_fields():
+    token = Lexer("  >=").tokenize()
+    assert (token.type, token.lexeme, token.line, token.col) == ("tkn_geq", ">=", 1, 3)
+
+
+def test_tokenize_string_token_fields():
+    token = Lexer("'hi'").tokenize()
+    assert (token.type, token.lexeme) == ("tkn_str", "hi")

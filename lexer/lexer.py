@@ -1,5 +1,26 @@
 import re
 import string
+from dataclasses import dataclass
+
+# Token types whose lexeme is printed; keywords and symbols print only the type
+LEXEME_TYPES = {"id", "tkn_num", "tkn_str"}
+
+
+@dataclass
+class Token:
+    """
+    Token produced by the lexer and consumed by the syntactical analyzer
+    """
+
+    type: str
+    lexeme: str
+    line: int
+    col: int
+
+    def __str__(self) -> str:
+        if self.type in LEXEME_TYPES:
+            return f"<{self.type},{self.lexeme},{self.line},{self.col}>"
+        return f"<{self.type},{self.line},{self.col}>"
 
 
 class LexicalError(Exception):
@@ -25,7 +46,6 @@ class Lexer:
         self.line = 1
         self.pos = 0
         self.last_pos = 0
-        self.EOFsymbol = "$"
         self.keywords_set = {
             "and",
             "break",
@@ -123,6 +143,7 @@ class Lexer:
             self.data[self.pos + offset] if self.pos + offset < len(self.data) else None
         )
 
+
     def calc_inline_pos(self, start):
         """
         Calculates the position of a token relative to its line.
@@ -142,10 +163,11 @@ class Lexer:
 
         lexem = longest_match.group()
         self.pos = longest_match.end()
+        col = self.calc_inline_pos(start)
         if lexem in self.keywords_set:  # token is a keyword
-            return f"<{lexem},{self.line},{self.calc_inline_pos(start)}>"
+            return Token(lexem, lexem, self.line, col)
         else:  # token is an identifier
-            return f"<id,{lexem},{self.line},{self.calc_inline_pos(start)}>"
+            return Token("id", lexem, self.line, col)
 
     def _mode_num(self, start):
         """
@@ -167,7 +189,7 @@ class Lexer:
         lexem = longest_match.group()
         self.pos = longest_match.end()
 
-        return f"<tkn_num,{lexem},{self.line},{self.calc_inline_pos(start)}>"
+        return Token("tkn_num", lexem, self.line, self.calc_inline_pos(start))
 
     def _mode_simple_string(self, start):
         """
@@ -207,7 +229,12 @@ class Lexer:
             else:  # General case
                 self.pos += 1
 
-        return f"<tkn_str,{self.data[start+1:self.pos-1]},{self.line},{self.calc_inline_pos(start)}>"
+        return Token(
+            "tkn_str",
+            self.data[start + 1 : self.pos - 1],
+            self.line,
+            self.calc_inline_pos(start),
+        )
 
     def _mode_op_symbol(self, start):
         """
@@ -215,14 +242,16 @@ class Lexer:
         it returns the longest possible and valid match in the dict
         """
         symbol = ""
+        lexem = ""
         for i in range(2, -1, -1):
             if self.peek(i):
-                symbol = self.operand_symbols_dict.get(self.data[start : start + i + 1])
+                lexem = self.data[start : start + i + 1]
+                symbol = self.operand_symbols_dict.get(lexem)
                 if symbol:
                     self.pos += i + 1
                     break
 
-        return f"<{symbol},{self.line},{self.calc_inline_pos(start)}>"
+        return Token(symbol, lexem, self.line, self.calc_inline_pos(start))
 
     def _handle_multiline_comments(
         self, starting_pos: int, starting_line: int, n_equals=0
@@ -328,14 +357,13 @@ class Lexer:
             else:  # other character - must process it
                 break
 
-    def _process_token(self) -> str:
+    def _process_token(self) -> Token:
         """ "
         Given the first character of a token
         it decides what it should be processed as.
         """
         start = self.pos
         first_char = self.peek()
-        second_char = self.peek(1)
         # si primer caracter letra - modo keyword/id
         if first_char in self.alfabetic_set:
             return self._mode_keyword_id(start)
@@ -360,7 +388,7 @@ class Lexer:
                 self.calc_inline_pos(start),
             )
 
-    def tokenize(self) -> str:
+    def tokenize(self) -> Token:
         """
         Wrapper function. Calls function to clean the input of
         unnecessary characters, and then calls the function
@@ -371,14 +399,12 @@ class Lexer:
             self._cleanse_input()
 
             if not self.peek():
-                raise EOFError("End of file reached")
+                return Token(type="EOF",lexeme="$",line=self.line,col=self.calc_inline_pos(self.pos))
 
             return self._process_token()
         except LexicalError as e:
             print(f">>> Error lexico (linea: {e.line}, posicion: {e.col})")
             exit()
-        except EOFError:
-            raise
         except Exception as e:
             print(f"Unexpected error ocurred {e.args}, {e.__cause__}")
             exit()

@@ -11,6 +11,7 @@ class ASDR_base():
     def match(self,expected_tok:str):
         if self.cur_tok == expected_tok:
             self.cur_tok = self.lexer.tokenize()
+            print(self.cur_tok)
         else:
             raise SyntacticalError("Not expected")
 

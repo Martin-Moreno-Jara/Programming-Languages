@@ -34,7 +34,9 @@ class ASDR_generator():
         # main function
         self.lines.append("\tdef main(self):")
         self.lines.append("\t\tself.cur_tok = self.lexer.tokenize()")
+        self.lines.append("\t\tprint(self.cur_tok)")
         self.lines.append(f"\t\tself.parse_{self.grammar.get_initial_symbol()}()")
+        
 
     def write_program(self):
         with open("./syntax/ASDR.py","w") as f:
