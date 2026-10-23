@@ -20,6 +20,10 @@ class Grammar():
     def get_predict_set(self):
         return self.predict
 
+    def get_grammar(self):
+        return self.grammar
+
+    
     def first_of_sequence(self,derivations: list[str]):
         """
         
