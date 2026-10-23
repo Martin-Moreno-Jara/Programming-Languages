@@ -580,14 +580,14 @@ def test_tokenize_eof_after_tokens():
     for _ in range(3):
         lexer.tokenize()
     token = lexer.tokenize()
-    assert (token.type, token.lexeme, token.line, token.col) == ("EOF", "$", 2, 2)
+    assert (token.type, token.lexeme, token.line, token.col) == ("$", "$", 2, 2)
 
 
 def test_tokenize_eof_is_repeatable():
     lexer = Lexer("a")
     lexer.tokenize()
     assert lexer.tokenize() == lexer.tokenize()
-    assert lexer.tokenize().type == "EOF"
+    assert lexer.tokenize().type == "$"
 
 
 def test_tokenize_eof_position_after_trailing_newlines():
@@ -595,11 +595,11 @@ def test_tokenize_eof_position_after_trailing_newlines():
     lexer.tokenize()
     lexer.tokenize()
     token = lexer.tokenize()
-    assert (token.type, token.line, token.col) == ("EOF", 5, 1)
+    assert (token.type, token.line, token.col) == ("$", 5, 1)
 
 
 def test_tokenize_eof_str():
-    assert str(Lexer("").tokenize()) == "<EOF,1,1>"
+    assert str(Lexer("").tokenize()) == "<$,1,1>"
 
 
 def test_tokenize_position_after_cleanse():
@@ -608,12 +608,12 @@ def test_tokenize_position_after_cleanse():
 
 def test_tokenize_empty():
     token = Lexer("").tokenize()
-    assert (token.type, token.lexeme, token.line, token.col) == ("EOF", "$", 1, 1)
+    assert (token.type, token.lexeme, token.line, token.col) == ("$", "$", 1, 1)
 
 
 def test_tokenize_only_comments():
     token = Lexer("  -- c\n--[[x]]\n").tokenize()
-    assert (token.type, token.lexeme, token.line, token.col) == ("EOF", "$", 3, 1)
+    assert (token.type, token.lexeme, token.line, token.col) == ("$", "$", 3, 1)
 
 
 def test_tokenize_error_exits(capsys):

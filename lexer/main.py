@@ -7,6 +7,6 @@ lexer = Lexer(data)
 
 while True:
     token = lexer.tokenize()
-    if token.type=="EOF":
+    if token.type=="$":
         break
     print(token)

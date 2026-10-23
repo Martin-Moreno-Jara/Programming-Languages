@@ -23,7 +23,7 @@ def _lex_all(src: str) -> list:
         with contextlib.redirect_stdout(buffer):
             while True:
                 token = lexer.tokenize()
-                if token.type == "EOF":
+                if token.type == "$":
                     break
                 tokens.append(str(token))
     except SystemExit:

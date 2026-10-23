@@ -399,7 +399,7 @@ class Lexer:
             self._cleanse_input()
 
             if not self.peek():
-                return Token(type="EOF",lexeme="$",line=self.line,col=self.calc_inline_pos(self.pos))
+                return Token(type="$",lexeme="$",line=self.line,col=self.calc_inline_pos(self.pos))
 
             return self._process_token()
         except LexicalError as e:
