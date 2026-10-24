@@ -9,6 +9,11 @@ SYNTAX_ROOT = Path(__file__).resolve().parent.parent
 if str(SYNTAX_ROOT) not in sys.path:
     sys.path.insert(0, str(SYNTAX_ROOT))
 
+# The project root must be importable too: the code generator and the parser it writes import syntax.*, lexer.* and exceptions.*
+PROJECT_ROOT = SYNTAX_ROOT.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+
 from grammar import Grammar  # noqa: E402
 
 
