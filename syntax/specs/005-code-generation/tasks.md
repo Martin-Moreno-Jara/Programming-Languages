@@ -145,8 +145,13 @@ Each test is parametrized with `_params("<test name>", G_ROWS)`, uses
   the `match` argument equals the token exactly).
 - [x] `test_else_names_union_of_predict_sets`: for every `A`, `else_body` is a
   single `raise SyntacticalError(self.format_error_message(<text>))`, and
-  `_expected_tokens(<text>)` equals the union of `g.predict[A]`. For G10 the
-  text is `""", "'", "\"`, which must read back as `{'"', "'", "\\"}`.
+  `<text>` equals `", ".join(f'"{_shown(t)}"' for t in sorted(union))`,
+  where `union` is the union of `g.predict[A]`. This checks the order and the
+  display form. `_shown` is built from the lexer's `operand_symbols_dict`, not
+  copied from the generator. Updated on 2026-10-25 for `format_expected_symbol`.
+- [x] `test_format_expected_symbol`: 40 rows. `tkn_num`, `tkn_str`, `$`, a
+  keyword, a built-in, `id`, a plain token, and one row per lexer symbol, so
+  the generator's table can't drift from the lexer's.
 - [x] `test_main_parses_start_symbol`: `main` has, in order,
   1. `self.cur_tok = self.lexer.tokenize()`,
   2. `self.parse_<start>()` where `<start>` is the first key (G12: `parse_B`),
@@ -198,14 +203,14 @@ _Done on 2026-10-23._
   `_error_parts(err.value.message) == expected`.
 - [x] Row `R1-wrong-first-token`: G1, `["b"]`, `(1, 1, "b", {"a"})`.
 - [x] Row `R2-wrong-mid-production`: G4, `["a", "x", "c"]`, `(1, 2, "x", {"b"})`.
-- [x] Row `R3-ends-early`: G4, `["a", "b"]`, `(1, 3, "$", {"c"})`.
+- [x] Row `R3-ends-early`: G4, `["a", "b"]`, `(1, 3, "final de archivo", {"c"})`.
 - [x] Row `R4-extra-tokens`: G1, `["a", "a"]`, `(1, 2, "a", {"$"})`.
-- [x] Row `R5-empty-not-nullable`: G1, `[]`, `(1, 1, "$", {"a"})`.
+- [x] Row `R5-empty-not-nullable`: G1, `[]`, `(1, 1, "final de archivo", {"a"})`.
 - [x] Row `R6-union-named`: G3, `["c"]`, `(1, 1, "c", {"a", "b"})`.
 - [x] Row `R7-inside-recursion`: G13-expression, `["id", "+"]`,
-  `(1, 3, "$", {"(", "id"})`.
+  `(1, 3, "final de archivo", {"(", "id"})`.
 - [x] Row `R8-missing-close-paren`: G13-expression, `["(", "id"]`,
-  `(1, 3, "$", {")"})`.
+  `(1, 3, "final de archivo", {")"})`.
 - [x] Check that there are 8 rows.
 
 ## 8. End-to-end tests with the real lexer (spec §6)
@@ -220,10 +225,10 @@ _Done on 2026-10-23._
   returns. Otherwise assert the `SyntacticalError` parts equal `expected`.
 - [x] Row `E1-assignment`: `"x = 1"`, `None`.
 - [x] Row `E2-if-block`: `"if x then y = 2 end"`, `None`.
-- [x] Row `E3-missing-end`: `"if x then y = 2"`, `(1, 16, "$", {"end"})`.
-- [x] Row `E4-double-assign`: `"x = = 1"`, `(1, 5, "=", {"id", "tkn_num"})`.
+- [x] Row `E3-missing-end`: `"if x then y = 2"`, `(1, 16, "final de archivo", {"end"})`.
+- [x] Row `E4-double-assign`: `"x = = 1"`, `(1, 5, "=", {"id", "valor_numerico"})`.
 - [x] Row `E5-error-on-line-3`: `"x = 1\ny = 2\nz = then\n"`,
-  `(3, 5, "then", {"id", "tkn_num"})`.
+  `(3, 5, "then", {"id", "valor_numerico"})`.
 
 ## 9. Properties (spec §7)
 _Done on 2026-10-23._
@@ -247,10 +252,10 @@ _Done on 2026-10-23._
 ## 10. Counts
 _Done on 2026-10-23._
 
-- [x] `pytest tests/test_code_generator.py --collect-only -q` lists 193 tests:
-  16 LL(1) + 112 structural + 4 unit + 14 accept + 8 reject + 5 end-to-end +
+- [x] `pytest tests/test_code_generator.py --collect-only -q` lists 233 tests:
+  16 LL(1) + 112 structural + 4 unit + 40 `format_expected_symbol` + 14 accept + 8 reject + 5 end-to-end +
   16 deterministic + 16 unmodified + 2 single property tests.
-- [x] `pytest tests --collect-only -q` lists 996 (803 + 193).
+- [x] `pytest tests --collect-only -q` lists 1036 (803 + 233), before spec 006.
 
 ## 11. First run and xfail workflow (spec §9)
 _Done on 2026-10-23: all 193 pass against the current code, so `KNOWN_FAILURES` stays empty and no marks were added. Four deliberate bugs in a throwaway copy of the generator (no `elif`, no `pass` for ε, every branch using the first prediction set, no `$` check in `main`) each made 17 to 67 tests fail._

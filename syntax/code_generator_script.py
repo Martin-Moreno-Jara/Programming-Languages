@@ -5,7 +5,48 @@ class ASDR_generator():
         self.grammar = grammar
         self.lines = ["from exceptions.custom_exceptions import SyntacticalError","from lexer.lexer import Lexer","from .ASDR_base import ASDR_base", "", "class ASDR(ASDR_base):\n"]
         self.eps = "ε"
+        self.operand_symbols_dict: dict = {
+                            "tkn_bit_and": "&",
+                            "tkn_bit_or": "|",
+                            "tkn_bitex_or": "~",
+                            "tkn_right_shift": ">>",
+                            "tkn_left_shift": "<<",
+                            "tkn_semicolon": ";",
+                            "tkn_colon": ":",
+                            "tkn_comma": ",",
+                            "tkn_period": ".",
+                            "tkn_goto": "::",
+                            "tkn_concat": "..",
+                            "tkn_varargs": "...",
+                            "tkn_opening_key": "{",
+                            "tkn_closing_key": "}",
+                            "tkn_opening_bra": "[",
+                            "tkn_closing_bra": "]",
+                            "tkn_opening_par": "(",
+                            "tkn_closing_par": ")",
+                            "tkn_length": "#",
+                            "tkn_plus": "+",
+                            "tkn_minus": "-",
+                            "tkn_times": "*",
+                            "tkn_div": "/",
+                            "tkn_floor_div": "//",
+                            "tkn_power": "^",
+                            "tkn_mod": "%",
+                            "tkn_equal": "==",
+                            "tkn_neq": "~=",
+                            "tkn_leq": "<=",
+                            "tkn_geq": ">=",
+                            "tkn_greater": ">",
+                            "tkn_less": "<",
+                            "tkn_assign": "=",
+                        }
 
+    def format_expected_symbol(self,s):
+        if s=="tkn_num":return "valor_numerico"
+        elif s=="tkn_str": return "cadena_de_caracteres"
+        elif s=="$": return "final de archivo"
+        else:
+            return self.operand_symbols_dict.get(s) if self.operand_symbols_dict.get(s) else s
 
     def populate_lines(self):
         predict = self.grammar.predict
@@ -29,6 +70,7 @@ class ASDR_generator():
             expected = sorted(set().union(*predict[A]))
             expected_str = ""
             for i,ex in enumerate(expected):
+                ex= self.format_expected_symbol(ex)
                 expected_str+= f"\"{ex}\""
                 if i < len(expected) -1:
                     expected_str+=", "

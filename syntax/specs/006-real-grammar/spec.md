@@ -26,9 +26,10 @@ Sources of truth, in this order:
 ## 2. Interface under test
 
 ```python
-from main import final_grammar
+from main import final_grammar, pred_exceptions
 
 g = Grammar(final_grammar)
+g.set_pred_exceptions(pred_exceptions)   # tokens removed by hand, see §4.1
 g.process_grammar()
 g.check_LL1_condition()          # must be True
 ASDR_generator(g).generate()     # writes ./syntax/ASDR.py
@@ -140,7 +141,8 @@ These check `final_grammar` itself, without parsing any program.
 | P4 | Every non-terminal is productive (it derives at least one string of terminals) | A non-terminal that can only recurse never finishes |
 | P5 | Every terminal is a real lexer token type: a value of the lexer's symbol table, a keyword of `keywords_set`, `id`, `tkn_num`, `tkn_str`, or `ε` | A misspelled token (`tkn_semilocon`) can never be matched |
 | P6 | `CHUNK` is the first key | The generator uses the first key as the start symbol |
-| P7 | **Coverage:** every production of every non-terminal is used by at least one accept case of §5 and §6 | Each production is exercised at least once |
+| P7 | **Coverage:** every production of every non-terminal is used by at least one accept case of §5 | Each production is exercised at least once |
+| P8 | Every entry of `pred_exceptions` names a real non-terminal and production, and its token is in that production's **raw** prediction set and in the raw set of another production of the same non-terminal | An exception left behind after a grammar change (wrong index, token no longer there, or a conflict that no longer exists) |
 
 How P7 is measured: wrap every `parse_A` method of the generated parser. On
 entry, the current token picks exactly one production of `A`, because the
@@ -148,6 +150,40 @@ grammar is LL(1): the one whose prediction set contains it. Record that
 `(A, production index)`. Run all accept cases and compare the recorded pairs
 with all pairs of the grammar. The failure message lists the productions that
 were never used, so new accept cases can be added for them.
+
+### 4.1 Prediction-set exceptions
+
+Some conflicts come from Lua itself and no LL(1) grammar can remove them
+(K3 in §9 was one). They are resolved the way Lua does it, by removing a
+token by hand from one prediction set after the sets are computed:
+
+```python
+pred_exceptions = {"PREFIXEXP_PRIME": {3: "tkn_opening_par"}}  # main.py
+g.set_pred_exceptions(pred_exceptions)
+g.process_grammar()   # FIRST, FOLLOW, predict, then apply_pred_exceptions()
+```
+
+`{A: {i: t}}` removes token `t` from `predict[A][i]`. Here, `(` after a
+prefix expression always continues it as a call and never ends it (Lua's
+greedy rule).
+
+Unit tests for the two new `Grammar` methods (`test_pred_exceptions.py`),
+using the dangling-else grammar of spec 004 E8 with `{"Sp": {1: "e"}}`:
+
+| ID | What it checks |
+|----|----------------|
+| X1 | `set_pred_exceptions` stores the mapping and computes nothing |
+| X2 | With no exceptions (never set, `None` or `{}`), `process_grammar` gives exactly the prediction sets of the step-by-step pipeline |
+| X3 | The token is removed from that one set: `Sp` becomes `[{e}, {$}]` |
+| X4 | The grammar goes from not LL(1) to LL(1) |
+| X5 | FIRST, FOLLOW, the grammar and every other prediction set are unchanged |
+| X6 | The mapping passed in is not modified |
+| X7 | Exceptions on several non-terminals at once, including removing `$` |
+| X8 | Applying twice gives the same result as applying once |
+| X9 | `apply_pred_exceptions` after `compute_predict_set` equals `process_grammar` |
+
+Out of scope: an unknown non-terminal or production index, and removing a
+token that isn't in the set. For the real grammar these are caught by P8.
 
 ## 5. Accept cases by production
 
@@ -343,6 +379,7 @@ prefixexp | tableconstructor | exp binop exp | unop exp`
 | C20 | `a.b.c:d "x" {1} (2)` | Long chain with all three argument kinds |
 | C21 | `x = f(g(h(1)))` | Nested calls |
 | C22 | `function f(...) g(...) end` | Varargs as an argument |
+| C23 | `a, (b).c = 1, 2` | A parenthesised prefix expression as a later assignment target |
 
 ### 5.9 Built-in names (N)
 
@@ -389,10 +426,11 @@ prefixexp | tableconstructor | exp binop exp | unop exp`
 | EA6 | 50 nested tables `{{{...}}}` | Deep recursion in tables |
 | EA7 | 200 statements `x = 1` in a row | Long statement list |
 | EA8 | `x = 1 + 1 + ... + 1` with 200 terms | Long operator chain |
-| EA9 | 10 nested `function() ... end` | Nested function bodies |
+| EA9 | `f = function() return function() return ... end end`, 10 levels | Nested function bodies |
 | EA10 | `function f() ; end` | A body with only an empty statement |
 | EA11 | Only comments and blank lines | Same as empty input |
 | EA12 | `return function() return {f = function() return end} end` | Return, functions and tables mixed |
+| EA13 | `f()↵(g)()` | `(` on the next line continues the call chain, read as `f()(g)()` (§4.1) |
 
 Every EA case has a time limit (§11), so a parser that loops forever fails
 instead of hanging.
@@ -452,6 +490,7 @@ list.
 | R36 | `local a = 1↵local b = 2↵local c = = 3` | 3:11 | `=` | `"id"`, `"valor_numerico"` (checks the line number) |
 | R37 | `x = 1↵↵↵y = ` | EOF | `final de archivo` | `"id"` (EOF after blank lines) |
 | R38 | `t = {1,, 2}` | 1:8 | `,` | `"}"` |
+| R39 | `a = f↵(g).x = 1` | 2:7 | `=` | `"final de archivo"`, `"id"` (read greedily as `a = f(g).x`, then a second `=`, as in Lua) |
 
 **Only the first error.** R3 has a second error on the same line (`3` after
 `;`). R36 can be extended with another error on line 4. In both, only the
@@ -496,7 +535,7 @@ shows how it handles them, turn them into cases.
 |----|-------|---------------|---------------------|
 | K1 | A prefix expression that is not a call, used as a statement: `x`, `t.k`, `(f)`, `f().x` | Syntax error ("syntax error near ...") | The parser only knows the last suffix after it has read the whole prefix expression. Rejecting these needs a check after parsing that the last suffix was a call, not a grammar rule |
 | K2 | A call on the left of `=`: `f() = 1`, `a:m() = 2` | Syntax error | Same reason as K1, but checking that the last suffix was **not** a call |
-| K3 | `a = f↵(g).x = 1` | Read greedily as one statement, `a = f(g).x = 1`, so the second `=` is the error | The `(` can continue the expression or start a new statement, which is an LL(1) conflict. Lua always continues it |
+| K3 | `a = f↵(g).x = 1` | Read greedily as one statement, `a = f(g).x = 1`, so the second `=` is the error | **Resolved** by the exception of §4.1, and now tested as EA13 and R39 |
 | K4 | An attribute before the first name: `local <const> x`, `global <const> x` | Valid in the 5.5 manual | The doc's R1 list has no `"<"`, so the grader seems not to allow it. If the grammar allows it, R1 and R33 fail |
 | K5 | Other built-ins as names: `pairs`, `ipairs`, `tostring`, `tonumber`, `select`, `next`, `load`, `loadfile`, `dofile` | Ordinary names | The lexer gives them their own token types, and the doc lists only the five of §3.1 as identifiers. It is unknown whether the grader accepts `for k, v in pairs(t) do end`. Very common code, so worth asking on Campuswire |
 | K6 | `print` as a token | — | The grader treats `print` as its own token (R1 lists `"print"`), but it is commented out of `keywords_set` (`lexer/lexer.py:81`). As an `id`, R1, R33 and O3 lose `"print"` from the list |
@@ -523,6 +562,7 @@ shows how it handles them, turn them into cases.
   - `test_real_grammar_properties.py` for §4;
   - `test_real_grammar_parse.py` for §5 to §7;
   - `test_real_grammar_output.py` for §8;
+  - `test_pred_exceptions.py` for the X cases of §4.1;
   - `real_grammar_cases.py` (the case tables) and `real_grammar_support.py`
     (shared helpers). These are not collected as tests.
 - Import `final_grammar` from `main.py`, so the tests always follow the

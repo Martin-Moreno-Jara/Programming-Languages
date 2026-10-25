@@ -60,7 +60,13 @@ Read the generated file and inspect it, for example with `ast.parse`:
   `self.parse_X()` for a non-terminal `X`, `self.match('t')` for a terminal
   `t`, and `pass` for ε.
 - The final `else` raises `SyntacticalError` and names every token in the
-  union of `A`'s prediction sets.
+  union of `A`'s prediction sets, sorted by token type and shown as the
+  assignment doc asks (`format_expected_symbol`): a lexer symbol as itself
+  (`tkn_plus` as `+`), `tkn_num` as `valor_numerico`, `tkn_str` as
+  `cadena_de_caracteres`, `$` as `final de archivo`, and any other token
+  unchanged. Each one is in double quotes, separated by `", "`.
+- At the end of input, the found lexeme is shown as `final de archivo`
+  (`ASDR_base.format_error_message`).
 - `main` reads the first token, calls `parse_S` for the start symbol `S` (the
   first key of the grammar), and then raises `SyntacticalError` if the
   current token is not `$`.

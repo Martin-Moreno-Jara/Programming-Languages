@@ -29,7 +29,7 @@ The two support modules don't start with `test_`, so pytest doesn't collect
 them. The test files import them by name, which works because pytest puts
 `syntax/tests/` on `sys.path` (no `__init__.py`, as in the other suites).
 
-At the time of writing (2026-10-25), `final_grammar` is **not** LL(1). P1
+Until `pred_exceptions` was added to `main.py` (2026-10-25), `final_grammar` was **not** LL(1). P1
 fails, and every parsing and output test is skipped by the fixture in 2.3
 until it is.
 
@@ -58,7 +58,10 @@ until it is.
 - [x] `lua_grammar()`: `from main import final_grammar` and return a deep copy.
   Import inside the function, so the import cost only applies to tests that
   need it.
-- [x] `processed_grammar()`: `Grammar(lua_grammar())`, `process_grammar()`,
+- [x] `lua_pred_exceptions()`: a deep copy of `pred_exceptions` from `main.py`.
+- [x] `processed_grammar(with_exceptions=True)`: `Grammar(lua_grammar())`, then
+  `set_pred_exceptions(lua_pred_exceptions())` unless `with_exceptions` is
+  `False` (P8 needs the raw sets), then `process_grammar()`,
   return it.
 - [x] `generate_parser(folder)`: inside `pytest.MonkeyPatch.context()`,
   `chdir(folder.parent)` (where `folder` is a `syntax/` directory), run
@@ -147,11 +150,11 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
   `BO-floor-div`, `BO-power`, `BO-mod`, `BO-bit-and`, `BO-bit-xor`,
   `BO-bit-or`, `BO-right-shift`, `BO-left-shift`, `BO-concat`, `BO-less`,
   `BO-leq`, `BO-greater`, `BO-geq`, `BO-equal`, `BO-neq`, `BO-and`, `BO-or`.
-- [x] `CALL_ROWS`: `C1` to `C22`, with `C12-string` (`o:m"s"`) and
-  `C12-table` (`o:m{}`). 23 rows.
+- [x] `CALL_ROWS`: `C1` to `C23`, with `C12-string` (`o:m"s"`) and
+  `C12-table` (`o:m{}`). 24 rows.
 - [x] `NAME_ROWS`: `N1` to `N15`. 15 rows.
 - [x] `LAYOUT_ROWS`: `L1` to `L6`. 6 rows.
-- [x] `EDGE_ROWS`: `EA1` to `EA12`. 12 rows. Generated programs are built with
+- [x] `EDGE_ROWS`: `EA1` to `EA13`. 13 rows. Generated programs are built with
   string operations, never typed out:
   - `EA1`: the doc's `saludar` program, comments included:
     `"-- Definición de la función\nfunction saludar(texto)\n    print(texto)\nend\n\n-- Llamada a la función\nsaludar(\"¡Hola, mundo!\")\n"`.
@@ -162,11 +165,13 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
   - `EA6`: `"t = " + "{" * 50 + "}" * 50`.
   - `EA7`: `"x = 1\n" * 200`.
   - `EA8`: `"x = " + " + ".join(["1"] * 200)`.
-  - `EA9`: `"f = " + "function() " * 10 + "end " * 10`.
+  - `EA9`: `"f = " + "function() return " * 10 + "end " * 10` (each
+    function returns the next one; a bare `function()` is not a statement).
   - `EA10` to `EA12`: as in the spec. `EA11` is `"-- a\n\n-- b\n"`.
-- [x] `ACCEPT_ROWS`: all the tables above concatenated, **185 rows**. Assert
+  - `EA13`: `"f()\n(g)()"` (the greedy `(` of spec §4.1).
+- [x] `ACCEPT_ROWS`: all the tables above concatenated, **187 rows**. Assert
   the count at import time, so a lost table is noticed at once.
-- [x] `PRODUCTION_ROWS`: `ACCEPT_ROWS` without `EDGE_ROWS` (173 rows). Only
+- [x] `PRODUCTION_ROWS`: `ACCEPT_ROWS` without `EDGE_ROWS` (174 rows). Only
   this list is used for coverage in P7, because the spec ties coverage to
   §5.
 
@@ -179,7 +184,9 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
     at EOF).
   - `contains` is a set of shown items that must be in the list.
   - `exact` is the full ordered list, or `None`.
-- [x] Rows `R1` to `R38`, copied from spec §7. The three doc rows have
+- [x] Rows `R1` to `R39`, copied from spec §7. `R39` is
+  `"a = f\n(g).x = 1"`, `(2, 7)`, `"="`, `{EOF, "id"}`.
+  The three doc rows have
   `exact` set and `contains` empty:
   - `R1`: `"local 1;"`, `(1, 7)`, `"1"`,
     `["error", "function", "id", "pcall", "print", "warn", "xpcall"]`.
@@ -189,7 +196,7 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
     `(4, 7)`, `"=="`, `["=", ":", ",", "[", "(", "."]`.
   - `R33`: `"local = 1"`, `(1, 7)`, `"="`, the same list as `R1`.
 - [x] The EOF rows are `R4` to `R10` and `R37`, with `position = None`.
-- [x] Assert 38 rows at import time.
+- [x] Assert 39 rows at import time.
 - [x] All positions in spec §7 were checked against the real lexer on
   2026-10-25. Keep `test_reject_positions_match_lexer` (section 6) so they stay
   right if the lexer changes.
@@ -240,6 +247,11 @@ LL(1). Each one builds its own `processed_grammar()`.
   uses them.
 - [x] `test_P6_chunk_is_start_symbol`: `next(iter(lua_grammar())) == "CHUNK"`,
   and `get_initial_symbol()` returns `"CHUNK"`.
+- [x] `test_P8_every_exception_resolves_a_conflict`: on
+  `processed_grammar(with_exceptions=False)`, every entry `{A: {i: t}}` of
+  `pred_exceptions` has `A` in the grammar, a valid index `i`, `t` in the raw
+  `predict[A][i]`, and `t` in another raw set of `A`. The message names the
+  production for each bad entry.
 - [x] `test_P7_every_production_is_covered`: uses `lua_parser`, so it skips
   while the grammar is not LL(1).
   - Build a subclass of `ASDR`. For each key `A`, override `parse_A` to record
@@ -251,11 +263,11 @@ LL(1). Each one builds its own `processed_grammar()`.
     message lists the missing ones as `A → production`, so the missing case is
     obvious.
 - [x] `test_case_sources_lex_cleanly`: parametrized over every source in
-  `ACCEPT_ROWS` and `REJECT_ROWS` (223 rows, ids as in the tables). `lex`
+  `ACCEPT_ROWS` and `REJECT_ROWS` (226 rows, ids as in the tables). `lex`
   doesn't fail. This proves every case is free of lexical errors, as the doc
   promises for the real input.
 - [x] `test_reject_positions_match_lexer`: parametrized over the `REJECT_ROWS`
-  with a position (30 rows). Some token in `lex(source)` is at that
+  with a position (31 rows). Some token in `lex(source)` is at that
   `(line, col)` and has `lexeme` as its lexeme.
 - [x] `test_display_is_consistent`: `DISPLAY` has no repeated shown values,
   and `"print"`, `"pcall"`, `"xpcall"`, `"error"` and `"warn"` are keys. This
@@ -265,17 +277,17 @@ LL(1). Each one builds its own `processed_grammar()`.
 
 All tests use `lua_parser` and take `ASDR` from it.
 
-- [x] `test_accepts`: parametrized over `ACCEPT_ROWS` (185 rows). `parse`
+- [x] `test_accepts`: parametrized over `ACCEPT_ROWS` (187 rows). `parse`
   returns without raising. On `SyntacticalError`, fail with the source and the
   message, so the report shows where it was rejected.
-- [x] `test_rejects`: parametrized over `REJECT_ROWS` (38 rows).
+- [x] `test_rejects`: parametrized over `REJECT_ROWS` (39 rows).
   - `pytest.raises(SyntacticalError)` around `parse`.
   - `error_parts(err.value.message)` gives `(line, col, lexeme, shown)`.
   - Assert the lexeme, the position (when it is not `None`) and `contains <=
     set(shown)`.
   - When `exact` is set, assert `shown == exact` (order included).
 - [x] `test_reject_expected_list_order`: parametrized over `REJECT_ROWS`
-  (38 rows). `is_doc_order(shown)` is `True` (spec §8 cross-check). Kept
+  (39 rows). `is_doc_order(shown)` is `True` (spec §8 cross-check). Kept
   separate from `test_rejects`, so an order mistake doesn't hide a wrong
   position.
 - [x] `test_reports_only_first_error`: R3 and R36, plus a copy of R36 with a
@@ -301,15 +313,35 @@ All tests use `lua_parser` and take `ASDR` from it.
   the grammar is not LL(1), the 8 rows are skipped with the same reason,
   instead of failing on `main.py`'s "Cannot procede" text.
 
+## 8b. Prediction-set exception unit tests (`test_pred_exceptions.py`, spec §4.1)
+_Done on 2026-10-25._
+
+- [x] `DANGLING_ELSE` (spec 004 E8, with `S'` renamed to `Sp`) and
+  `GREEDY_ELSE = {"Sp": {1: "e"}}`.
+- [x] `_processed(grammar, exceptions, set_them)` and `_plain_predict(grammar)`
+  (the step-by-step pipeline without exceptions).
+- [x] X1: `test_set_pred_exceptions_stores_mapping`,
+  `test_set_pred_exceptions_computes_nothing`.
+- [x] X2: `test_no_exceptions_gives_plain_predict`, 3 rows: `never-set`,
+  `none`, `empty`.
+- [x] X3: `test_exception_removes_token_from_its_set`.
+- [x] X4: `test_exception_resolves_conflict`.
+- [x] X5: `test_exception_touches_nothing_else`.
+- [x] X6: `test_exceptions_mapping_not_modified`.
+- [x] X7: `test_several_non_terminals`.
+- [x] X8: `test_apply_twice_is_idempotent`.
+- [x] X9: `test_apply_after_compute_predict_set`.
+
 ## 9. Counts
 
 - [x] `pytest tests/test_real_grammar_properties.py --collect-only -q` lists
-  7 + 223 + 30 + 1 = **261** tests.
+  8 + 226 + 31 + 1 = **266** tests.
 - [x] `pytest tests/test_real_grammar_parse.py --collect-only -q` lists
-  185 + 38 + 38 + 3 + 13 = **277** tests.
+  187 + 39 + 39 + 3 + 13 = **281** tests.
 - [x] `pytest tests/test_real_grammar_output.py --collect-only -q` lists
   **8** tests.
-- [x] `pytest tests --collect-only -q` lists the previous total + 546.
+- [x] `pytest tests/test_pred_exceptions.py --collect-only -q` lists **12** tests.
+- [x] `pytest tests --collect-only -q` lists **1603** (1036 + 567; spec 005 grew by 40 rows of `test_format_expected_symbol`).
 
 ## 10. First run and xfail workflow (spec §11)
 _First run on 2026-10-25: 1254 passed, 286 skipped, 2 xfailed across all suites. Only P1 and `test_display_is_consistent` fail, so they got strict xfail decorators; every `KNOWN_FAILURES` dict is still empty, because the parse and output tests are skipped while the grammar is not LL(1). A dry run with `check_LL1_condition` forced to `True` (a throwaway pytest plugin outside the repo) ran the skipped parse tests: 161 failed, all real (EXP has no PREFIXEXP yet, and the error message still shows raw token types), with no harness errors._
@@ -339,6 +371,8 @@ _First run on 2026-10-25: 1254 passed, 286 skipped, 2 xfailed across all suites.
 - [ ] Each time the grammar becomes LL(1) again, rerun. The skipped tests now
   give real results. Repeat this section for them.
 
+_Second run on 2026-10-25, after `pred_exceptions`: the grammar is LL(1), so nothing is skipped any more. P1 passes and its xfail mark was removed. 1391 passed, 169 failed, 1 xfailed. The failures are real and not marked yet, because the grammar is still being edited: 99 accept rows (`EXP` has no `PREFIXEXP`, so `x = y` is rejected), all 39 + 39 reject rows (that, plus raw token types in the message), 6 output rows (same causes plus the `error: ` prefix), P7, and 3 more parse rows. Mark them once the grammar settles._
+
 ## 11. Maintenance (recurring)
 
 - [ ] Before editing any test, re-read `main.py` (`final_grammar` and the
@@ -355,6 +389,9 @@ _First run on 2026-10-25: 1254 passed, 286 skipped, 2 xfailed across all suites.
 - [ ] When a known limitation of spec §9 (K1 to K9) is settled by the grader,
   move it into a table here and in the spec, and update the memory note in
   `lua-parser-grader-rules`.
+- [ ] When `pred_exceptions` changes, P8 checks every entry still resolves a
+  real conflict. If a production is inserted before an index used there,
+  P8 fails instead of silently removing the wrong token.
 - [ ] When a bug is fixed and its test turns XPASS (strict), remove its
   `KNOWN_FAILURES` entry or decorator.
 - [ ] Don't add tests for the out-of-scope inputs in spec §10 unless the spec

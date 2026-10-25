@@ -8,6 +8,7 @@ from real_grammar_support import (
     EPS,
     lex,
     lua_grammar,
+    lua_pred_exceptions,
     params,
     parse,
     processed_grammar,
@@ -29,7 +30,6 @@ def _symbols(grammar: dict[str, list[list[str]]]) -> list[tuple[str, str]]:
 # ---------------------------------------------------------------------------
 # Grammar properties (spec §4)
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(reason="P1 grammar not LL(1)", raises=AssertionError, strict=True)
 def test_P1_grammar_is_ll1():
     g = processed_grammar()
     conflicts = [
@@ -88,6 +88,25 @@ def test_P6_chunk_is_start_symbol():
     assert processed_grammar().get_initial_symbol() == "CHUNK"
 
 
+def test_P8_every_exception_resolves_a_conflict():
+    raw = processed_grammar(with_exceptions=False)
+    problems = []
+    for A, removals in lua_pred_exceptions().items():
+        if A not in raw.predict:
+            problems.append(f"{A}: not a non-terminal")
+            continue
+        for i, token in removals.items():
+            if not 0 <= i < len(raw.predict[A]):
+                problems.append(f"{A}[{i}]: no such production")
+                continue
+            production = " ".join(raw.grammar[A][i])
+            if token not in raw.predict[A][i]:
+                problems.append(f"{A}[{i}] ({production}): {token} isn't in its prediction set")
+            elif not any(token in s for j, s in enumerate(raw.predict[A]) if j != i):
+                problems.append(f"{A}[{i}] ({production}): {token} conflicts with no other production")
+    assert problems == [], "\n".join(problems)
+
+
 def test_P7_every_production_is_covered(lua_parser):
     g, ASDR = lua_parser
     used: set[tuple[str, int]] = set()
@@ -128,7 +147,6 @@ def test_reject_positions_match_lexer(source, position, lexeme):
     assert at and at[0].lexeme == lexeme, [(t.type, t.lexeme, t.line, t.col) for t in lex(source)]
 
 
-@pytest.mark.xfail(reason="print not produced as its own token", raises=AssertionError, strict=True)
 def test_display_is_consistent():
     shown = list(DISPLAY.values())
     assert len(shown) == len(set(shown)), "two token types are shown the same way"

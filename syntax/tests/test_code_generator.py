@@ -15,6 +15,7 @@ from syntax.grammar import Grammar
 
 EPS = "ε"
 END = "$"
+EOF_SHOWN = "final de archivo"
 
 # Every test in this file fails instead of hanging if the generator or the generated parser never returns (spec §7)
 pytestmark = pytest.mark.timeout(5)
@@ -122,6 +123,16 @@ def _expected_tokens(text: str) -> set[str]:
             item = item[1:-1]
         tokens.add(item)
     return tokens
+
+
+# Lexer symbol table, reversed: token type -> the symbol a Lua programmer sees
+_SYMBOLS = {token_type: symbol for symbol, token_type in Lexer("").operand_symbols_dict.items()}
+_SPECIAL = {"tkn_num": "valor_numerico", "tkn_str": "cadena_de_caracteres", END: EOF_SHOWN}
+
+
+def _shown(token: str) -> str:
+    """How the assignment doc shows a token in an expected list; any other token is shown as itself."""
+    return _SPECIAL.get(token) or _SYMBOLS.get(token) or token
 
 
 def _class_def(source: str) -> ast.ClassDef:
@@ -279,7 +290,9 @@ def test_else_names_union_of_predict_sets(grammar, out_dir):
         assert ast.unparse(exc.func) == "SyntacticalError"
         message = exc.args[0]
         assert ast.unparse(message.func) == "self.format_error_message"
-        assert _expected_tokens(message.args[0].value) == set().union(*g.predict[A]), f"parse_{A}"
+        # Sorted by token type, then each one shown as the doc asks
+        expected = ", ".join(f'"{_shown(t)}"' for t in sorted(set().union(*g.predict[A])))
+        assert message.args[0].value == expected, f"parse_{A}"
 
 
 @pytest.mark.parametrize("grammar", _params("test_main_parses_start_symbol", G_ROWS))
@@ -299,6 +312,22 @@ def test_main_parses_start_symbol(grammar, out_dir):
 # ---------------------------------------------------------------------------
 # Unit tests for each method (spec §1, tasks.md §5)
 # ---------------------------------------------------------------------------
+_SHOWN_ROWS = [
+    ("tkn_num", "tkn_num", "valor_numerico"),
+    ("tkn_str", "tkn_str", "cadena_de_caracteres"),
+    ("end-of-input", END, EOF_SHOWN),
+    ("keyword", "end", "end"),
+    ("builtin", "print", "print"),
+    ("id", "id", "id"),
+    ("plain-token", "a", "a"),
+] + [(token_type, token_type, symbol) for token_type, symbol in sorted(_SYMBOLS.items())]
+
+
+@pytest.mark.parametrize("token, shown", _params("test_format_expected_symbol", _SHOWN_ROWS))
+def test_format_expected_symbol(token, shown):
+    assert ASDR_generator(_processed(GRAMMARS["G1"])).format_expected_symbol(token) == shown
+
+
 def test_init_sets_header(out_dir):
     gen = ASDR_generator(_processed(GRAMMARS["G1"]))
     assert [line.strip() for line in gen.lines] == [
@@ -369,12 +398,12 @@ def test_parser_accepts(grammar_name, types, out_dir, load_parser):
 REJECT_ROWS = [
     ("R1-wrong-first-token", "G1", ["b"], (1, 1, "b", {"a"})),
     ("R2-wrong-mid-production", "G4", ["a", "x", "c"], (1, 2, "x", {"b"})),
-    ("R3-ends-early", "G4", ["a", "b"], (1, 3, END, {"c"})),
+    ("R3-ends-early", "G4", ["a", "b"], (1, 3, EOF_SHOWN, {"c"})),
     ("R4-extra-tokens", "G1", ["a", "a"], (1, 2, "a", {END})),
-    ("R5-empty-not-nullable", "G1", [], (1, 1, END, {"a"})),
+    ("R5-empty-not-nullable", "G1", [], (1, 1, EOF_SHOWN, {"a"})),
     ("R6-union-named", "G3", ["c"], (1, 1, "c", {"a", "b"})),
-    ("R7-inside-recursion", "G13-expression", ["id", "+"], (1, 3, END, {"(", "id"})),
-    ("R8-missing-close-paren", "G13-expression", ["(", "id"], (1, 3, END, {")"})),
+    ("R7-inside-recursion", "G13-expression", ["id", "+"], (1, 3, EOF_SHOWN, {"(", "id"})),
+    ("R8-missing-close-paren", "G13-expression", ["(", "id"], (1, 3, EOF_SHOWN, {")"})),
 ]
 
 
@@ -399,9 +428,9 @@ LEXER_GRAMMAR: dict[str, list[list[str]]] = {
 E2E_ROWS = [
     ("E1-assignment", "x = 1", None),
     ("E2-if-block", "if x then y = 2 end", None),
-    ("E3-missing-end", "if x then y = 2", (1, 16, END, {"end"})),
-    ("E4-double-assign", "x = = 1", (1, 5, "=", {"id", "tkn_num"})),
-    ("E5-error-on-line-3", "x = 1\ny = 2\nz = then\n", (3, 5, "then", {"id", "tkn_num"})),
+    ("E3-missing-end", "if x then y = 2", (1, 16, EOF_SHOWN, {"end"})),
+    ("E4-double-assign", "x = = 1", (1, 5, "=", {"id", "valor_numerico"})),
+    ("E5-error-on-line-3", "x = 1\ny = 2\nz = then\n", (3, 5, "then", {"id", "valor_numerico"})),
 ]
 
 

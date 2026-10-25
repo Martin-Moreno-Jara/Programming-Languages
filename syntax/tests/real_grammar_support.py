@@ -42,8 +42,18 @@ def lua_grammar() -> dict[str, list[list[str]]]:
     return copy.deepcopy(final_grammar)
 
 
-def processed_grammar() -> Grammar:
+def lua_pred_exceptions() -> dict[str, dict[int, str]]:
+    """A private copy of pred_exceptions from main.py: the tokens removed by hand from prediction sets."""
+    from main import pred_exceptions
+
+    return copy.deepcopy(pred_exceptions)
+
+
+def processed_grammar(with_exceptions: bool = True) -> Grammar:
+    """final_grammar processed as main.py does it; with_exceptions=False gives the raw prediction sets."""
     g = Grammar(lua_grammar())
+    if with_exceptions:
+        g.set_pred_exceptions(lua_pred_exceptions())
     g.process_grammar()
     return g
 

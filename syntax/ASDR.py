@@ -5,40 +5,45 @@ from .ASDR_base import ASDR_base
 class ASDR(ASDR_base):
 
 	def parse_CHUNK(self):
-		if self.cur_tok.type in ['$', 'break', 'do', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'repeat', 'return', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'while']:
+		if self.cur_tok.type in ['$', 'break', 'do', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'return', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'warn', 'while', 'xpcall']:
 			self.parse_BLOCK()
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "break", "do", "for", "function", "global", "goto", "id", "if", "local", "repeat", "return", "tkn_goto", "tkn_opening_par", "tkn_semicolon", "while"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "break", "do", "error", "for", "function", "global", "goto", "id", "if", "local", "pcall", "print", "repeat", "return", "::", "(", ";", "warn", "while", "xpcall"'))
 
 	def parse_BLOCK(self):
-		if self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'repeat', 'return', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'until', 'while']:
+		if self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'return', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'until', 'warn', 'while', 'xpcall']:
 			self.parse_STATLIST()
 			self.parse_RETSTAT()
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "break", "do", "else", "elseif", "end", "for", "function", "global", "goto", "id", "if", "local", "repeat", "return", "tkn_goto", "tkn_opening_par", "tkn_semicolon", "until", "while"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "break", "do", "else", "elseif", "end", "error", "for", "function", "global", "goto", "id", "if", "local", "pcall", "print", "repeat", "return", "::", "(", ";", "until", "warn", "while", "xpcall"'))
 
 	def parse_STATLIST(self):
-		if self.cur_tok.type in ['break', 'do', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'repeat', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'while']:
+		if self.cur_tok.type in ['break', 'do', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'warn', 'while', 'xpcall']:
 			self.parse_STAT()
 			self.parse_STATLIST()
 		elif self.cur_tok.type in ['$', 'else', 'elseif', 'end', 'return', 'until']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "break", "do", "else", "elseif", "end", "for", "function", "global", "goto", "id", "if", "local", "repeat", "return", "tkn_goto", "tkn_opening_par", "tkn_semicolon", "until", "while"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "break", "do", "else", "elseif", "end", "error", "for", "function", "global", "goto", "id", "if", "local", "pcall", "print", "repeat", "return", "::", "(", ";", "until", "warn", "while", "xpcall"'))
 
 	def parse_STAT(self):
 		if self.cur_tok.type in ['tkn_semicolon']:
 			self.match('tkn_semicolon')
-		elif self.cur_tok.type in ['id', 'tkn_opening_par']:
-			self.parse_PREFIXEXP()
-			self.parse_PREFIXEXP_NEXT()
+		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
+			self.parse_NAME()
+			self.parse_AFTER_VAR()
+		elif self.cur_tok.type in ['tkn_opening_par']:
+			self.match('tkn_opening_par')
+			self.parse_EXP()
+			self.match('tkn_closing_par')
+			self.parse_AFTER_VAR()
 		elif self.cur_tok.type in ['tkn_goto']:
 			self.parse_LABEL()
 		elif self.cur_tok.type in ['break']:
 			self.match('break')
 		elif self.cur_tok.type in ['goto']:
 			self.match('goto')
-			self.match('id')
+			self.parse_NAME()
 		elif self.cur_tok.type in ['do']:
 			self.parse_DO_BLOCK_END()
 		elif self.cur_tok.type in ['while']:
@@ -63,15 +68,53 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['global']:
 			self.parse_GLOBAL_DEC()
 		else:
-			raise SyntacticalError(self.format_error_message('"break", "do", "for", "function", "global", "goto", "id", "if", "local", "repeat", "tkn_goto", "tkn_opening_par", "tkn_semicolon", "while"'))
+			raise SyntacticalError(self.format_error_message('"break", "do", "error", "for", "function", "global", "goto", "id", "if", "local", "pcall", "print", "repeat", "::", "(", ";", "warn", "while", "xpcall"'))
+
+	def parse_AFTER_VAR(self):
+		if self.cur_tok.type in ['tkn_opening_bra']:
+			self.match('tkn_opening_bra')
+			self.parse_EXP()
+			self.match('tkn_closing_bra')
+			self.parse_AFTER_VAR()
+		elif self.cur_tok.type in ['tkn_period']:
+			self.match('tkn_period')
+			self.parse_NAME()
+			self.parse_AFTER_VAR()
+		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str']:
+			self.parse_FUNCTIONCALL()
+			self.parse_AFTER_CALL()
+		elif self.cur_tok.type in ['tkn_assign', 'tkn_comma']:
+			self.parse_MORE_VAR()
+			self.match('tkn_assign')
+			self.parse_EXPLIST()
+		else:
+			raise SyntacticalError(self.format_error_message('"=", ":", ",", "[", "{", "(", ".", "cadena_de_caracteres"'))
+
+	def parse_AFTER_CALL(self):
+		if self.cur_tok.type in ['tkn_opening_bra']:
+			self.match('tkn_opening_bra')
+			self.parse_EXP()
+			self.match('tkn_closing_bra')
+			self.parse_AFTER_VAR()
+		elif self.cur_tok.type in ['tkn_period']:
+			self.match('tkn_period')
+			self.parse_NAME()
+			self.parse_AFTER_VAR()
+		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str']:
+			self.parse_FUNCTIONCALL()
+			self.parse_AFTER_CALL()
+		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'return', 'tkn_goto', 'tkn_semicolon', 'until', 'warn', 'while', 'xpcall']:
+			pass
+		else:
+			raise SyntacticalError(self.format_error_message('"final de archivo", "break", "do", "else", "elseif", "end", "error", "for", "function", "global", "goto", "id", "if", "local", "pcall", "print", "repeat", "return", ":", "::", "[", "{", "(", ".", ";", "cadena_de_caracteres", "until", "warn", "while", "xpcall"'))
 
 	def parse_LABEL(self):
 		if self.cur_tok.type in ['tkn_goto']:
 			self.match('tkn_goto')
-			self.match('id')
+			self.parse_NAME()
 			self.match('tkn_goto')
 		else:
-			raise SyntacticalError(self.format_error_message('"tkn_goto"'))
+			raise SyntacticalError(self.format_error_message('"::"'))
 
 	def parse_DO_BLOCK_END(self):
 		if self.cur_tok.type in ['do']:
@@ -80,16 +123,6 @@ class ASDR(ASDR_base):
 			self.match('end')
 		else:
 			raise SyntacticalError(self.format_error_message('"do"'))
-
-	def parse_PREFIXEXP_NEXT(self):
-		if self.cur_tok.type in ['tkn_assign', 'tkn_comma']:
-			self.parse_MORE_VAR()
-			self.match('tkn_assign')
-			self.parse_EXPLIST()
-		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'repeat', 'return', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'until', 'while']:
-			pass
-		else:
-			raise SyntacticalError(self.format_error_message('"$", "break", "do", "else", "elseif", "end", "for", "function", "global", "goto", "id", "if", "local", "repeat", "return", "tkn_assign", "tkn_comma", "tkn_goto", "tkn_opening_par", "tkn_semicolon", "until", "while"'))
 
 	def parse_IFSTAT(self):
 		if self.cur_tok.type in ['if']:
@@ -127,7 +160,7 @@ class ASDR(ASDR_base):
 	def parse_FORSTAT(self):
 		if self.cur_tok.type in ['for']:
 			self.match('for')
-			self.match('id')
+			self.parse_NAME()
 			self.parse_FORTYPE()
 			self.parse_DO_BLOCK_END()
 		else:
@@ -139,7 +172,7 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['in', 'tkn_comma']:
 			self.parse_GENERIC_FOR()
 		else:
-			raise SyntacticalError(self.format_error_message('"in", "tkn_assign", "tkn_comma"'))
+			raise SyntacticalError(self.format_error_message('"in", "=", ","'))
 
 	def parse_NUMERICAL_FOR(self):
 		if self.cur_tok.type in ['tkn_assign']:
@@ -149,7 +182,7 @@ class ASDR(ASDR_base):
 			self.parse_EXP()
 			self.parse_OPT_EXP()
 		else:
-			raise SyntacticalError(self.format_error_message('"tkn_assign"'))
+			raise SyntacticalError(self.format_error_message('"="'))
 
 	def parse_OPT_EXP(self):
 		if self.cur_tok.type in ['tkn_comma']:
@@ -158,7 +191,7 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['do']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"do", "tkn_comma"'))
+			raise SyntacticalError(self.format_error_message('"do", ","'))
 
 	def parse_GENERIC_FOR(self):
 		if self.cur_tok.type in ['in', 'tkn_comma']:
@@ -166,7 +199,7 @@ class ASDR(ASDR_base):
 			self.match('in')
 			self.parse_EXPLIST()
 		else:
-			raise SyntacticalError(self.format_error_message('"in", "tkn_comma"'))
+			raise SyntacticalError(self.format_error_message('"in", ","'))
 
 	def parse_RETSTAT(self):
 		if self.cur_tok.type in ['return']:
@@ -176,7 +209,7 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['$', 'else', 'elseif', 'end', 'until']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "else", "elseif", "end", "return", "until"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "else", "elseif", "end", "return", "until"'))
 
 	def parse_OPT_SEMILOCON(self):
 		if self.cur_tok.type in ['tkn_semicolon']:
@@ -184,57 +217,7 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['$', 'else', 'elseif', 'end', 'until']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "else", "elseif", "end", "tkn_semicolon", "until"'))
-
-	def parse_TABLECONSTRUCTOR(self):
-		if self.cur_tok.type in ['tkn_opening_key']:
-			self.match('tkn_opening_key')
-			self.parse_FIELDLIST()
-			self.match('tkn_closing_key')
-		else:
-			raise SyntacticalError(self.format_error_message('"tkn_opening_key"'))
-
-	def parse_FIELDLIST(self):
-		if self.cur_tok.type in ['false', 'function', 'id', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_str', 'tkn_varargs', 'true']:
-			self.parse_FIELD()
-			self.parse_FIELD_TAIL()
-		elif self.cur_tok.type in ['tkn_closing_key']:
-			pass
-		else:
-			raise SyntacticalError(self.format_error_message('"false", "function", "id", "nil", "not", "tkn_closing_key", "tkn_length", "tkn_minus", "tkn_num", "tkn_opening_bra", "tkn_opening_key", "tkn_str", "tkn_varargs", "true"'))
-
-	def parse_FIELD_TAIL(self):
-		if self.cur_tok.type in ['tkn_comma', 'tkn_semicolon']:
-			self.parse_FIELDSEP()
-			self.parse_FIELDLIST()
-		elif self.cur_tok.type in ['tkn_closing_key']:
-			pass
-		else:
-			raise SyntacticalError(self.format_error_message('"tkn_closing_key", "tkn_comma", "tkn_semicolon"'))
-
-	def parse_FIELDSEP(self):
-		if self.cur_tok.type in ['tkn_comma']:
-			self.match('tkn_comma')
-		elif self.cur_tok.type in ['tkn_semicolon']:
-			self.match('tkn_semicolon')
-		else:
-			raise SyntacticalError(self.format_error_message('"tkn_comma", "tkn_semicolon"'))
-
-	def parse_FIELD(self):
-		if self.cur_tok.type in ['tkn_opening_bra']:
-			self.match('tkn_opening_bra')
-			self.parse_EXP()
-			self.match('tkn_closing_bra')
-			self.match('tkn_assign')
-			self.parse_EXP()
-		elif self.cur_tok.type in ['id']:
-			self.match('id')
-			self.match('tkn_assign')
-			self.parse_EXP()
-		elif self.cur_tok.type in ['false', 'function', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_str', 'tkn_varargs', 'true']:
-			self.parse_EXP()
-		else:
-			raise SyntacticalError(self.format_error_message('"false", "function", "id", "nil", "not", "tkn_length", "tkn_minus", "tkn_num", "tkn_opening_bra", "tkn_opening_key", "tkn_str", "tkn_varargs", "true"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "else", "elseif", "end", ";", "until"'))
 
 	def parse_LOCAL_DEC(self):
 		if self.cur_tok.type in ['local']:
@@ -246,17 +229,17 @@ class ASDR(ASDR_base):
 	def parse_LOCAL_OPT(self):
 		if self.cur_tok.type in ['function']:
 			self.parse_FUNC_DEC()
-		elif self.cur_tok.type in ['id', 'tkn_less']:
+		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']:
 			self.parse_ATTNAME_BRANCH()
 		else:
-			raise SyntacticalError(self.format_error_message('"function", "id", "tkn_less"'))
+			raise SyntacticalError(self.format_error_message('"error", "function", "id", "pcall", "print", "<", "warn", "xpcall"'))
 
 	def parse_ATTNAME_BRANCH(self):
-		if self.cur_tok.type in ['id', 'tkn_less']:
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']:
 			self.parse_ATTNAMELIST()
 			self.parse_OPT_EXPLIST()
 		else:
-			raise SyntacticalError(self.format_error_message('"id", "tkn_less"'))
+			raise SyntacticalError(self.format_error_message('"error", "id", "pcall", "print", "<", "warn", "xpcall"'))
 
 	def parse_GLOBAL_DEC(self):
 		if self.cur_tok.type in ['global']:
@@ -268,27 +251,27 @@ class ASDR(ASDR_base):
 	def parse_GLOBAL_OPT(self):
 		if self.cur_tok.type in ['function']:
 			self.parse_FUNC_DEC()
-		elif self.cur_tok.type in ['id', 'tkn_less', 'tkn_times']:
+		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_less', 'tkn_times', 'warn', 'xpcall']:
 			self.parse_ATTRIB()
 			self.parse_GLOBAL_TAIL()
 		else:
-			raise SyntacticalError(self.format_error_message('"function", "id", "tkn_less", "tkn_times"'))
+			raise SyntacticalError(self.format_error_message('"error", "function", "id", "pcall", "print", "<", "*", "warn", "xpcall"'))
 
 	def parse_GLOBAL_TAIL(self):
 		if self.cur_tok.type in ['tkn_times']:
 			self.match('tkn_times')
-		elif self.cur_tok.type in ['id']:
-			self.match('id')
+		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
+			self.parse_NAME()
 			self.parse_ATTRIB()
 			self.parse_NAME_ATTRIB_LIST()
 			self.parse_OPT_EXPLIST()
 		else:
-			raise SyntacticalError(self.format_error_message('"id", "tkn_times"'))
+			raise SyntacticalError(self.format_error_message('"error", "id", "pcall", "print", "*", "warn", "xpcall"'))
 
 	def parse_FUNC_DEC(self):
 		if self.cur_tok.type in ['function']:
 			self.match('function')
-			self.match('id')
+			self.parse_NAME()
 			self.parse_FUNCBODY()
 		else:
 			raise SyntacticalError(self.format_error_message('"function"'))
@@ -297,67 +280,67 @@ class ASDR(ASDR_base):
 		if self.cur_tok.type in ['tkn_assign']:
 			self.match('tkn_assign')
 			self.parse_EXPLIST()
-		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'repeat', 'return', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'until', 'while']:
+		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'return', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'until', 'warn', 'while', 'xpcall']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "break", "do", "else", "elseif", "end", "for", "function", "global", "goto", "id", "if", "local", "repeat", "return", "tkn_assign", "tkn_goto", "tkn_opening_par", "tkn_semicolon", "until", "while"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "break", "do", "else", "elseif", "end", "error", "for", "function", "global", "goto", "id", "if", "local", "pcall", "print", "repeat", "return", "=", "::", "(", ";", "until", "warn", "while", "xpcall"'))
 
 	def parse_ATTNAMELIST(self):
-		if self.cur_tok.type in ['id', 'tkn_less']:
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']:
 			self.parse_ATTRIB()
-			self.match('id')
+			self.parse_NAME()
 			self.parse_ATTRIB()
 			self.parse_NAME_ATTRIB_LIST()
 		else:
-			raise SyntacticalError(self.format_error_message('"id", "tkn_less"'))
+			raise SyntacticalError(self.format_error_message('"error", "id", "pcall", "print", "<", "warn", "xpcall"'))
 
 	def parse_NAME_ATTRIB_LIST(self):
 		if self.cur_tok.type in ['tkn_comma']:
 			self.match('tkn_comma')
-			self.match('id')
+			self.parse_NAME()
 			self.parse_ATTRIB()
 			self.parse_NAME_ATTRIB_LIST()
-		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'repeat', 'return', 'tkn_assign', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'until', 'while']:
+		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'return', 'tkn_assign', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'until', 'warn', 'while', 'xpcall']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "break", "do", "else", "elseif", "end", "for", "function", "global", "goto", "id", "if", "local", "repeat", "return", "tkn_assign", "tkn_comma", "tkn_goto", "tkn_opening_par", "tkn_semicolon", "until", "while"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "break", "do", "else", "elseif", "end", "error", "for", "function", "global", "goto", "id", "if", "local", "pcall", "print", "repeat", "return", "=", ",", "::", "(", ";", "until", "warn", "while", "xpcall"'))
 
 	def parse_ATTRIB(self):
 		if self.cur_tok.type in ['tkn_less']:
 			self.match('tkn_less')
-			self.match('id')
+			self.parse_NAME()
 			self.match('tkn_greater')
-		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'repeat', 'return', 'tkn_assign', 'tkn_comma', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'tkn_times', 'until', 'while']:
+		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'return', 'tkn_assign', 'tkn_comma', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'tkn_times', 'until', 'warn', 'while', 'xpcall']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "break", "do", "else", "elseif", "end", "for", "function", "global", "goto", "id", "if", "local", "repeat", "return", "tkn_assign", "tkn_comma", "tkn_goto", "tkn_less", "tkn_opening_par", "tkn_semicolon", "tkn_times", "until", "while"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "break", "do", "else", "elseif", "end", "error", "for", "function", "global", "goto", "id", "if", "local", "pcall", "print", "repeat", "return", "=", ",", "::", "<", "(", ";", "*", "until", "warn", "while", "xpcall"'))
 
 	def parse_FUNCNAME(self):
-		if self.cur_tok.type in ['id']:
-			self.match('id')
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
+			self.parse_NAME()
 			self.parse_DOTTED_FUNCNAME()
 			self.parse_COLON_FUNCNAME()
 		else:
-			raise SyntacticalError(self.format_error_message('"id"'))
+			raise SyntacticalError(self.format_error_message('"error", "id", "pcall", "print", "warn", "xpcall"'))
 
 	def parse_DOTTED_FUNCNAME(self):
 		if self.cur_tok.type in ['tkn_period']:
 			self.match('tkn_period')
-			self.match('id')
+			self.parse_NAME()
 			self.parse_DOTTED_FUNCNAME()
 		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_par']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"tkn_colon", "tkn_opening_par", "tkn_period"'))
+			raise SyntacticalError(self.format_error_message('":", "(", "."'))
 
 	def parse_COLON_FUNCNAME(self):
 		if self.cur_tok.type in ['tkn_colon']:
 			self.match('tkn_colon')
-			self.match('id')
+			self.parse_NAME()
 		elif self.cur_tok.type in ['tkn_opening_par']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"tkn_colon", "tkn_opening_par"'))
+			raise SyntacticalError(self.format_error_message('":", "("'))
 
 	def parse_FUNCTIONDEF(self):
 		if self.cur_tok.type in ['function']:
@@ -374,24 +357,24 @@ class ASDR(ASDR_base):
 			self.parse_BLOCK()
 			self.match('end')
 		else:
-			raise SyntacticalError(self.format_error_message('"tkn_opening_par"'))
+			raise SyntacticalError(self.format_error_message('"("'))
 
 	def parse_OPT_PARLIST(self):
-		if self.cur_tok.type in ['id', 'tkn_varargs']:
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_varargs', 'warn', 'xpcall']:
 			self.parse_PARLIST()
 		elif self.cur_tok.type in ['tkn_closing_par']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"id", "tkn_closing_par", "tkn_varargs"'))
+			raise SyntacticalError(self.format_error_message('"error", "id", "pcall", "print", ")", "...", "warn", "xpcall"'))
 
 	def parse_PARLIST(self):
-		if self.cur_tok.type in ['id']:
-			self.match('id')
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
+			self.parse_NAME()
 			self.parse_PARLIST_TAIL()
 		elif self.cur_tok.type in ['tkn_varargs']:
 			self.parse_VARPARAGRAM()
 		else:
-			raise SyntacticalError(self.format_error_message('"id", "tkn_varargs"'))
+			raise SyntacticalError(self.format_error_message('"error", "id", "pcall", "print", "...", "warn", "xpcall"'))
 
 	def parse_PARLIST_TAIL(self):
 		if self.cur_tok.type in ['tkn_comma']:
@@ -400,41 +383,41 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['tkn_closing_par']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"tkn_closing_par", "tkn_comma"'))
+			raise SyntacticalError(self.format_error_message('")", ","'))
 
 	def parse_PARLIST_AFTER_COMMA(self):
-		if self.cur_tok.type in ['id']:
-			self.match('id')
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
+			self.parse_NAME()
 			self.parse_PARLIST_TAIL()
 		elif self.cur_tok.type in ['tkn_varargs']:
 			self.parse_VARPARAGRAM()
 		else:
-			raise SyntacticalError(self.format_error_message('"id", "tkn_varargs"'))
+			raise SyntacticalError(self.format_error_message('"error", "id", "pcall", "print", "...", "warn", "xpcall"'))
 
 	def parse_VARPARAGRAM(self):
 		if self.cur_tok.type in ['tkn_varargs']:
 			self.match('tkn_varargs')
 			self.parse_OPT_NAME()
 		else:
-			raise SyntacticalError(self.format_error_message('"tkn_varargs"'))
+			raise SyntacticalError(self.format_error_message('"..."'))
 
 	def parse_OPT_NAME(self):
-		if self.cur_tok.type in ['id']:
-			self.match('id')
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
+			self.parse_NAME()
 		elif self.cur_tok.type in ['tkn_closing_par']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"id", "tkn_closing_par"'))
+			raise SyntacticalError(self.format_error_message('"error", "id", "pcall", "print", ")", "warn", "xpcall"'))
 
 	def parse_MORE_NAMES(self):
 		if self.cur_tok.type in ['tkn_comma']:
 			self.match('tkn_comma')
-			self.match('id')
+			self.parse_NAME()
 			self.parse_MORE_NAMES()
 		elif self.cur_tok.type in ['in']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"in", "tkn_comma"'))
+			raise SyntacticalError(self.format_error_message('"in", ","'))
 
 	def parse_MORE_VAR(self):
 		if self.cur_tok.type in ['tkn_comma']:
@@ -444,34 +427,44 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['tkn_assign']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"tkn_assign", "tkn_comma"'))
+			raise SyntacticalError(self.format_error_message('"=", ","'))
 
 	def parse_MAYBE_EXPLIST(self):
-		if self.cur_tok.type in ['false', 'function', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_str', 'tkn_varargs', 'true']:
+		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall']:
 			self.parse_EXPLIST()
 		elif self.cur_tok.type in ['$', 'else', 'elseif', 'end', 'tkn_closing_par', 'tkn_semicolon', 'until']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "else", "elseif", "end", "false", "function", "nil", "not", "tkn_closing_par", "tkn_length", "tkn_minus", "tkn_num", "tkn_opening_key", "tkn_semicolon", "tkn_str", "tkn_varargs", "true", "until"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "else", "elseif", "end", "error", "false", "function", "id", "nil", "not", "pcall", "print", ")", "#", "-", "valor_numerico", "{", "(", ";", "cadena_de_caracteres", "...", "true", "until", "warn", "xpcall"'))
 
 	def parse_EXPLIST(self):
-		if self.cur_tok.type in ['false', 'function', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_str', 'tkn_varargs', 'true']:
+		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall']:
 			self.parse_EXP()
 			self.parse_MORE_EXP()
 		else:
-			raise SyntacticalError(self.format_error_message('"false", "function", "nil", "not", "tkn_length", "tkn_minus", "tkn_num", "tkn_opening_key", "tkn_str", "tkn_varargs", "true"'))
+			raise SyntacticalError(self.format_error_message('"error", "false", "function", "id", "nil", "not", "pcall", "print", "#", "-", "valor_numerico", "{", "(", "cadena_de_caracteres", "...", "true", "warn", "xpcall"'))
 
 	def parse_MORE_EXP(self):
 		if self.cur_tok.type in ['tkn_comma']:
 			self.match('tkn_comma')
 			self.parse_EXP()
 			self.parse_MORE_EXP()
-		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'repeat', 'return', 'tkn_closing_par', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'until', 'while']:
+		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'return', 'tkn_closing_par', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'until', 'warn', 'while', 'xpcall']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "break", "do", "else", "elseif", "end", "for", "function", "global", "goto", "id", "if", "local", "repeat", "return", "tkn_closing_par", "tkn_comma", "tkn_goto", "tkn_opening_par", "tkn_semicolon", "until", "while"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "break", "do", "else", "elseif", "end", "error", "for", "function", "global", "goto", "id", "if", "local", "pcall", "print", "repeat", "return", ")", ",", "::", "(", ";", "until", "warn", "while", "xpcall"'))
 
 	def parse_EXP(self):
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
+			self.parse_NAME()
+			self.parse_PREFIXEXP_PRIME()
+			self.parse_EXP_PRIME()
+		elif self.cur_tok.type in ['false', 'function', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true']:
+			self.parse_EXP_NOT_ID()
+		else:
+			raise SyntacticalError(self.format_error_message('"error", "false", "function", "id", "nil", "not", "pcall", "print", "#", "-", "valor_numerico", "{", "(", "cadena_de_caracteres", "...", "true", "warn", "xpcall"'))
+
+	def parse_EXP_NOT_ID(self):
 		if self.cur_tok.type in ['nil']:
 			self.match('nil')
 			self.parse_EXP_PRIME()
@@ -499,17 +492,23 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['not', 'tkn_length', 'tkn_minus']:
 			self.parse_UNOP()
 			self.parse_EXP()
+		elif self.cur_tok.type in ['tkn_opening_par']:
+			self.match('tkn_opening_par')
+			self.parse_EXP()
+			self.match('tkn_closing_par')
+			self.parse_PREFIXEXP_PRIME()
+			self.parse_EXP_PRIME()
 		else:
-			raise SyntacticalError(self.format_error_message('"false", "function", "nil", "not", "tkn_length", "tkn_minus", "tkn_num", "tkn_opening_key", "tkn_str", "tkn_varargs", "true"'))
+			raise SyntacticalError(self.format_error_message('"false", "function", "nil", "not", "#", "-", "valor_numerico", "{", "(", "cadena_de_caracteres", "...", "true"'))
 
 	def parse_EXP_PRIME(self):
 		if self.cur_tok.type in ['and', 'or', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times']:
 			self.parse_BINOP()
 			self.parse_EXP()
-		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'repeat', 'return', 'then', 'tkn_closing_bra', 'tkn_closing_key', 'tkn_closing_par', 'tkn_comma', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'until', 'while']:
+		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'return', 'then', 'tkn_closing_bra', 'tkn_closing_key', 'tkn_closing_par', 'tkn_comma', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'until', 'warn', 'while', 'xpcall']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "and", "break", "do", "else", "elseif", "end", "for", "function", "global", "goto", "id", "if", "local", "or", "repeat", "return", "then", "tkn_bit_and", "tkn_bit_or", "tkn_bitex_or", "tkn_closing_bra", "tkn_closing_key", "tkn_closing_par", "tkn_comma", "tkn_concat", "tkn_div", "tkn_equal", "tkn_floor_div", "tkn_geq", "tkn_goto", "tkn_greater", "tkn_left_shift", "tkn_leq", "tkn_less", "tkn_minus", "tkn_mod", "tkn_neq", "tkn_opening_par", "tkn_plus", "tkn_power", "tkn_right_shift", "tkn_semicolon", "tkn_times", "until", "while"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "and", "break", "do", "else", "elseif", "end", "error", "for", "function", "global", "goto", "id", "if", "local", "or", "pcall", "print", "repeat", "return", "then", "&", "|", "~", "]", "}", ")", ",", "..", "/", "==", "//", ">=", "::", ">", "<<", "<=", "<", "-", "%", "~=", "(", "+", "^", ">>", ";", "*", "until", "warn", "while", "xpcall"'))
 
 	def parse_PREFIXEXP(self):
 		if self.cur_tok.type in ['tkn_opening_par']:
@@ -517,11 +516,11 @@ class ASDR(ASDR_base):
 			self.parse_EXP()
 			self.match('tkn_closing_par')
 			self.parse_PREFIXEXP_PRIME()
-		elif self.cur_tok.type in ['id']:
-			self.match('id')
+		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
+			self.parse_NAME()
 			self.parse_PREFIXEXP_PRIME()
 		else:
-			raise SyntacticalError(self.format_error_message('"id", "tkn_opening_par"'))
+			raise SyntacticalError(self.format_error_message('"error", "id", "pcall", "print", "(", "warn", "xpcall"'))
 
 	def parse_PREFIXEXP_PRIME(self):
 		if self.cur_tok.type in ['tkn_opening_bra']:
@@ -531,25 +530,25 @@ class ASDR(ASDR_base):
 			self.parse_PREFIXEXP_PRIME()
 		elif self.cur_tok.type in ['tkn_period']:
 			self.match('tkn_period')
-			self.match('id')
+			self.parse_NAME()
 			self.parse_PREFIXEXP_PRIME()
 		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str']:
 			self.parse_FUNCTIONCALL()
 			self.parse_PREFIXEXP_PRIME()
-		elif self.cur_tok.type in ['$', 'break', 'do', 'else', 'elseif', 'end', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'repeat', 'return', 'tkn_assign', 'tkn_comma', 'tkn_goto', 'tkn_semicolon', 'until', 'while']:
+		elif self.cur_tok.type in ['$', 'and', 'break', 'do', 'else', 'elseif', 'end', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'or', 'pcall', 'print', 'repeat', 'return', 'then', 'tkn_assign', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_closing_bra', 'tkn_closing_key', 'tkn_closing_par', 'tkn_comma', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_goto', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_semicolon', 'tkn_times', 'until', 'warn', 'while', 'xpcall']:
 			pass
 		else:
-			raise SyntacticalError(self.format_error_message('"$", "break", "do", "else", "elseif", "end", "for", "function", "global", "goto", "id", "if", "local", "repeat", "return", "tkn_assign", "tkn_colon", "tkn_comma", "tkn_goto", "tkn_opening_bra", "tkn_opening_key", "tkn_opening_par", "tkn_period", "tkn_semicolon", "tkn_str", "until", "while"'))
+			raise SyntacticalError(self.format_error_message('"final de archivo", "and", "break", "do", "else", "elseif", "end", "error", "for", "function", "global", "goto", "id", "if", "local", "or", "pcall", "print", "repeat", "return", "then", "=", "&", "|", "~", "]", "}", ")", ":", ",", "..", "/", "==", "//", ">=", "::", ">", "<<", "<=", "<", "-", "%", "~=", "[", "{", "(", ".", "+", "^", ">>", ";", "cadena_de_caracteres", "*", "until", "warn", "while", "xpcall"'))
 
 	def parse_FUNCTIONCALL(self):
 		if self.cur_tok.type in ['tkn_opening_key', 'tkn_opening_par', 'tkn_str']:
 			self.parse_ARGS()
 		elif self.cur_tok.type in ['tkn_colon']:
 			self.match('tkn_colon')
-			self.match('id')
+			self.parse_NAME()
 			self.parse_ARGS()
 		else:
-			raise SyntacticalError(self.format_error_message('"tkn_colon", "tkn_opening_key", "tkn_opening_par", "tkn_str"'))
+			raise SyntacticalError(self.format_error_message('":", "{", "(", "cadena_de_caracteres"'))
 
 	def parse_ARGS(self):
 		if self.cur_tok.type in ['tkn_opening_par']:
@@ -561,7 +560,66 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['tkn_str']:
 			self.match('tkn_str')
 		else:
-			raise SyntacticalError(self.format_error_message('"tkn_opening_key", "tkn_opening_par", "tkn_str"'))
+			raise SyntacticalError(self.format_error_message('"{", "(", "cadena_de_caracteres"'))
+
+	def parse_TABLECONSTRUCTOR(self):
+		if self.cur_tok.type in ['tkn_opening_key']:
+			self.match('tkn_opening_key')
+			self.parse_FIELDLIST()
+			self.match('tkn_closing_key')
+		else:
+			raise SyntacticalError(self.format_error_message('"{"'))
+
+	def parse_FIELDLIST(self):
+		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall']:
+			self.parse_FIELD()
+			self.parse_FIELD_TAIL()
+		elif self.cur_tok.type in ['tkn_closing_key']:
+			pass
+		else:
+			raise SyntacticalError(self.format_error_message('"error", "false", "function", "id", "nil", "not", "pcall", "print", "}", "#", "-", "valor_numerico", "[", "{", "(", "cadena_de_caracteres", "...", "true", "warn", "xpcall"'))
+
+	def parse_FIELD_TAIL(self):
+		if self.cur_tok.type in ['tkn_comma', 'tkn_semicolon']:
+			self.parse_FIELDSEP()
+			self.parse_FIELDLIST()
+		elif self.cur_tok.type in ['tkn_closing_key']:
+			pass
+		else:
+			raise SyntacticalError(self.format_error_message('"}", ",", ";"'))
+
+	def parse_FIELD(self):
+		if self.cur_tok.type in ['tkn_opening_bra']:
+			self.match('tkn_opening_bra')
+			self.parse_EXP()
+			self.match('tkn_closing_bra')
+			self.match('tkn_assign')
+			self.parse_EXP()
+		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
+			self.parse_NAME()
+			self.parse_FIELD_ID()
+		elif self.cur_tok.type in ['false', 'function', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true']:
+			self.parse_EXP_NOT_ID()
+		else:
+			raise SyntacticalError(self.format_error_message('"error", "false", "function", "id", "nil", "not", "pcall", "print", "#", "-", "valor_numerico", "[", "{", "(", "cadena_de_caracteres", "...", "true", "warn", "xpcall"'))
+
+	def parse_FIELD_ID(self):
+		if self.cur_tok.type in ['tkn_assign']:
+			self.match('tkn_assign')
+			self.parse_EXP()
+		elif self.cur_tok.type in ['and', 'or', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_closing_key', 'tkn_colon', 'tkn_comma', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_period', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_semicolon', 'tkn_str', 'tkn_times']:
+			self.parse_PREFIXEXP_PRIME()
+			self.parse_EXP_PRIME()
+		else:
+			raise SyntacticalError(self.format_error_message('"and", "or", "=", "&", "|", "~", "}", ":", ",", "..", "/", "==", "//", ">=", ">", "<<", "<=", "<", "-", "%", "~=", "[", "{", "(", ".", "+", "^", ">>", ";", "cadena_de_caracteres", "*"'))
+
+	def parse_FIELDSEP(self):
+		if self.cur_tok.type in ['tkn_comma']:
+			self.match('tkn_comma')
+		elif self.cur_tok.type in ['tkn_semicolon']:
+			self.match('tkn_semicolon')
+		else:
+			raise SyntacticalError(self.format_error_message('",", ";"'))
 
 	def parse_BINOP(self):
 		if self.cur_tok.type in ['tkn_plus']:
@@ -607,7 +665,7 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['or']:
 			self.match('or')
 		else:
-			raise SyntacticalError(self.format_error_message('"and", "or", "tkn_bit_and", "tkn_bit_or", "tkn_bitex_or", "tkn_concat", "tkn_div", "tkn_equal", "tkn_floor_div", "tkn_geq", "tkn_greater", "tkn_left_shift", "tkn_leq", "tkn_less", "tkn_minus", "tkn_mod", "tkn_neq", "tkn_plus", "tkn_power", "tkn_right_shift", "tkn_times"'))
+			raise SyntacticalError(self.format_error_message('"and", "or", "&", "|", "~", "..", "/", "==", "//", ">=", ">", "<<", "<=", "<", "-", "%", "~=", "+", "^", ">>", "*"'))
 
 	def parse_UNOP(self):
 		if self.cur_tok.type in ['tkn_minus']:
@@ -617,7 +675,23 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['tkn_length']:
 			self.match('tkn_length')
 		else:
-			raise SyntacticalError(self.format_error_message('"not", "tkn_length", "tkn_minus"'))
+			raise SyntacticalError(self.format_error_message('"not", "#", "-"'))
+
+	def parse_NAME(self):
+		if self.cur_tok.type in ['id']:
+			self.match('id')
+		elif self.cur_tok.type in ['print']:
+			self.match('print')
+		elif self.cur_tok.type in ['pcall']:
+			self.match('pcall')
+		elif self.cur_tok.type in ['error']:
+			self.match('error')
+		elif self.cur_tok.type in ['warn']:
+			self.match('warn')
+		elif self.cur_tok.type in ['xpcall']:
+			self.match('xpcall')
+		else:
+			raise SyntacticalError(self.format_error_message('"error", "id", "pcall", "print", "warn", "xpcall"'))
 
 	def main(self):
 		self.cur_tok = self.lexer.tokenize()

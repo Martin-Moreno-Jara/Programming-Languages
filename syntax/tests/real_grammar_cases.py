@@ -165,6 +165,7 @@ CALL_ROWS = [
     ("C20", 'a.b.c:d "x" {1} (2)'),
     ("C21", "x = f(g(h(1)))"),
     ("C22", "function f(...) g(...) end"),
+    ("C23", "a, (b).c = 1, 2"),
 ]
 
 NAME_ROWS = [
@@ -211,10 +212,11 @@ EDGE_ROWS = [
     ("EA6", "t = " + "{" * 50 + "}" * 50),
     ("EA7", "x = 1\n" * 200),
     ("EA8", "x = " + " + ".join(["1"] * 200)),
-    ("EA9", "f = " + "function() " * 10 + "end " * 10),
+    ("EA9", "f = " + "function() return " * 10 + "end " * 10),
     ("EA10", "function f() ; end"),
     ("EA11", "-- a\n\n-- b\n"),
     ("EA12", "return function() return {f = function() return end} end"),
+    ("EA13", "f()\n(g)()"),
 ]
 
 PRODUCTION_ROWS = (
@@ -222,8 +224,8 @@ PRODUCTION_ROWS = (
     + EXPRESSION_ROWS + BINOP_ROWS + CALL_ROWS + NAME_ROWS + LAYOUT_ROWS
 )
 ACCEPT_ROWS = PRODUCTION_ROWS + EDGE_ROWS
-assert len(PRODUCTION_ROWS) == 173, len(PRODUCTION_ROWS)
-assert len(ACCEPT_ROWS) == 185, len(ACCEPT_ROWS)
+assert len(PRODUCTION_ROWS) == 174, len(PRODUCTION_ROWS)
+assert len(ACCEPT_ROWS) == 187, len(ACCEPT_ROWS)
 
 # ---------------------------------------------------------------------------
 # Reject rows (spec §7): (case_id, source, position, lexeme, contains, exact)
@@ -276,8 +278,9 @@ REJECT_ROWS = [
     ("R36", R36_SOURCE, (3, 11), "=", {"id", "valor_numerico"}, None),
     ("R37", "x = 1\n\n\ny = ", None, EOF, {"id"}, None),
     ("R38", "t = {1,, 2}", (1, 8), ",", {"}"}, None),
+    ("R39", "a = f\n(g).x = 1", (2, 7), "=", {EOF, "id"}, None),
 ]
-assert len(REJECT_ROWS) == 38, len(REJECT_ROWS)
+assert len(REJECT_ROWS) == 39, len(REJECT_ROWS)
 
 # Only the first error is reported: (case_id, source, position)
 FIRST_ERROR_ROWS = [

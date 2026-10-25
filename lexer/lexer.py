@@ -78,7 +78,7 @@ class Lexer:
             "next",
             "pairs",
             "pcall",
-            #"print",
+            "print",
             "select",
             "tonumber",
             "tostring",

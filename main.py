@@ -5,28 +5,6 @@ from syntax.code_generator_script import ASDR_generator
 from exceptions.custom_exceptions import *
 
 
-
-grammar1: dict[str, list[list[str]]] = {
-    "A": [["B", "C"], ["ant", "A", "all"]],
-    "B": [["big", "C"], ["bus", "A", "boss"], ["ε"]],
-    "C": [["cat"], ["cow"]],
-}
-
-
-grammar2: dict[str, list[list[str]]] = {
-    "S": [["A", "B","C"]],
-    "A": [["a"],["ε"]],
-    "B": [["b"], ["ε"]],
-    "C": [["c"]]
-}
-
-grammar3: dict[str, list[list[str]]] = {
-    "S": [["A", "B","C"]],
-    "A": [["tnk_str"],["ε"]],
-    "B": [["id"], ["ε"]],
-    "C": [["tkn_num"],["ε"]]
-}
-
 final_grammar: dict[str, list[list[str]]] = {
     # ------------------------------------------------------------------
     # Program structure
@@ -43,12 +21,12 @@ final_grammar: dict[str, list[list[str]]] = {
     # ------------------------------------------------------------------
     "STAT": [
         ["tkn_semicolon"], # empty statement
-        # assignment of variables
-        ["PREFIXEXP","PREFIXEXP_NEXT"],
-        #["VARLIST", "tkn_assign", "EXPLIST"],
+        # varlist and functionall factor prefixexp
+        ["NAME","AFTER_VAR"],
+        ["tkn_opening_par","EXP", "tkn_closing_par","AFTER_VAR"],
         ["LABEL"],
         ["break"],
-        ["goto", "id"],
+        ["goto", "NAME"],
         ["DO_BLOCK_END"],
         ["while", "EXP", "DO_BLOCK_END"],
         ["repeat", "BLOCK", "until", "EXP"],
@@ -58,10 +36,22 @@ final_grammar: dict[str, list[list[str]]] = {
         ["LOCAL_DEC"],
         ["GLOBAL_DEC"],
     ],
-    "LABEL": [["tkn_goto", "id", "tkn_goto"]],
-    "DO_BLOCK_END": [["do", "BLOCK", "end"]],
 
-    "PREFIXEXP_NEXT": [["MORE_VAR","tkn_assign","EXPLIST"],["ε"]],
+    "AFTER_VAR": [
+            ["tkn_opening_bra", "EXP", "tkn_closing_bra", "AFTER_VAR"],
+            ["tkn_period", "NAME", "AFTER_VAR"],
+            ["FUNCTIONCALL","AFTER_CALL"],
+            ["MORE_VAR","tkn_assign","EXPLIST"]
+            ],
+
+    "AFTER_CALL" : [
+                    ["tkn_opening_bra", "EXP", "tkn_closing_bra", "AFTER_VAR"],
+                    ["tkn_period", "NAME", "AFTER_VAR"],
+                    ["FUNCTIONCALL","AFTER_CALL"],
+                    ["ε"]
+    ],
+    "LABEL": [["tkn_goto", "NAME", "tkn_goto"]],
+    "DO_BLOCK_END": [["do", "BLOCK", "end"]],
 
     # if statements
     "IFSTAT": [["if", "EXP", "then", "BLOCK", "ELSEIFSTAT", "ELSESTAT", "end"]],
@@ -69,7 +59,7 @@ final_grammar: dict[str, list[list[str]]] = {
     "ELSESTAT": [["else", "BLOCK"], ["ε"]],
 
     # for statements
-    "FORSTAT": [["for", "id", "FORTYPE", "DO_BLOCK_END"]],
+    "FORSTAT": [["for", "NAME", "FORTYPE", "DO_BLOCK_END"]],
     "FORTYPE": [["NUMERICAL_FOR"], ["GENERIC_FOR"]],
     "NUMERICAL_FOR": [["tkn_assign", "EXP", "tkn_comma", "EXP", "OPT_EXP"]],
     "OPT_EXP": [["tkn_comma", "EXP"], ["ε"]],
@@ -78,17 +68,6 @@ final_grammar: dict[str, list[list[str]]] = {
     # Return statement: can return zero, one or many values
     "RETSTAT": [["return", "MAYBE_EXPLIST", "OPT_SEMILOCON"], ["ε"]],
     "OPT_SEMILOCON": [["tkn_semicolon"], ["ε"]],
-
-
-    # ------------------------------------------------------------------
-    # Tables
-    # ------------------------------------------------------------------
-    "TABLECONSTRUCTOR":[["tkn_opening_key","FIELDLIST","tkn_closing_key"]],
-    "FIELDLIST":[["FIELD","FIELD_TAIL"],["ε"]],
-    "FIELD_TAIL": [["FIELDSEP","FIELDLIST"],["ε"]],
-    "FIELDSEP":[["tkn_comma"],["tkn_semicolon"]],
-    "FIELD": [["tkn_opening_bra","EXP","tkn_closing_bra","tkn_assign", "EXP"],
-              ["id", "tkn_assign", "EXP"], ["EXP"]],
 
     # ------------------------------------------------------------------
     # Declarations (local / global)
@@ -101,21 +80,21 @@ final_grammar: dict[str, list[list[str]]] = {
     # "global <attrib> name ..." don't share a prediction
     "GLOBAL_DEC": [["global", "GLOBAL_OPT"]],
     "GLOBAL_OPT": [["FUNC_DEC"], ["ATTRIB", "GLOBAL_TAIL"]],
-    "GLOBAL_TAIL": [["tkn_times"], ["id", "ATTRIB", "NAME_ATTRIB_LIST", "OPT_EXPLIST"]],
+    "GLOBAL_TAIL": [["tkn_times"], ["NAME", "ATTRIB", "NAME_ATTRIB_LIST", "OPT_EXPLIST"]],
 
-    "FUNC_DEC": [["function", "id", "FUNCBODY"]],
+    "FUNC_DEC": [["function", "NAME", "FUNCBODY"]],
     "OPT_EXPLIST": [["tkn_assign", "EXPLIST"], ["ε"]],
 
-    "ATTNAMELIST": [["ATTRIB", "id", "ATTRIB", "NAME_ATTRIB_LIST"]],
-    "NAME_ATTRIB_LIST": [["tkn_comma", "id", "ATTRIB", "NAME_ATTRIB_LIST"], ["ε"]],
-    "ATTRIB": [["tkn_less", "id", "tkn_greater"], ["ε"]],
+    "ATTNAMELIST": [["ATTRIB", "NAME", "ATTRIB", "NAME_ATTRIB_LIST"]],
+    "NAME_ATTRIB_LIST": [["tkn_comma", "NAME", "ATTRIB", "NAME_ATTRIB_LIST"], ["ε"]],
+    "ATTRIB": [["tkn_less", "NAME", "tkn_greater"], ["ε"]],
 
     # ------------------------------------------------------------------
     # Functions
     # ------------------------------------------------------------------
-    "FUNCNAME": [["id", "DOTTED_FUNCNAME", "COLON_FUNCNAME"]],
-    "DOTTED_FUNCNAME": [["tkn_period", "id", "DOTTED_FUNCNAME"], ["ε"]],
-    "COLON_FUNCNAME": [["tkn_colon", "id"], ["ε"]],
+    "FUNCNAME": [["NAME", "DOTTED_FUNCNAME", "COLON_FUNCNAME"]],
+    "DOTTED_FUNCNAME": [["tkn_period", "NAME", "DOTTED_FUNCNAME"], ["ε"]],
+    "COLON_FUNCNAME": [["tkn_colon", "NAME"], ["ε"]],
 
     "FUNCTIONDEF": [["function", "FUNCBODY"]],
     "FUNCBODY": [["tkn_opening_par", "OPT_PARLIST", "tkn_closing_par", "BLOCK", "end"]],
@@ -123,16 +102,16 @@ final_grammar: dict[str, list[list[str]]] = {
     # parameter list: the comma is consumed before deciding between
     # another name and the varargs
     "OPT_PARLIST": [["PARLIST"], ["ε"]],
-    "PARLIST": [["id", "PARLIST_TAIL"], ["VARPARAGRAM"]],
+    "PARLIST": [["NAME", "PARLIST_TAIL"], ["VARPARAGRAM"]],
     "PARLIST_TAIL": [["tkn_comma", "PARLIST_AFTER_COMMA"], ["ε"]],
-    "PARLIST_AFTER_COMMA": [["id", "PARLIST_TAIL"], ["VARPARAGRAM"]],
+    "PARLIST_AFTER_COMMA": [["NAME", "PARLIST_TAIL"], ["VARPARAGRAM"]],
     "VARPARAGRAM": [["tkn_varargs", "OPT_NAME"]],
-    "OPT_NAME": [["id"], ["ε"]],
+    "OPT_NAME": [["NAME"], ["ε"]],
 
     # ------------------------------------------------------------------
     # Lists
     # ------------------------------------------------------------------
-    "MORE_NAMES": [["tkn_comma", "id", "MORE_NAMES"], ["ε"]],
+    "MORE_NAMES": [["tkn_comma", "NAME", "MORE_NAMES"], ["ε"]],
 
     #"VARLIST": [["tkn_assign"]],
     "MORE_VAR": [["tkn_comma", "PREFIXEXP", "MORE_VAR"], ["ε"]],
@@ -145,37 +124,49 @@ final_grammar: dict[str, list[list[str]]] = {
     # ------------------------------------------------------------------
     # Expressions
     # ------------------------------------------------------------------
-    "EXP": [
-        # Booleans and nil values
-        ["nil", "EXP_PRIME"], ["false", "EXP_PRIME"], ["true", "EXP_PRIME"],
-        # terminal tokens
-        ["tkn_num", "EXP_PRIME"], ["tkn_str", "EXP_PRIME"], ["tkn_varargs", "EXP_PRIME"],
-        #table
-        ["TABLECONSTRUCTOR","EXP_PRIME"],
-        ["FUNCTIONDEF", "EXP_PRIME"],
-        ["UNOP", "EXP"],
-       # ["PREFIXEXP","EXP_PRIME"],
-    ],
+    "EXP": [["NAME", "PREFIXEXP_PRIME", "EXP_PRIME"], ["EXP_NOT_ID"]],
+
+    "EXP_NOT_ID":  [
+    ["nil", "EXP_PRIME"], ["false", "EXP_PRIME"], ["true", "EXP_PRIME"],
+    ["tkn_num", "EXP_PRIME"], ["tkn_str", "EXP_PRIME"], ["tkn_varargs", "EXP_PRIME"],
+    ["TABLECONSTRUCTOR", "EXP_PRIME"],
+    ["FUNCTIONDEF", "EXP_PRIME"],
+    ["UNOP", "EXP"],
+    ["tkn_opening_par", "EXP", "tkn_closing_par", "PREFIXEXP_PRIME", "EXP_PRIME"],
+],
     "EXP_PRIME": [["BINOP", "EXP"], ["ε"]],
 
     # prefixexp replaces var and function call in the elimination of left recursion
     "PREFIXEXP": [
         ["tkn_opening_par", "EXP", "tkn_closing_par", "PREFIXEXP_PRIME"],
-        ["id", "PREFIXEXP_PRIME"],
+        ["NAME", "PREFIXEXP_PRIME"],
     ],
     "PREFIXEXP_PRIME": [
         ["tkn_opening_bra", "EXP", "tkn_closing_bra", "PREFIXEXP_PRIME"],
-        ["tkn_period", "id", "PREFIXEXP_PRIME"],
+        ["tkn_period", "NAME", "PREFIXEXP_PRIME"],
         ["FUNCTIONCALL","PREFIXEXP_PRIME"],
         ["ε"],
     ],
 
     "FUNCTIONCALL": [["ARGS"],
-            ["tkn_colon", "id", "ARGS"],],
+            ["tkn_colon", "NAME", "ARGS"],],
     
     "ARGS": [["tkn_opening_par", "MAYBE_EXPLIST", "tkn_closing_par"], 
              ["TABLECONSTRUCTOR"],
              ["tkn_str"]],
+
+    
+
+    # ------------------------------------------------------------------
+    # Tables
+    # ------------------------------------------------------------------
+    "TABLECONSTRUCTOR":[["tkn_opening_key","FIELDLIST","tkn_closing_key"]],
+    "FIELDLIST":[["FIELD","FIELD_TAIL"],["ε"]],
+    "FIELD_TAIL": [["FIELDSEP","FIELDLIST"],["ε"]],
+    "FIELD": [["tkn_opening_bra","EXP","tkn_closing_bra","tkn_assign", "EXP"],
+              ["NAME", "FIELD_ID"], ["EXP_NOT_ID"]],
+    "FIELD_ID": [["tkn_assign", "EXP"],["PREFIXEXP_PRIME", "EXP_PRIME"]],
+    "FIELDSEP":[["tkn_comma"],["tkn_semicolon"]],
 
     # ------------------------------------------------------------------
     # Operators
@@ -196,14 +187,18 @@ final_grammar: dict[str, list[list[str]]] = {
         ["and"], ["or"],
     ],
     "UNOP": [["tkn_minus"], ["not"], ["tkn_length"]],
+    "NAME": [["id"],["print"],["pcall"],["error"],["warn"],["xpcall"]],
 }
 
+pred_exceptions={
+    "PREFIXEXP_PRIME": {3:"tkn_opening_par"},
+    "AFTER_CALL": {3:"tkn_opening_par"}
+}
 
 if __name__ == "__main__":
     myGrammar = Grammar(final_grammar)
+    myGrammar.set_pred_exceptions(pred_exceptions)
     myGrammar.process_grammar()
-    myGrammar.predict["PREFIXEXP_PRIME"][3]-={"tkn_opening_par"}
-
 
     if not myGrammar.check_LL1_condition():
         print("Cannot procede. Grammar is not LL1")
@@ -226,7 +221,7 @@ if __name__ == "__main__":
         parser.main()
         print("El analisis sintactico ha finalizado exitosamente.")
     except SyntacticalError as e:
-        print(f"error: {e.message}")
+        print(e.message)
         exit()
 
 

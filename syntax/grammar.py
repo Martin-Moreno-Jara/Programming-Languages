@@ -14,6 +14,7 @@ class Grammar():
         self.first: dict[str, set[str]] = {non_terminal: set() for non_terminal in grammar}
         self.follow:dict[str, set[str]] = {non_terminal: set() for non_terminal in grammar}
         self.predict:dict[str, list[set[str]]] = {non_terminal: [] for non_terminal in grammar}
+        self.pred_exceptions = None
         self.EPS:str = "ε"
         self.END:str = "$"
 
@@ -22,6 +23,9 @@ class Grammar():
 
     def get_grammar(self):
         return self.grammar
+
+    def set_pred_exceptions(self,pred_exceptions):
+        self.pred_exceptions = pred_exceptions
 
     def get_initial_symbol(self):
         first = ""
@@ -108,7 +112,14 @@ class Grammar():
                 else: check_set = check_set|pred 
         return True
 
+    def apply_pred_exceptions(self):
+        if self.pred_exceptions:
+            for NT,alts in self.pred_exceptions.items():
+                for pos,sym in alts.items():
+                    self.predict[NT][pos]-={sym}
+
     def process_grammar(self):
         self.compute_first_set()
         self.compute_follow_set()
         self.compute_predict_set()
+        self.apply_pred_exceptions()
