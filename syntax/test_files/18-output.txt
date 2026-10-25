@@ -1,0 +1,2 @@
+<4:7> Error sintactico: se encontro: "=="; se esperaba: "=", ":", ",", "[", "(", ".".
+<4:7> Error sintactico: se encontro: "=="; se esperaba: "=", ":", ",", "[", "{", "(", ".", "cadena_de_caracteres".

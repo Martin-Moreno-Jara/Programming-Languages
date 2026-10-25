@@ -1,0 +1,2 @@
+<7:1> Error sintactico: se encontro: "final de archivo"; se esperaba: "break", "end", "error", "for", "function", "global", "goto", "id", "if", "local", "pcall", "print", "repeat", "return", "::", ";", "warn", "while", "xpcall".
+<6:25> Error sintactico: se encontro: "final de archivo"; se esperaba: end.

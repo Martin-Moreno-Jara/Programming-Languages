@@ -1,0 +1,2 @@
+<1:8> Error sintactico: se encontro: "1"; se esperaba: "error", "function", "id", "pcall", "print", "warn", "xpcall".
+<1:8> Error sintactico: se encontro: "1"; se esperaba: "error", "function", "id", "pcall", "print", "<", "*", "warn", "xpcall".

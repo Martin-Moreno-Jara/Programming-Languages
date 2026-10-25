@@ -1,0 +1,2 @@
+<4:1> Error sintactico: se encontro: "final de archivo"; se esperaba: "error", "id", "pcall", "print", "warn", "xpcall".
+<3:15> Error sintactico: se encontro: "final de archivo"; se esperaba: "error", "id", "pcall", "print", "warn", "xpcall"

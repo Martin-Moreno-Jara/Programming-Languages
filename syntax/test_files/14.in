@@ -1,0 +1,6 @@
+local contador = 1
+
+repeat
+    print("El contador va en:", contador)
+    contador = contador + 1
+until do contador > 5

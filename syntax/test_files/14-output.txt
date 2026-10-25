@@ -1,0 +1,2 @@
+<6:7> Error sintactico: se encontro: "do"; se esperaba: "cadena_de_caracteres", "error", "false", "id", "nil", "not", "pcall", "print", "#", "-", "{", "(", "true", "valor_numerico", "warn", "xpcall".
+<6:7> Error sintactico: se encontro: "do"; se esperaba: "error", "false", "function", "id", "nil", "not", "pcall", "print", "#", "-", "valor_numerico", "{", "(", "cadena_de_caracteres", "...", "true", "warn", "xpcall".
