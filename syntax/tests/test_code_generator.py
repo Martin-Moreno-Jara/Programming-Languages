@@ -10,6 +10,7 @@ import pytest
 import syntax  # noqa: F401  (the generated parser is loaded as a submodule of this package)
 from exceptions.custom_exceptions import SyntacticalError
 from lexer.lexer import Lexer, Token
+from syntax.ASDR_base import ASDR_base
 from syntax.code_generator_script import ASDR_generator
 from syntax.grammar import Grammar
 
@@ -127,12 +128,6 @@ def _expected_tokens(text: str) -> set[str]:
 
 # Lexer symbol table, reversed: token type -> the symbol a Lua programmer sees
 _SYMBOLS = {token_type: symbol for symbol, token_type in Lexer("").operand_symbols_dict.items()}
-_SPECIAL = {"tkn_num": "valor_numerico", "tkn_str": "cadena_de_caracteres", END: EOF_SHOWN}
-
-
-def _shown(token: str) -> str:
-    """How the assignment doc shows a token in an expected list; any other token is shown as itself."""
-    return _SPECIAL.get(token) or _SYMBOLS.get(token) or token
 
 
 def _class_def(source: str) -> ast.ClassDef:
@@ -290,9 +285,8 @@ def test_else_names_union_of_predict_sets(grammar, out_dir):
         assert ast.unparse(exc.func) == "SyntacticalError"
         message = exc.args[0]
         assert ast.unparse(message.func) == "self.format_error_message"
-        # Sorted by token type, then each one shown as the doc asks
-        expected = ", ".join(f'"{_shown(t)}"' for t in sorted(set().union(*g.predict[A])))
-        assert message.args[0].value == expected, f"parse_{A}"
+        # The raw token types, sorted; ASDR_base.format_error_message shows them as the doc asks
+        assert ast.literal_eval(message.args[0]) == sorted(set().union(*g.predict[A])), f"parse_{A}"
 
 
 @pytest.mark.parametrize("grammar", _params("test_main_parses_start_symbol", G_ROWS))
@@ -307,11 +301,19 @@ def test_main_parses_start_symbol(grammar, out_dir):
     assert ast.unparse(end_check.test) == f"self.cur_tok.type != {END!r}"
     assert isinstance(end_check.body[0], ast.Raise)
     assert ast.unparse(end_check.body[0].exc.func) == "SyntacticalError"
+    assert ast.unparse(end_check.body[0].exc.args[0]) == f"self.format_error_message([{END!r}])"
 
 
 # ---------------------------------------------------------------------------
-# Unit tests for each method (spec §1, tasks.md §5)
+# ASDR_base: how the error message shows tokens (spec §3.2)
 # ---------------------------------------------------------------------------
+def _base_at(token_type: str, lexeme: str, line: int = 2, col: int = 7) -> ASDR_base:
+    """An ASDR_base whose current token is the given one; no lexer is needed to format messages."""
+    base = ASDR_base(None)
+    base.cur_tok = Token(token_type, lexeme, line, col)
+    return base
+
+
 _SHOWN_ROWS = [
     ("tkn_num", "tkn_num", "valor_numerico"),
     ("tkn_str", "tkn_str", "cadena_de_caracteres"),
@@ -325,7 +327,38 @@ _SHOWN_ROWS = [
 
 @pytest.mark.parametrize("token, shown", _params("test_format_expected_symbol", _SHOWN_ROWS))
 def test_format_expected_symbol(token, shown):
-    assert ASDR_generator(_processed(GRAMMARS["G1"])).format_expected_symbol(token) == shown
+    assert ASDR_base(None).format_expected_symbol(token) == f'"{shown}"'
+
+
+_MESSAGE_ROWS = [
+    ("one-token", ["tkn_closing_par"], '")"'),
+    ("several", ["end", "id", "tkn_num"], '"end", "id", "valor_numerico"'),
+    ("order-kept", ["tkn_plus", "and"], '"+", "and"'),
+    ("comma-token", ["tkn_assign", "tkn_comma", "tkn_concat"], '"=", ",", ".."'),
+    ("end-of-input", [END], f'"{EOF_SHOWN}"'),
+]
+
+
+@pytest.mark.parametrize("expected, shown", _params("test_format_error_message", _MESSAGE_ROWS))
+def test_format_error_message(expected, shown):
+    message = _base_at("tkn_num", "45").format_error_message(expected)
+    assert message == f'<2:7> Error sintactico: se encontro: "45"; se esperaba: {shown}.'
+
+
+def test_format_error_message_at_end_of_input():
+    message = _base_at(END, END).format_error_message(["end"])
+    assert message == f'<2:7> Error sintactico: se encontro: "{EOF_SHOWN}"; se esperaba: "end".'
+
+
+def test_match_names_the_one_expected_token():
+    with pytest.raises(SyntacticalError) as err:
+        _base_at("id", "x").match("tkn_closing_par")
+    assert err.value.message.endswith('se esperaba: ")".')
+
+
+# ---------------------------------------------------------------------------
+# Unit tests for each method (spec §1, tasks.md §5)
+# ---------------------------------------------------------------------------
 
 
 def test_init_sets_header(out_dir):
@@ -399,7 +432,7 @@ REJECT_ROWS = [
     ("R1-wrong-first-token", "G1", ["b"], (1, 1, "b", {"a"})),
     ("R2-wrong-mid-production", "G4", ["a", "x", "c"], (1, 2, "x", {"b"})),
     ("R3-ends-early", "G4", ["a", "b"], (1, 3, EOF_SHOWN, {"c"})),
-    ("R4-extra-tokens", "G1", ["a", "a"], (1, 2, "a", {END})),
+    ("R4-extra-tokens", "G1", ["a", "a"], (1, 2, "a", {EOF_SHOWN})),
     ("R5-empty-not-nullable", "G1", [], (1, 1, EOF_SHOWN, {"a"})),
     ("R6-union-named", "G3", ["c"], (1, 1, "c", {"a", "b"})),
     ("R7-inside-recursion", "G13-expression", ["id", "+"], (1, 3, EOF_SHOWN, {"(", "id"})),

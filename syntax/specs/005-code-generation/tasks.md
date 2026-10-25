@@ -145,13 +145,22 @@ Each test is parametrized with `_params("<test name>", G_ROWS)`, uses
   the `match` argument equals the token exactly).
 - [x] `test_else_names_union_of_predict_sets`: for every `A`, `else_body` is a
   single `raise SyntacticalError(self.format_error_message(<text>))`, and
-  `<text>` equals `", ".join(f'"{_shown(t)}"' for t in sorted(union))`,
-  where `union` is the union of `g.predict[A]`. This checks the order and the
-  display form. `_shown` is built from the lexer's `operand_symbols_dict`, not
-  copied from the generator. Updated on 2026-10-25 for `format_expected_symbol`.
-- [x] `test_format_expected_symbol`: 40 rows. `tkn_num`, `tkn_str`, `$`, a
-  keyword, a built-in, `id`, a plain token, and one row per lexer symbol, so
-  the generator's table can't drift from the lexer's.
+  the argument is a list literal equal to `sorted(union)`, where `union` is
+  the union of `g.predict[A]` (raw token types; `ASDR_base` formats them).
+  Updated on 2026-10-25.
+- [x] `test_main_parses_start_symbol` also checks the final raise is
+  `self.format_error_message(['$'])`.
+- [x] `ASDR_base` unit tests (2026-10-25, the formatting moved there):
+  - `test_format_expected_symbol`: 40 rows. `tkn_num`, `tkn_str`, `$`, a
+    keyword, a built-in, `id`, a plain token, and one row per symbol of the
+    lexer's `operand_symbols_dict`, each expected in double quotes. The base's
+    table can't drift from the lexer's.
+  - `test_format_error_message`: 5 rows (one token, several, order kept, the
+    `","` token, `$`).
+  - `test_format_error_message_at_end_of_input`: a `$` lexeme is shown as
+    `final de archivo`.
+  - `test_match_names_the_one_expected_token`: `match` reports its token
+    quoted and shown.
 - [x] `test_main_parses_start_symbol`: `main` has, in order,
   1. `self.cur_tok = self.lexer.tokenize()`,
   2. `self.parse_<start>()` where `<start>` is the first key (G12: `parse_B`),
@@ -204,7 +213,7 @@ _Done on 2026-10-23._
 - [x] Row `R1-wrong-first-token`: G1, `["b"]`, `(1, 1, "b", {"a"})`.
 - [x] Row `R2-wrong-mid-production`: G4, `["a", "x", "c"]`, `(1, 2, "x", {"b"})`.
 - [x] Row `R3-ends-early`: G4, `["a", "b"]`, `(1, 3, "final de archivo", {"c"})`.
-- [x] Row `R4-extra-tokens`: G1, `["a", "a"]`, `(1, 2, "a", {"$"})`.
+- [x] Row `R4-extra-tokens`: G1, `["a", "a"]`, `(1, 2, "a", {"final de archivo"})`.
 - [x] Row `R5-empty-not-nullable`: G1, `[]`, `(1, 1, "final de archivo", {"a"})`.
 - [x] Row `R6-union-named`: G3, `["c"]`, `(1, 1, "c", {"a", "b"})`.
 - [x] Row `R7-inside-recursion`: G13-expression, `["id", "+"]`,
@@ -252,10 +261,10 @@ _Done on 2026-10-23._
 ## 10. Counts
 _Done on 2026-10-23._
 
-- [x] `pytest tests/test_code_generator.py --collect-only -q` lists 233 tests:
-  16 LL(1) + 112 structural + 4 unit + 40 `format_expected_symbol` + 14 accept + 8 reject + 5 end-to-end +
+- [x] `pytest tests/test_code_generator.py --collect-only -q` lists 240 tests:
+  16 LL(1) + 112 structural + 4 unit + 47 `ASDR_base` + 14 accept + 8 reject + 5 end-to-end +
   16 deterministic + 16 unmodified + 2 single property tests.
-- [x] `pytest tests --collect-only -q` lists 1036 (803 + 233), before spec 006.
+- [x] `pytest tests --collect-only -q` lists 1043 (803 + 240), before spec 006.
 
 ## 11. First run and xfail workflow (spec §9)
 _Done on 2026-10-23: all 193 pass against the current code, so `KNOWN_FAILURES` stays empty and no marks were added. Four deliberate bugs in a throwaway copy of the generator (no `elif`, no `pass` for ε, every branch using the first prediction set, no `$` check in `main`) each made 17 to 67 tests fail._

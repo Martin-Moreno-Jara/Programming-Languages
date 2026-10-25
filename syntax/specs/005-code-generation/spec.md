@@ -10,8 +10,9 @@ for a given LL(1) grammar.
   `generate`) and the behavior of the parser it generates, the class `ASDR`.
 - **Out of scope:** FIRST, FOLLOW, prediction sets and the LL(1) check
   (specs 001 to 004), the lexer, and `ASDR_base` on its own. `ASDR_base.match`
-  and `format_error_message` are used by the generated parser, but they are
-  not tested separately.
+  and `format_error_message` are used by the generated parser. Since the
+  doc's formatting moved there (2026-10-25), `format_expected_symbol`,
+  `format_error_message` and `match` have unit tests too.
 
 ## 2. Interface under test
 
@@ -59,14 +60,17 @@ Read the generated file and inspect it, for example with `ast.parse`:
 - Inside a branch, the symbols of the production appear in order:
   `self.parse_X()` for a non-terminal `X`, `self.match('t')` for a terminal
   `t`, and `pass` for ε.
-- The final `else` raises `SyntacticalError` and names every token in the
-  union of `A`'s prediction sets, sorted by token type and shown as the
-  assignment doc asks (`format_expected_symbol`): a lexer symbol as itself
-  (`tkn_plus` as `+`), `tkn_num` as `valor_numerico`, `tkn_str` as
-  `cadena_de_caracteres`, `$` as `final de archivo`, and any other token
-  unchanged. Each one is in double quotes, separated by `", "`.
-- At the end of input, the found lexeme is shown as `final de archivo`
-  (`ASDR_base.format_error_message`).
+- The final `else` raises `SyntacticalError` through
+  `self.format_error_message([...])`, passing the **raw token types** of the
+  union of `A`'s prediction sets, sorted.
+- `main`'s final check passes `["$"]`, and `match(t)` passes `[t]`.
+- `ASDR_base` shows them as the assignment doc asks:
+  - `format_expected_symbol` shows a lexer symbol as itself (`tkn_plus` as
+    `"+"`), `tkn_num` as `"valor_numerico"`, `tkn_str` as
+    `"cadena_de_caracteres"`, `$` as `"final de archivo"`, and any other
+    token unchanged, always in double quotes.
+  - `format_error_message` joins them with `", "` in the order given, and
+    shows a `$` lexeme as `final de archivo`.
 - `main` reads the first token, calls `parse_S` for the start symbol `S` (the
   first key of the grammar), and then raises `SyntacticalError` if the
   current token is not `$`.

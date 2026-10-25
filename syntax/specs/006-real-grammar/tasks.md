@@ -341,7 +341,7 @@ _Done on 2026-10-25._
 - [x] `pytest tests/test_real_grammar_output.py --collect-only -q` lists
   **8** tests.
 - [x] `pytest tests/test_pred_exceptions.py --collect-only -q` lists **12** tests.
-- [x] `pytest tests --collect-only -q` lists **1603** (1036 + 567; spec 005 grew by 40 rows of `test_format_expected_symbol`).
+- [x] `pytest tests --collect-only -q` lists **1610** (1043 + 567; spec 005 grew by 47 `ASDR_base` tests).
 
 ## 10. First run and xfail workflow (spec §11)
 _First run on 2026-10-25: 1254 passed, 286 skipped, 2 xfailed across all suites. Only P1 and `test_display_is_consistent` fail, so they got strict xfail decorators; every `KNOWN_FAILURES` dict is still empty, because the parse and output tests are skipped while the grammar is not LL(1). A dry run with `check_LL1_condition` forced to `True` (a throwaway pytest plugin outside the repo) ran the skipped parse tests: 161 failed, all real (EXP has no PREFIXEXP yet, and the error message still shows raw token types), with no harness errors._
