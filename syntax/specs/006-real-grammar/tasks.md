@@ -124,7 +124,9 @@ until it is.
 - [x] `SHOWN_TO_TYPE`: the reverse of `DISPLAY`.
 - [x] `is_doc_order(shown)`: maps each item back with `SHOWN_TO_TYPE` and
   returns whether the types are strictly increasing (sorted with no
-  repeats). An unknown item returns `False`.
+  repeats). The sort key is the type, except `SORT_AS` (`tkn_num` as
+  `valor_numerico`, `tkn_str` as `cadena_de_caracteres`; spec §3.2). An
+  unknown item returns `False`.
 
 ## 3. Accept rows (`real_grammar_cases.py`, spec §5 and §6)
 
@@ -341,7 +343,7 @@ _Done on 2026-10-25._
 - [x] `pytest tests/test_real_grammar_output.py --collect-only -q` lists
   **8** tests.
 - [x] `pytest tests/test_pred_exceptions.py --collect-only -q` lists **12** tests.
-- [x] `pytest tests --collect-only -q` lists **1610** (1043 + 567; spec 005 grew by 47 `ASDR_base` tests).
+- [x] `pytest tests --collect-only -q` lists **1611** (1044 + 567; spec 005 grew by 47 `ASDR_base` tests and the sort-order test).
 
 ## 10. First run and xfail workflow (spec §11)
 _First run on 2026-10-25: 1254 passed, 286 skipped, 2 xfailed across all suites. Only P1 and `test_display_is_consistent` fail, so they got strict xfail decorators; every `KNOWN_FAILURES` dict is still empty, because the parse and output tests are skipped while the grammar is not LL(1). A dry run with `check_LL1_condition` forced to `True` (a throwaway pytest plugin outside the repo) ran the skipped parse tests: 161 failed, all real (EXP has no PREFIXEXP yet, and the error message still shows raw token types), with no harness errors._

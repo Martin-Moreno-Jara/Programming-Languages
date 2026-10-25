@@ -106,6 +106,10 @@ On the first syntax error, parsing stops, and exactly one line is reported:
   For example, `"and", "or", "&", "|", "~", ")"` comes from
   `and < or < tkn_bit_and < tkn_bit_or < tkn_bitex_or < tkn_closing_par`.
   The doc's text says "lexicographic order" but doesn't say of what (§9, K7).
+  One exception, confirmed by platform tests 13 and 14: `tkn_num` and
+  `tkn_str` sort as `valor_numerico` and `cadena_de_caracteres`, so
+  `"cadena_de_caracteres"` comes near the start and `"valor_numerico"` after
+  `"true"`.
 - Entries are separated by `", "` and the line ends with `.`.
 - No token appears twice in the list.
 

@@ -128,6 +128,8 @@ def _expected_tokens(text: str) -> set[str]:
 
 # Lexer symbol table, reversed: token type -> the symbol a Lua programmer sees
 _SYMBOLS = {token_type: symbol for symbol, token_type in Lexer("").operand_symbols_dict.items()}
+# The grader's sort key for an expected list (platform tests 13, 14)
+_SORT_AS = {"tkn_num": "valor_numerico", "tkn_str": "cadena_de_caracteres"}
 
 
 def _class_def(source: str) -> ast.ClassDef:
@@ -285,8 +287,18 @@ def test_else_names_union_of_predict_sets(grammar, out_dir):
         assert ast.unparse(exc.func) == "SyntacticalError"
         message = exc.args[0]
         assert ast.unparse(message.func) == "self.format_error_message"
-        # The raw token types, sorted; ASDR_base.format_error_message shows them as the doc asks
-        assert ast.literal_eval(message.args[0]) == sorted(set().union(*g.predict[A])), f"parse_{A}"
+        # The raw token types in the grader's order; ASDR_base.format_error_message shows them as the doc asks
+        expected = sorted(set().union(*g.predict[A]), key=lambda t: _SORT_AS.get(t, t))
+        assert ast.literal_eval(message.args[0]) == expected, f"parse_{A}"
+
+
+def test_else_list_sort_order(out_dir):
+    # Token types sort by name, except tkn_num and tkn_str, which sort as their shown names
+    grammar = {"S": [["tkn_num"], ["tkn_str"], ["tkn_plus"], ["id"], ["true"], ["tkn_varargs"], ["and"]]}
+    _, source = _generate(grammar, out_dir)
+    _, else_body = _branches(_methods(_class_def(source))["parse_S"])
+    listed = ast.literal_eval(else_body[0].exc.args[0].args[0])
+    assert listed == ["and", "tkn_str", "id", "tkn_plus", "tkn_varargs", "true", "tkn_num"]
 
 
 @pytest.mark.parametrize("grammar", _params("test_main_parses_start_symbol", G_ROWS))

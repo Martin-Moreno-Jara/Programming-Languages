@@ -5,6 +5,7 @@ class ASDR_generator():
         self.grammar = grammar
         self.lines = ["from exceptions.custom_exceptions import SyntacticalError","from lexer.lexer import Lexer","from .ASDR_base import ASDR_base", "", "class ASDR(ASDR_base):\n"]
         self.eps = "ε"
+        self.sorting_order = {"tkn_num": "valor_numerico", "tkn_str": "cadena_de_caracteres"}
 
     def populate_lines(self):
         predict = self.grammar.predict
@@ -25,7 +26,8 @@ class ASDR_generator():
                         self.lines.append(f"\t\t\tself.parse_{symbol}()")
                     else:
                         self.lines.append(f"\t\t\tself.match({symbol!r})")
-            expected = sorted(set().union(*predict[A]))
+            
+            expected = sorted(set().union(*predict[A]), key=lambda t: self.sorting_order.get(t, t))
 
             self.lines.append(f"\t\telse:")
             self.lines.append(f"\t\t\traise SyntacticalError(self.format_error_message({expected}))\n")

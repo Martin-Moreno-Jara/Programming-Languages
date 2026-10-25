@@ -62,7 +62,9 @@ Read the generated file and inspect it, for example with `ast.parse`:
   `t`, and `pass` for ε.
 - The final `else` raises `SyntacticalError` through
   `self.format_error_message([...])`, passing the **raw token types** of the
-  union of `A`'s prediction sets, sorted.
+  union of `A`'s prediction sets, sorted by type name, except that `tkn_num`
+  and `tkn_str` sort as `valor_numerico` and `cadena_de_caracteres` (the
+  grader's order).
 - `main`'s final check passes `["$"]`, and `match(t)` passes `[t]`.
 - `ASDR_base` shows them as the assignment doc asks:
   - `format_expected_symbol` shows a lexer symbol as itself (`tkn_plus` as

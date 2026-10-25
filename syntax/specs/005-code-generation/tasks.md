@@ -145,9 +145,13 @@ Each test is parametrized with `_params("<test name>", G_ROWS)`, uses
   the `match` argument equals the token exactly).
 - [x] `test_else_names_union_of_predict_sets`: for every `A`, `else_body` is a
   single `raise SyntacticalError(self.format_error_message(<text>))`, and
-  the argument is a list literal equal to `sorted(union)`, where `union` is
-  the union of `g.predict[A]` (raw token types; `ASDR_base` formats them).
-  Updated on 2026-10-25.
+  the argument is a list literal equal to `sorted(union, key=...)`, where
+  `union` is the union of `g.predict[A]` (raw token types; `ASDR_base` formats
+  them) and the key maps `tkn_num` to `valor_numerico` and `tkn_str` to
+  `cadena_de_caracteres`. Updated on 2026-10-25.
+- [x] `test_else_list_sort_order`: one grammar with `tkn_num`, `tkn_str`,
+  `tkn_plus`, `id`, `true`, `tkn_varargs` and `and`. The list is
+  `and, tkn_str, id, tkn_plus, tkn_varargs, true, tkn_num`.
 - [x] `test_main_parses_start_symbol` also checks the final raise is
   `self.format_error_message(['$'])`.
 - [x] `ASDR_base` unit tests (2026-10-25, the formatting moved there):
@@ -261,10 +265,10 @@ _Done on 2026-10-23._
 ## 10. Counts
 _Done on 2026-10-23._
 
-- [x] `pytest tests/test_code_generator.py --collect-only -q` lists 240 tests:
-  16 LL(1) + 112 structural + 4 unit + 47 `ASDR_base` + 14 accept + 8 reject + 5 end-to-end +
+- [x] `pytest tests/test_code_generator.py --collect-only -q` lists 241 tests:
+  16 LL(1) + 112 structural + 1 sort order + 4 unit + 47 `ASDR_base` + 14 accept + 8 reject + 5 end-to-end +
   16 deterministic + 16 unmodified + 2 single property tests.
-- [x] `pytest tests --collect-only -q` lists 1043 (803 + 240), before spec 006.
+- [x] `pytest tests --collect-only -q` lists 1044 (803 + 241), before spec 006.
 
 ## 11. First run and xfail workflow (spec §9)
 _Done on 2026-10-23: all 193 pass against the current code, so `KNOWN_FAILURES` stays empty and no marks were added. Four deliberate bugs in a throwaway copy of the generator (no `elif`, no `pass` for ε, every branch using the first prediction set, no `$` check in `main`) each made 17 to 67 tests fail._

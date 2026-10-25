@@ -158,11 +158,13 @@ def _build_display() -> dict[str, str]:
 # How each token type is shown in the expected list (spec §3.2)
 DISPLAY: dict[str, str] = _build_display()
 SHOWN_TO_TYPE: dict[str, str] = {shown: token_type for token_type, shown in DISPLAY.items()}
+# The grader sorts by token type, except numbers and strings, which sort by their shown name (platform tests 13, 14)
+SORT_AS: dict[str, str] = {"tkn_num": "valor_numerico", "tkn_str": "cadena_de_caracteres"}
 
 
 def is_doc_order(shown: list[str]) -> bool:
-    """True when the items, mapped back to token types, are strictly increasing."""
+    """True when the items, mapped back to token types, are strictly increasing in the grader's order."""
     if any(item not in SHOWN_TO_TYPE for item in shown):
         return False
-    types = [SHOWN_TO_TYPE[item] for item in shown]
-    return all(a < b for a, b in zip(types, types[1:]))
+    keys = [SORT_AS.get(t, t) for t in (SHOWN_TO_TYPE[item] for item in shown)]
+    return all(a < b for a, b in zip(keys, keys[1:]))
