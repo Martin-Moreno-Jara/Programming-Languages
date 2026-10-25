@@ -44,8 +44,8 @@ final_grammar: dict[str, list[list[str]]] = {
     "STAT": [
         ["tkn_semicolon"], # empty statement
         # assignment of variables
-        ["VARLIST", "tkn_assign", "EXPLIST"],
-        #["PREFIXEXP","FUNCTIONCALL_TAIL"],
+        ["PREFIXEXP","PREFIXEXP_NEXT"],
+        #["VARLIST", "tkn_assign", "EXPLIST"],
         ["LABEL"],
         ["break"],
         ["goto", "id"],
@@ -61,8 +61,7 @@ final_grammar: dict[str, list[list[str]]] = {
     "LABEL": [["tkn_goto", "id", "tkn_goto"]],
     "DO_BLOCK_END": [["do", "BLOCK", "end"]],
 
-    "FUNCTIONCALL_TAIL": [["ARGS"],["tkn_colon","id", "ARGS"]],
-
+    "PREFIXEXP_NEXT": [["MORE_VAR","tkn_assign","EXPLIST"],["ε"]],
 
     # if statements
     "IFSTAT": [["if", "EXP", "then", "BLOCK", "ELSEIFSTAT", "ELSESTAT", "end"]],
@@ -135,7 +134,7 @@ final_grammar: dict[str, list[list[str]]] = {
     # ------------------------------------------------------------------
     "MORE_NAMES": [["tkn_comma", "id", "MORE_NAMES"], ["ε"]],
 
-    "VARLIST": [["PREFIXEXP", "MORE_VAR"]],
+    #"VARLIST": [["tkn_assign"]],
     "MORE_VAR": [["tkn_comma", "PREFIXEXP", "MORE_VAR"], ["ε"]],
 
     # MORE_EXP created to add several expressions
@@ -151,6 +150,7 @@ final_grammar: dict[str, list[list[str]]] = {
         ["nil", "EXP_PRIME"], ["false", "EXP_PRIME"], ["true", "EXP_PRIME"],
         # terminal tokens
         ["tkn_num", "EXP_PRIME"], ["tkn_str", "EXP_PRIME"], ["tkn_varargs", "EXP_PRIME"],
+        #table
         ["TABLECONSTRUCTOR","EXP_PRIME"],
         ["FUNCTIONDEF", "EXP_PRIME"],
         ["UNOP", "EXP"],
@@ -166,10 +166,13 @@ final_grammar: dict[str, list[list[str]]] = {
     "PREFIXEXP_PRIME": [
         ["tkn_opening_bra", "EXP", "tkn_closing_bra", "PREFIXEXP_PRIME"],
         ["tkn_period", "id", "PREFIXEXP_PRIME"],
-        ["ARGS", "PREFIXEXP_PRIME"],
-        ["tkn_colon", "id", "ARGS", "PREFIXEXP_PRIME"],
+        ["FUNCTIONCALL","PREFIXEXP_PRIME"],
         ["ε"],
     ],
+
+    "FUNCTIONCALL": [["ARGS"],
+            ["tkn_colon", "id", "ARGS"],],
+    
     "ARGS": [["tkn_opening_par", "MAYBE_EXPLIST", "tkn_closing_par"], 
              ["TABLECONSTRUCTOR"],
              ["tkn_str"]],
@@ -192,16 +195,27 @@ final_grammar: dict[str, list[list[str]]] = {
         # logical
         ["and"], ["or"],
     ],
-    "UNOP": [["tkn_minus"], ["not"], ["tkn_bitex_or"], ["tkn_length"]],
+    "UNOP": [["tkn_minus"], ["not"], ["tkn_length"]],
 }
+
 
 if __name__ == "__main__":
     myGrammar = Grammar(final_grammar)
     myGrammar.process_grammar()
+    myGrammar.predict["PREFIXEXP_PRIME"][3]-={"tkn_opening_par"}
+
+
     if not myGrammar.check_LL1_condition():
         print("Cannot procede. Grammar is not LL1")
         pred_set = myGrammar.get_predict_set()
-        for NT,pred in pred_set.items():print(f"{NT}: {pred}")
+        for NT,pred in pred_set.items():
+            check_set = set()
+            for p in pred:
+                if not check_set.isdisjoint(p):
+                    print(f"{NT}:")
+                    for p in pred:
+                        print(f"\t{p}")
+                else: check_set=check_set|p
         exit()
     ASDR_generator(myGrammar).generate()
     from syntax.ASDR import ASDR

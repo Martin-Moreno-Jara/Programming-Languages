@@ -128,3 +128,32 @@ def run_predict():
 @pytest.fixture
 def ll1_grammar():
     return _ll1_grammar
+
+
+# ---------------------------------------------------------------------------
+# Real Lua grammar (spec 006, tasks §2.3)
+# ---------------------------------------------------------------------------
+@pytest.fixture(scope="session")
+def lua_parser(tmp_path_factory):
+    """(Grammar, ASDR) for final_grammar, generated once into a temporary folder; skips if it is not LL(1)."""
+    from real_grammar_support import generate_parser
+
+    folder = tmp_path_factory.mktemp("real") / "syntax"
+    folder.mkdir()
+    result = generate_parser(folder)
+    if result is None:
+        pytest.skip("final_grammar is not LL(1)")
+    return result
+
+
+@pytest.fixture(scope="session")
+def project_copy(tmp_path_factory):
+    """A copy of the files main.py needs, so running it never rewrites the real syntax/ASDR.py."""
+    import shutil
+
+    root = tmp_path_factory.mktemp("project")
+    ignore = shutil.ignore_patterns("__pycache__", "tests", "specs", "docs")
+    shutil.copy(PROJECT_ROOT / "main.py", root / "main.py")
+    for folder in ("syntax", "lexer", "exceptions"):
+        shutil.copytree(PROJECT_ROOT / folder, root / folder, ignore=ignore)
+    return root
