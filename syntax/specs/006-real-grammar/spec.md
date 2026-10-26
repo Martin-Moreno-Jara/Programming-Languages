@@ -109,7 +109,8 @@ On the first syntax error, parsing stops, and exactly one line is reported:
   One exception, confirmed by platform tests 13 and 14: `tkn_num` and
   `tkn_str` sort as `valor_numerico` and `cadena_de_caracteres`, so
   `"cadena_de_caracteres"` comes near the start and `"valor_numerico"` after
-  `"true"`.
+  `"true"`. `$` sorts as `final de archivo` too, between `end` and `for`
+  (platform tests 27 and 30).
 - Entries are separated by `", "` and the line ends with `.`.
 - No token appears twice in the list.
 
@@ -558,7 +559,7 @@ shows how it handles them, turn them into cases.
 | K4 | An attribute before the first name: `local <const> x`, `global <const> x` | Valid in the 5.5 manual | The doc's R1 list has no `"<"` | **Resolved**: the attribute is parsed, but `<` is hidden before the first name (§4.2) |
 | K5 | Other built-ins as names: `pairs`, `ipairs`, `tostring`, `tonumber`, `select`, `next`, `load`, `loadfile`, `dofile` | Ordinary names | The lexer gives them their own token types, and the doc lists only the five of §3.1 as identifiers. It is unknown whether the grader accepts `for k, v in pairs(t) do end`. Very common code, so worth asking on Campuswire |
 | K6 | `print` as a token | — | The grader treats `print` as its own token (R1 lists `"print"`), but it is commented out of `keywords_set` (`lexer/lexer.py:81`). As an `id`, R1, R33 and O3 lose `"print"` from the list |
-| K7 | Order of the expected list | — | The doc says "lexicographic" and "separated by a blank space", but its examples are sorted by token-type name and separated by `", "`. The spec follows the examples. Where `"final de archivo"` (`$`) goes in a sorted list is unknown |
+| K7 | Order of the expected list | — | The doc says "lexicographic" and "separated by a blank space", but its examples are sorted by token-type name and separated by `", "`. The spec follows the examples. `$` sorts as `final de archivo` (**resolved** by platform tests 27 and 30) |
 | K8 | Call suffixes in the R3 list | `p{...}` and `p"s"` are valid calls | The grader's list after `p` (`"=", ":", ",", "[", "(", "."`) has no `"{"` and no `"cadena_de_caracteres"`, although C10, C11 and N2 are valid Lua | **Resolved**: they are parsed, but hidden from the list (§4.2) |
 | K9 | Position of an EOF error | — | The doc doesn't give an example, so it's unknown whether the grader reports the end of the last line or the next line |
 

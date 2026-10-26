@@ -434,6 +434,7 @@ def test_hidden_token_only_in_its_production(out_dir, load_parser):
     assert _error_parts(err.value.message) == (1, 2, "z", {"f"})
 
 
+
 @pytest.mark.parametrize("grammar", _params("test_main_parses_start_symbol", G_ROWS))
 def test_main_parses_start_symbol(grammar, out_dir):
     _, source = _generate(grammar, out_dir)
@@ -522,10 +523,12 @@ def test_init_starts_with_empty_pending():
 
 
 def test_report_expected_symbols_sort_order():
-    # Token types sort by name, except tkn_num and tkn_str, which sort as their shown names
+    # Token types sort by name, except tkn_num, tkn_str and $, which sort as their shown names (platform 27, 30)
     base = ASDR_base(None)
-    base.pending = {"tkn_num", "tkn_str", "tkn_plus", "id", "true", "tkn_varargs", "and"}
-    assert base.report_expected_symbols() == ["and", "tkn_str", "id", "tkn_plus", "tkn_varargs", "true", "tkn_num"]
+    base.pending = {"tkn_num", "tkn_str", "tkn_plus", "id", "true", "tkn_varargs", "and", END, "end", "for"}
+    assert base.report_expected_symbols() == [
+        "and", "tkn_str", "end", END, "for", "id", "tkn_plus", "tkn_varargs", "true", "tkn_num"
+    ]
 
 
 def test_report_expected_symbols_keeps_pending():

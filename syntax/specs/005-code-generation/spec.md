@@ -85,8 +85,8 @@ Read the generated file and inspect it, for example with `ast.parse`:
 - `main`'s final check adds `"$"` to `pending` and raises the same way.
   `match(t)` adds `t` to `pending` and raises the same way.
 - `ASDR_base.report_expected_symbols` returns `pending` sorted by type
-  name, except that `tkn_num` and `tkn_str` sort as `valor_numerico` and
-  `cadena_de_caracteres` (the grader's order). It doesn't change `pending`.
+  name, except that `tkn_num`, `tkn_str` and `$` sort as `valor_numerico`,
+  `cadena_de_caracteres` and `final de archivo` (the grader's order; platform tests 13, 14, 27, 30). It doesn't change `pending`.
 - `ASDR_base` shows them as the assignment doc asks:
   - `format_expected_symbol` shows a lexer symbol as itself (`tkn_plus` as
     `"+"`), `tkn_num` as `"valor_numerico"`, `tkn_str` as
