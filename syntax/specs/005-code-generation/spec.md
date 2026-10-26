@@ -73,6 +73,12 @@ Read the generated file and inspect it, for example with `ast.parse`:
   `(FIRST(production) − {ε}) ∩ predict[A][i]`. That leaves out FOLLOW(A) and
   the tokens removed by prediction exceptions. The list is sorted so the
   file is the same on every run.
+  - `ASDR_generator(grammar, hidden_expected)` takes an optional
+    `{A: {i: tokens}}`. The tokens keep their place in the branch test of
+    production `i`, but are left out of `pending`. Because the generator uses a
+    visible FIRST (`compute_visible_first`), they also stay out of every rule
+    that starts with `A`. With no `hidden_expected`, visible FIRST is FIRST
+    without ε, and the output is unchanged.
   - If `A` is nullable, that is the whole `else`.
   - Otherwise it then raises
     `SyntacticalError(self.format_error_message(self.report_expected_symbols()))`.

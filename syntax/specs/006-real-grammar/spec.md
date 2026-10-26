@@ -171,6 +171,17 @@ g.process_grammar()   # FIRST, FOLLOW, predict, then apply_pred_exceptions()
 prefix expression always continues it as a call and never ends it (Lua's
 greedy rule).
 
+### 4.2 Hidden expected tokens
+
+The grader's expected lists leave out some tokens its parser accepts. Platform test 22 parses an anonymous `function`, but the lists of tests 13 and 14 don't name it. Those productions stay in the grammar, and their tokens are hidden from `pending` instead:
+
+```python
+hidden_expected = {"EXP_NOT_ID": {5: {"tkn_varargs"}, 7: {"function"}}, ...}  # main.py
+ASDR_generator(g, hidden_expected).generate()
+```
+
+`{A: {i: tokens}}` keeps the tokens in the branch test of production `i` of `A`, but never names them in an error. A hidden token also stays hidden in every rule that starts with `A`: the 13/14 error is raised in `parse_EXP`, not `parse_EXP_NOT_ID`. Currently hidden: `function` and `...` at the start of an expression (13, 14), string and table call arguments (18), `do` and `(` at the start of a statement (04), and `<` and `*` before the first name of a declaration (23, R1).
+
 Unit tests for the two new `Grammar` methods (`test_pred_exceptions.py`),
 using the dangling-else grammar of spec 004 E8 with `{"Sp": {1: "e"}}`:
 
@@ -294,6 +305,9 @@ K4).
 | F5 | `function f(a, ...) end` | Names and varargs |
 | F6 | `function f(...args) end` | Named varargs (new in 5.5) |
 | F7 | `function f(a, ...rest) end` | Names and named varargs |
+| F8 | `x = function() end` | `functiondef` as an expression |
+| F9 | `x = function(a, ...) return a end` | `functiondef` with parameters and a return |
+| F10 | `f(function() end)` | `functiondef` as an argument |
 | F11 | `function f() function g() end end` | A function nested in a function |
 
 ### 5.6 Tables (T)
@@ -320,16 +334,15 @@ K4).
 
 ### 5.7 Expressions (E)
 
-`exp ::= nil | false | true | Numeral | LiteralString |
+`exp ::= nil | false | true | Numeral | LiteralString | '...' | functiondef |
 prefixexp | tableconstructor | exp binop exp | unop exp`
-
-Lua also has `'...'` and `functiondef` here. The grader's grammar has neither (platform tests 13 and 14), so they are reject cases R40 to R43.
 
 | ID | Program | What it checks |
 |----|---------|----------------|
 | E1 | `x = nil`, `x = false`, `x = true` | Each constant (three programs) |
 | E2 | `x = 42`, `x = 3.14`, `x = 0xFF` | Numbers |
 | E3 | `x = "s"`, `x = 'c'` | Strings with both quote kinds |
+| E4 | `function f(...) x = ... end` | `'...'` as an expression |
 | E5 | `x = y` | A name as an expression |
 | E6 | `x = (1)` | Parentheses |
 | E7 | `x = f(1)` | A call as an expression |
@@ -343,6 +356,7 @@ Lua also has `'...'` and `functiondef` here. The grader's grammar has neither (p
 | E15 | `x = a and b or not c` | Logical operators mixed |
 | E16 | `x = #t + 1` | Unary inside binary |
 | E17 | `x = "n"+a-true*(vari[3] % 70)` | The doc's semantic-error example is syntactically valid |
+| E18 | `x = function() end .. {}` | Odd operands are still valid syntax |
 | E19 | `x = a ~ b` | Binary `~` is allowed (only unary `~` is not) |
 | E20 | `x = a ~= b` | `~=` is one token, not `~` then `=` |
 
@@ -354,9 +368,7 @@ Lua also has `'...'` and `functiondef` here. The grader's grammar has neither (p
 `var ::= Name | prefixexp '[' exp ']' | prefixexp '.' Name`,
 `prefixexp ::= var | functioncall | '(' exp ')'`,
 `functioncall ::= prefixexp args | prefixexp ':' Name args`,
-`args ::= '(' [explist] ')'`
-
-Lua also allows a table or a string as `args`. The grader doesn't (platform test 18), so those calls are reject cases R44 to R49.
+`args ::= '(' [explist] ')' | tableconstructor | LiteralString`
 
 | ID | Program | What it checks |
 |----|---------|----------------|
@@ -369,6 +381,9 @@ Lua also allows a table or a string as `args`. The grader doesn't (platform test
 | C7 | `a, b.c, d[1] = 1, 2, 3` | Mixed targets in one assignment |
 | C8 | `f()` | Call with no arguments |
 | C9 | `f(1, 2)` | Call with several arguments |
+| C10 | `f"str"` | String argument without parentheses |
+| C11 | `f{1, 2}` | Table argument without parentheses |
+| C12 | `o:m"s"`, `o:m{}` | Method call with string and table arguments |
 | C13 | `f()()` | Calling the result of a call |
 | C14 | `f().x = 1` | Field of a call result as a target |
 | C15 | `f()[1] = 2` | Index of a call result as a target |
@@ -376,7 +391,9 @@ Lua also allows a table or a string as `args`. The grader doesn't (platform test
 | C17 | `(f)()` | Parenthesised expression called |
 | C18 | `("s"):upper()` | Method call on a parenthesised string |
 | C19 | `(a).b = 1` | Field of a parenthesised expression as a target |
+| C20 | `a.b.c:d "x" {1} (2)` | Long chain with all three argument kinds |
 | C21 | `x = f(g(h(1)))` | Nested calls |
+| C22 | `function f(...) g(...) end` | Varargs as an argument |
 | C23 | `a, (b).c = 1, 2` | A parenthesised prefix expression as a later assignment target |
 
 ### 5.9 Built-in names (N)
@@ -386,6 +403,7 @@ Lua also allows a table or a string as `args`. The grader doesn't (platform test
 | ID | Program | What it checks |
 |----|---------|----------------|
 | N1 | `print("hola")` | Call |
+| N2 | `print "hola"` | Call with a string argument |
 | N3 | `print = 1` | Assignment target |
 | N4 | `local warn = 2` | Local name |
 | N5 | `function error() end` | Function name |
@@ -423,8 +441,10 @@ Lua also allows a table or a string as `args`. The grader doesn't (platform test
 | EA6 | 50 nested tables `{{{...}}}` | Deep recursion in tables |
 | EA7 | 200 statements `x = 1` in a row | Long statement list |
 | EA8 | `x = 1 + 1 + ... + 1` with 200 terms | Long operator chain |
+| EA9 | `f = function() return function() return ... end end`, 10 levels | Nested function bodies |
 | EA10 | `function f() ; end` | A body with only an empty statement |
 | EA11 | Only comments and blank lines | Same as empty input |
+| EA12 | `return function() return {f = function() return end} end` | Return, functions and tables mixed |
 | EA13 | `f()↵(g)()` | `(` on the next line continues the call chain, read as `f()(g)()` (§4.1) |
 
 Every EA case has a time limit (§11), so a parser that loops forever fails
@@ -460,7 +480,7 @@ list.
 | R11 | `if x y = 1 end` | 1:6 | `y` | `"then"` |
 | R12 | `while x y() end` | 1:9 | `y` | `"do"` |
 | R13 | `return 1 x = 2` | 1:10 | `x` | `"final de archivo"`, `";"`, `","` |
-| R14 | `x = = 1` | 1:5 | `=` | `"id"`, `"nil"`, `"valor_numerico"`, `"("` |
+| R14 | `x = = 1` | 1:5 | `=` | exactly the list of platform tests 13 and 14, with `function` and `...` hidden (§4.2) |
 | R15 | `x = ~y` | 1:5 | `~` | `"id"`, `"-"`, `"not"`, `"#"` |
 | R16 | `x = a ~ ~b` | 1:9 | `~` | `"id"`, `"-"` (binary `~` was accepted, the unary one is not) |
 | R17 | `for i = 1 do end` | 1:11 | `do` | `","` |
@@ -486,16 +506,6 @@ list.
 | R37 | `x = 1↵↵↵y = ` | EOF | `final de archivo` | `"id"` (EOF after blank lines) |
 | R38 | `t = {1,, 2}` | 1:8 | `,` | `"}"` |
 | R39 | `a = f↵(g).x = 1` | 2:7 | `=` | `"final de archivo"`, `"id"` (read greedily as `a = f(g).x`, then a second `=`, as in Lua) |
-| R40 | `x = function() end` | 1:5 | `function` | exactly the list of platform tests 13 and 14, which names neither `function` nor `...` |
-| R41 | `function f(...) x = ... end` | 1:21 | `...` | the same list as R40 |
-| R42 | `f(function() end)` | 1:3 | `function` | `")"` |
-| R43 | `function f(...) g(...) end` | 1:19 | `...` | `")"` |
-| R44 | `f"str"` | 1:2 | `str` | exactly the R3 list |
-| R45 | `f{1, 2}` | 1:2 | `{` | exactly the R3 list |
-| R46 | `print "hola"` | 1:7 | `hola` | exactly the R3 list |
-| R47 | `o:m"s"` | 1:4 | `s` | `"("` |
-| R48 | `o:m{}` | 1:4 | `{` | `"("` |
-| R49 | `a.b.c:d "x" {1} (2)` | 1:9 | `x` | `"("` |
 
 **Only the first error.** R3 has a second error on the same line (`3` after
 `;`). R36 can be extended with another error on line 4. In both, only the
@@ -526,6 +536,10 @@ Checked for every O case:
   messages.
 - The exit code is not checked, since the doc says nothing about it.
 
+### 8.1 Platform cases
+
+`test_platform_output` runs `main.py` on every downloaded platform case in `syntax/test_files/` (`NN.in`, plus `NN-output.txt` or `NN.output.txt`, whose first line is the grader's expected output). Each source is passed exactly as downloaded, with no trailing newline, and stdout must be that one line. A new submission's feedback is added by dropping its files into the folder.
+
 **Cross-check on all R cases.** For every R case, the expected list in the
 message has no repeated entries and is sorted as in §3.2. This catches an
 order or rendering mistake even in cases with no fixed list.
@@ -541,11 +555,11 @@ shows how it handles them, turn them into cases.
 | K1 | A prefix expression that is not a call, used as a statement: `x`, `t.k`, `(f)`, `f().x` | Syntax error ("syntax error near ...") | The parser only knows the last suffix after it has read the whole prefix expression. Rejecting these needs a check after parsing that the last suffix was a call, not a grammar rule |
 | K2 | A call on the left of `=`: `f() = 1`, `a:m() = 2` | Syntax error | Same reason as K1, but checking that the last suffix was **not** a call |
 | K3 | `a = f↵(g).x = 1` | Read greedily as one statement, `a = f(g).x = 1`, so the second `=` is the error | **Resolved** by the exception of §4.1, and now tested as EA13 and R39 |
-| K4 | An attribute before the first name: `local <const> x`, `global <const> x` | Valid in the 5.5 manual | The doc's R1 list has no `"<"`, so the grader seems not to allow it. If the grammar allows it, R1 and R33 fail |
+| K4 | An attribute before the first name: `local <const> x`, `global <const> x` | Valid in the 5.5 manual | The doc's R1 list has no `"<"` | **Resolved**: the attribute is parsed, but `<` is hidden before the first name (§4.2) |
 | K5 | Other built-ins as names: `pairs`, `ipairs`, `tostring`, `tonumber`, `select`, `next`, `load`, `loadfile`, `dofile` | Ordinary names | The lexer gives them their own token types, and the doc lists only the five of §3.1 as identifiers. It is unknown whether the grader accepts `for k, v in pairs(t) do end`. Very common code, so worth asking on Campuswire |
 | K6 | `print` as a token | — | The grader treats `print` as its own token (R1 lists `"print"`), but it is commented out of `keywords_set` (`lexer/lexer.py:81`). As an `id`, R1, R33 and O3 lose `"print"` from the list |
 | K7 | Order of the expected list | — | The doc says "lexicographic" and "separated by a blank space", but its examples are sorted by token-type name and separated by `", "`. The spec follows the examples. Where `"final de archivo"` (`$`) goes in a sorted list is unknown |
-| K8 | Call suffixes in the R3 list | `p{...}` and `p"s"` are valid calls | The grader's list after `p` (`"=", ":", ",", "[", "(", "."`) has no `"{"` and no `"cadena_de_caracteres"`, although such calls are valid Lua | **Resolved**: string and table arguments were dropped from `ARGS`, so R3 matches and those calls are reject cases R44 to R49 |
+| K8 | Call suffixes in the R3 list | `p{...}` and `p"s"` are valid calls | The grader's list after `p` (`"=", ":", ",", "[", "(", "."`) has no `"{"` and no `"cadena_de_caracteres"`, although C10, C11 and N2 are valid Lua | **Resolved**: they are parsed, but hidden from the list (§4.2) |
 | K9 | Position of an EOF error | — | The doc doesn't give an example, so it's unknown whether the grader reports the end of the last line or the next line |
 
 ## 10. Out of scope (behavior not defined)

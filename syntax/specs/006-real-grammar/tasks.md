@@ -59,6 +59,7 @@ until it is.
   Import inside the function, so the import cost only applies to tests that
   need it.
 - [x] `lua_pred_exceptions()`: a deep copy of `pred_exceptions` from `main.py`.
+- [x] `lua_hidden_expected()`: a deep copy of `hidden_expected` from `main.py` (2026-10-25). `generate_parser` passes it to `ASDR_generator`.
 - [x] `processed_grammar(with_exceptions=True)`: `Grammar(lua_grammar())`, then
   `set_pred_exceptions(lua_pred_exceptions())` unless `with_exceptions` is
   `False` (P8 needs the raw sets), then `process_grammar()`,
@@ -137,25 +138,26 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
 - [x] `STATEMENT_ROWS`: `S1` to `S34`. 34 rows.
 - [x] `ATTRIB_ROWS`: `AT1` to `AT5`. 5 rows.
 - [x] `RETURN_ROWS`: `RT1` to `RT10`. 10 rows.
-- [x] `FUNCTION_ROWS`: `F1` to `F7` and `F11`. 8 rows.
+- [x] `FUNCTION_ROWS`: `F1` to `F11`. 11 rows.
 - [x] `TABLE_ROWS`: `T1` to `T13`. 13 rows.
-- [x] `EXPRESSION_ROWS`: 26 rows.
+- [x] `EXPRESSION_ROWS`: 28 rows.
   - `E1-nil`, `E1-false`, `E1-true`;
   - `E2-int` (`x = 42`), `E2-float` (`x = 3.14`), `E2-hex` (`x = 0xFF`);
   - `E3-double` (`x = "s"`), `E3-single` (`x = 'c'`);
-  - `E5` to `E8`;
+  - `E4` to `E8`;
   - `E9-minus`, `E9-not`, `E9-length`;
   - `E10-minus`, `E10-not`;
-  - `E11` to `E17`, `E19` and `E20`.
+  - `E11` to `E20`.
 - [x] `BINOP_ROWS`: 21 rows `x = a <op> b`, built from a list of
   `(name, op)` pairs. The ids are `BO-plus`, `BO-minus`, `BO-times`, `BO-div`,
   `BO-floor-div`, `BO-power`, `BO-mod`, `BO-bit-and`, `BO-bit-xor`,
   `BO-bit-or`, `BO-right-shift`, `BO-left-shift`, `BO-concat`, `BO-less`,
   `BO-leq`, `BO-greater`, `BO-geq`, `BO-equal`, `BO-neq`, `BO-and`, `BO-or`.
-- [x] `CALL_ROWS`: `C1` to `C23` without `C10` to `C12`, `C20` and `C22`. 18 rows.
-- [x] `NAME_ROWS`: `N1` and `N3` to `N15`. 14 rows.
+- [x] `CALL_ROWS`: `C1` to `C23`, with `C12-string` (`o:m"s"`) and
+  `C12-table` (`o:m{}`). 24 rows.
+- [x] `NAME_ROWS`: `N1` to `N15`. 15 rows.
 - [x] `LAYOUT_ROWS`: `L1` to `L6`. 6 rows.
-- [x] `EDGE_ROWS`: `EA1` to `EA13` without `EA9` and `EA12`. 11 rows. Generated programs are built with
+- [x] `EDGE_ROWS`: `EA1` to `EA13`. 13 rows. Generated programs are built with
   string operations, never typed out:
   - `EA1`: the doc's `saludar` program, comments included:
     `"-- Definición de la función\nfunction saludar(texto)\n    print(texto)\nend\n\n-- Llamada a la función\nsaludar(\"¡Hola, mundo!\")\n"`.
@@ -166,11 +168,13 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
   - `EA6`: `"t = " + "{" * 50 + "}" * 50`.
   - `EA7`: `"x = 1\n" * 200`.
   - `EA8`: `"x = " + " + ".join(["1"] * 200)`.
-  - `EA10` and `EA11`: as in the spec. `EA11` is `"-- a\n\n-- b\n"`.
+  - `EA9`: `"f = " + "function() return " * 10 + "end " * 10` (each
+    function returns the next one; a bare `function()` is not a statement).
+  - `EA10` to `EA12`: as in the spec. `EA11` is `"-- a\n\n-- b\n"`.
   - `EA13`: `"f()\n(g)()"` (the greedy `(` of spec §4.1).
-- [x] `ACCEPT_ROWS`: all the tables above concatenated, **173 rows**. Assert
+- [x] `ACCEPT_ROWS`: all the tables above concatenated, **187 rows**. Assert
   the count at import time, so a lost table is noticed at once.
-- [x] `PRODUCTION_ROWS`: `ACCEPT_ROWS` without `EDGE_ROWS` (162 rows). Only
+- [x] `PRODUCTION_ROWS`: `ACCEPT_ROWS` without `EDGE_ROWS` (174 rows). Only
   this list is used for coverage in P7, because the spec ties coverage to
   §5.
 
@@ -195,9 +199,7 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
     `(4, 7)`, `"=="`, `["=", ":", ",", "[", "(", "."]`.
   - `R33`: `"local = 1"`, `(1, 7)`, `"="`, the same list as `R1`.
 - [x] The EOF rows are `R4` to `R10` and `R37`, with `position = None`.
-- [x] Assert 49 rows at import time.
-- [x] `R40` to `R43` (2026-10-25): anonymous functions and `...` used as a value. The grammar dropped them to match platform tests 13 and 14. They used to be accept rows `F8` to `F10`, `E4`, `E18`, `C22`, `EA9` and `EA12`. `R40` and `R41` check the exact list through `_EXP_LIST`.
-- [x] `R44` to `R49` (2026-10-25): calls with a string or table argument and no parentheses. The grammar dropped them from `ARGS` to match platform test 18. They used to be accept rows `C10`, `C11`, `C12-string`, `C12-table`, `C20` and `N2`. `R44` to `R46` check the R3 list exactly through `_AFTER_NAME_LIST`.
+- [x] Assert 39 rows at import time.
 - [x] All positions in spec §7 were checked against the real lexer on
   2026-10-25. Keep `test_reject_positions_match_lexer` (section 6) so they stay
   right if the lexer changes.
@@ -278,17 +280,17 @@ LL(1). Each one builds its own `processed_grammar()`.
 
 All tests use `lua_parser` and take `ASDR` from it.
 
-- [x] `test_accepts`: parametrized over `ACCEPT_ROWS` (173 rows). `parse`
+- [x] `test_accepts`: parametrized over `ACCEPT_ROWS` (187 rows). `parse`
   returns without raising. On `SyntacticalError`, fail with the source and the
   message, so the report shows where it was rejected.
-- [x] `test_rejects`: parametrized over `REJECT_ROWS` (49 rows).
+- [x] `test_rejects`: parametrized over `REJECT_ROWS` (39 rows).
   - `pytest.raises(SyntacticalError)` around `parse`.
   - `error_parts(err.value.message)` gives `(line, col, lexeme, shown)`.
   - Assert the lexeme, the position (when it is not `None`) and `contains <=
     set(shown)`.
   - When `exact` is set, assert `shown == exact` (order included).
 - [x] `test_reject_expected_list_order`: parametrized over `REJECT_ROWS`
-  (49 rows). `is_doc_order(shown)` is `True` (spec §8 cross-check). Kept
+  (39 rows). `is_doc_order(shown)` is `True` (spec §8 cross-check). Kept
   separate from `test_rejects`, so an order mistake doesn't hide a wrong
   position.
 - [x] `test_reports_only_first_error`: R3 and R36, plus a copy of R36 with a
@@ -313,6 +315,8 @@ All tests use `lua_parser` and take `ASDR` from it.
 - [x] `test_main_output` also requests `lua_parser`, only for its skip. While
   the grammar is not LL(1), the 8 rows are skipped with the same reason,
   instead of failing on `main.py`'s "Cannot procede" text.
+- [x] `test_platform_output` (2026-10-25, spec §8.1): parametrized over `PLATFORM_ROWS`, one row per `*.in` in `syntax/test_files/`, with ids `platform-NN`. The source is passed as read from the file, and stdout must be exactly `[first line of the output file]`. Assert 10 rows at import time; update it when new feedback is added.
+- [x] `R14` (2026-10-25) checks `_EXP_LIST` exactly, so hiding `function` and `...` is tested by an R row too.
 
 ## 8b. Prediction-set exception unit tests (`test_pred_exceptions.py`, spec §4.1)
 _Done on 2026-10-25._
@@ -336,13 +340,13 @@ _Done on 2026-10-25._
 ## 9. Counts
 
 - [x] `pytest tests/test_real_grammar_properties.py --collect-only -q` lists
-  8 + 222 + 41 + 1 = **272** tests.
+  8 + 226 + 31 + 1 = **266** tests.
 - [x] `pytest tests/test_real_grammar_parse.py --collect-only -q` lists
-  173 + 49 + 49 + 3 + 13 = **287** tests.
+  187 + 39 + 39 + 3 + 13 = **281** tests.
 - [x] `pytest tests/test_real_grammar_output.py --collect-only -q` lists
-  **8** tests.
+  8 + 10 = **18** tests.
 - [x] `pytest tests/test_pred_exceptions.py --collect-only -q` lists **12** tests.
-- [x] `pytest tests --collect-only -q` lists **1611** (1044 + 567; spec 005 grew by 47 `ASDR_base` tests and the sort-order test).
+- [x] `pytest tests --collect-only -q` lists **1713** (2026-10-25: spec 005 has 333 tests and the output file 18).
 
 ## 10. First run and xfail workflow (spec §11)
 _First run on 2026-10-25: 1254 passed, 286 skipped, 2 xfailed across all suites. Only P1 and `test_display_is_consistent` fail, so they got strict xfail decorators; every `KNOWN_FAILURES` dict is still empty, because the parse and output tests are skipped while the grammar is not LL(1). A dry run with `check_LL1_condition` forced to `True` (a throwaway pytest plugin outside the repo) ran the skipped parse tests: 161 failed, all real (EXP has no PREFIXEXP yet, and the error message still shows raw token types), with no harness errors._

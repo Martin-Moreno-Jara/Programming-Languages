@@ -1,0 +1,2 @@
+local mi_funcion = function right_shift_function(a,b) return a>>b end
+--[[ inner functions are not that defined ]]

@@ -1,0 +1,2 @@
+El analisis sintactico ha finalizado exitosamente.
+<4:13> Error sintactico: se encontro: "function"; se esperaba: "cadena_de_caracteres", "error", "false", "id", "nil", "not", "pcall", "print", "#", "-", "{", "(", "true", "valor_numerico", "warn", "xpcall".

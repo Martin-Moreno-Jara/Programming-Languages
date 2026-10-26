@@ -1,0 +1,27 @@
+-- Creamos una tabla que actúa como diccionario de funciones
+local operaciones = {
+    -- Método 1: Usando una función anónima asignada a una clave
+    sumar = function(a, b)
+        return a + b
+    end,
+    
+    restar = function(a, b)
+        return a - b
+    end
+}
+
+-- Método 2: Asignando funciones a la tabla después de declararla
+operaciones["multiplicar"] = function(a, b)
+    return a * b
+end
+
+operaciones.saludar = function(nombre)
+    return "¡Hola, " .. nombre .. "!"
+end
+
+-- --- USO DE LAS FUNCIONES ---
+
+print(operaciones.sumar(10, 5))         -- Resultado: 15
+print(operaciones.restar(10, 5))        -- Resultado: 5
+print(operaciones.multiplicar(4, 3))    -- Resultado: 12
+print(operaciones.saludar("Ana"))       -- Resultado: ¡Hola, Ana!

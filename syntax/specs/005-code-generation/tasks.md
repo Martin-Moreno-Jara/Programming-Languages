@@ -330,7 +330,22 @@ _Done on 2026-10-25. The generator now reports `self.pending` instead of each ru
   - an unsorted set literal: 21;
   - no `pass` for a lone ε: 9.
 
-## 13. Maintenance (recurring)
+## 13. Hidden expected tokens (spec §3.1)
+_Done on 2026-10-25._
+
+- [x] `_generate` and `_run` take an optional `hidden`, passed to `ASDR_generator`.
+- [x] `test_visible_first_without_hidden_is_first`: over `G_ROWS`, `compute_visible_first()` equals FIRST without ε.
+- [x] `test_visible_first_of_sequence`: unit cases on `G13-grammar2`.
+- [x] `test_init_has_no_hidden_tokens`.
+- [x] `test_hidden_token_is_still_parsed`: the branch still tests the token, the parser accepts it, and the error doesn't name it.
+- [x] `test_hidden_token_stays_hidden_in_outer_rules`: an error raised in the rule above doesn't name it either.
+- [x] `test_hidden_token_only_in_its_production`: the same token in another production is still named.
+- [x] Count: 309 + 19 + 5 = **333** tests.
+- [x] Two bugs put back in a scratch copy make tests fail:
+  - plain FIRST instead of the visible FIRST: 2 tests;
+  - hidden tokens not removed: 3 tests.
+
+## 14. Maintenance (recurring)
 
 - [ ] Before editing any test, re-read `code_generator_script.py` and
   `ASDR_base.py` and compare them with spec.md (AGENTS.md).

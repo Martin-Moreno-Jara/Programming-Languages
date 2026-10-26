@@ -93,16 +93,18 @@ def _processed(grammar: dict[str, list[list[str]]], exceptions: dict | None = No
     return g
 
 
-def _generate(grammar: dict[str, list[list[str]]], out_dir, exceptions: dict | None = None) -> tuple[Grammar, str]:
+def _generate(
+    grammar: dict[str, list[list[str]]], out_dir, exceptions: dict | None = None, hidden: dict | None = None
+) -> tuple[Grammar, str]:
     """Generate the parser for grammar into out_dir; return the Grammar and the generated source."""
     g = _processed(grammar, exceptions)
-    ASDR_generator(g).generate()
+    ASDR_generator(g, hidden).generate()
     return g, (out_dir / "ASDR.py").read_text()
 
 
-def _run(grammar: dict[str, list[list[str]]], lexer, out_dir, load_parser) -> None:
+def _run(grammar: dict[str, list[list[str]]], lexer, out_dir, load_parser, hidden: dict | None = None) -> None:
     """Generate, load and run the parser on lexer; SyntacticalError escapes."""
-    _generate(grammar, out_dir)
+    _generate(grammar, out_dir, hidden=hidden)
     ASDR = load_parser(out_dir / "ASDR.py")
     ASDR(lexer).main()
 
@@ -368,6 +370,68 @@ def test_pending_leaves_out_excepted_tokens(out_dir):
     branches, else_body = _branches(_methods(_class_def(source))["parse_S"])
     assert [tokens for tokens, _ in branches] == [["a"], []]
     assert _pending_literal(else_body[0]) == ["a"]
+
+
+# ---------------------------------------------------------------------------
+# Hidden expected tokens: still parsed, never named in an error
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("grammar", _params("test_visible_first_without_hidden_is_first", G_ROWS))
+def test_visible_first_without_hidden_is_first(grammar):
+    g = _processed(grammar)
+    visible = ASDR_generator(g).compute_visible_first()
+    assert visible == {A: g.first[A] - {EPS} for A in grammar}
+
+
+def test_visible_first_of_sequence():
+    g = _processed(GRAMMARS["G13-grammar2"])
+    gen = ASDR_generator(g)
+    visible = gen.compute_visible_first()
+    assert gen.visible_first_of_sequence(["A", "B", "C"], visible) == {"a", "b", "c"}
+    assert gen.visible_first_of_sequence(["A"], visible) == {"a"}
+    assert gen.visible_first_of_sequence(["c", "A"], visible) == {"c"}
+    assert gen.visible_first_of_sequence([EPS], visible) == set()
+
+
+def test_init_has_no_hidden_tokens():
+    assert ASDR_generator(_processed(GRAMMARS["G1"])).hidden_expected == {}
+
+
+def test_hidden_token_is_still_parsed(out_dir, load_parser):
+    grammar, hidden = {"S": [["a"], ["b"]]}, {"S": {1: {"b"}}}
+    _, source = _generate(grammar, out_dir, hidden=hidden)
+    branches, else_body = _branches(_methods(_class_def(source))["parse_S"])
+    assert [tokens for tokens, _ in branches] == [["a"], ["b"]]
+    assert _pending_literal(else_body[0]) == ["a"]
+    lexer = FakeLexer(["b"])
+    _run(grammar, lexer, out_dir, load_parser, hidden)
+    assert lexer.reached_end
+    with pytest.raises(SyntacticalError) as err:
+        _run(grammar, FakeLexer(["c"]), out_dir, load_parser, hidden)
+    assert _error_parts(err.value.message) == (1, 1, "c", {"a"})
+
+
+def test_hidden_token_stays_hidden_in_outer_rules(out_dir, load_parser):
+    # Hidden in N, so E, which starts with N, doesn't name it either
+    grammar = {"S": [["E"]], "E": [["id"], ["N"]], "N": [["nil"], ["function"]]}
+    hidden = {"N": {1: {"function"}}}
+    with pytest.raises(SyntacticalError) as err:
+        _run(grammar, FakeLexer(["for"]), out_dir, load_parser, hidden)
+    assert _error_parts(err.value.message) == (1, 1, "for", {"id", "nil"})
+    lexer = FakeLexer(["function"])
+    _run(grammar, lexer, out_dir, load_parser, hidden)
+    assert lexer.reached_end
+
+
+def test_hidden_token_only_in_its_production(out_dir, load_parser):
+    # f is hidden where A starts with it, but B starts with f too and still names it
+    grammar = {"S": [["A"], ["k", "B"]], "A": [["f", "x"]], "B": [["f", "y"]]}
+    hidden = {"A": {0: {"f"}}}
+    with pytest.raises(SyntacticalError) as err:
+        _run(grammar, FakeLexer(["z"]), out_dir, load_parser, hidden)
+    assert _error_parts(err.value.message) == (1, 1, "z", {"k"})
+    with pytest.raises(SyntacticalError) as err:
+        _run(grammar, FakeLexer(["k", "z"]), out_dir, load_parser, hidden)
+    assert _error_parts(err.value.message) == (1, 2, "z", {"f"})
 
 
 @pytest.mark.parametrize("grammar", _params("test_main_parses_start_symbol", G_ROWS))

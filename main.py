@@ -96,7 +96,7 @@ final_grammar: dict[str, list[list[str]]] = {
     "DOTTED_FUNCNAME": [["tkn_period", "NAME", "DOTTED_FUNCNAME"], ["ε"]],
     "COLON_FUNCNAME": [["tkn_colon", "NAME"], ["ε"]],
 
-    #"FUNCTIONDEF": [["function", "FUNCBODY"]],
+    "FUNCTIONDEF": [["function", "FUNCBODY"]],
     "FUNCBODY": [["tkn_opening_par", "OPT_PARLIST", "tkn_closing_par", "BLOCK", "end"]],
 
     # parameter list: the comma is consumed before deciding between
@@ -128,8 +128,9 @@ final_grammar: dict[str, list[list[str]]] = {
 
     "EXP_NOT_ID":  [
     ["nil", "EXP_PRIME"], ["false", "EXP_PRIME"], ["true", "EXP_PRIME"],
-    ["tkn_num", "EXP_PRIME"], ["tkn_str", "EXP_PRIME"],
+    ["tkn_num", "EXP_PRIME"], ["tkn_str", "EXP_PRIME"], ["tkn_varargs", "EXP_PRIME"],
     ["TABLECONSTRUCTOR", "EXP_PRIME"],
+    ["FUNCTIONDEF", "EXP_PRIME"],
     ["UNOP", "EXP"],
     ["tkn_opening_par", "EXP", "tkn_closing_par", "PREFIXEXP_PRIME", "EXP_PRIME"],
 ],
@@ -150,7 +151,9 @@ final_grammar: dict[str, list[list[str]]] = {
     "FUNCTIONCALL": [["ARGS"],
             ["tkn_colon", "NAME", "ARGS"],],
     
-    "ARGS": [["tkn_opening_par", "MAYBE_EXPLIST", "tkn_closing_par"]],
+    "ARGS": [["tkn_opening_par", "MAYBE_EXPLIST", "tkn_closing_par"],
+             ["TABLECONSTRUCTOR"],
+             ["tkn_str"]],
 
     
 
@@ -192,6 +195,15 @@ pred_exceptions={
     "AFTER_CALL": {3:"tkn_opening_par"}
 }
 
+hidden_expected={
+    "EXP_NOT_ID": {5: {"tkn_varargs"}, 7: {"function"}},  
+    "ARGS": {1: {"tkn_opening_key"}, 2: {"tkn_str"}},     
+    "STAT": {2: {"tkn_opening_par"}, 6: {"do"}},          
+    "GLOBAL_OPT": {1: {"tkn_less"}},                      
+    "GLOBAL_TAIL": {0: {"tkn_times"}},                   
+    "ATTNAMELIST": {0: {"tkn_less"}},                     
+}
+
 if __name__ == "__main__":
     myGrammar = Grammar(final_grammar)
     myGrammar.set_pred_exceptions(pred_exceptions)
@@ -209,7 +221,7 @@ if __name__ == "__main__":
                         print(f"\t{p}")
                 else: check_set=check_set|p
         exit()
-    ASDR_generator(myGrammar).generate()
+    ASDR_generator(myGrammar, hidden_expected).generate()
     from syntax.ASDR import ASDR
     data = sys.stdin.read()
     if not data.endswith("\n"):

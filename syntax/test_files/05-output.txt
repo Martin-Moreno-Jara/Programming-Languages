@@ -1,0 +1,2 @@
+<1:29> Error sintactico: se encontro: "right_shift_function"; se esperaba: "(".
+<1:20> Error sintactico: se encontro: "function"; se esperaba: "cadena_de_caracteres", "error", "false", "id", "nil", "not", "pcall", "print", "#", "-", "{", "(", "true", "valor_numerico", "warn", "xpcall".
