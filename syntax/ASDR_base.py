@@ -6,6 +6,7 @@ class ASDR_base():
     def __init__(self,lexer:Lexer):
         self.lexer = lexer
         self.cur_tok:Token
+        self.pending:set = set()
         self.operand_symbols_dict: dict = {
                     "tkn_bit_and": "&",
                     "tkn_bit_or": "|",
@@ -48,7 +49,9 @@ class ASDR_base():
             elif s=="$": return "\"final de archivo\""
             else:
                 return f"\"{self.operand_symbols_dict.get(s) if self.operand_symbols_dict.get(s) else s}\""
-            
+
+    
+    
     def format_error_message(self,expected:list[str]):
         lexeme = self.cur_tok.lexeme if self.cur_tok.lexeme != "$" else "final de archivo"
         expected = ", ".join(self.format_expected_symbol(s) for s in expected)
@@ -57,6 +60,7 @@ class ASDR_base():
 
     def match(self,expected_tok:str):
         if self.cur_tok.type == expected_tok:
+            self.pending = set()
             self.cur_tok = self.lexer.tokenize()
         else:
             raise SyntacticalError(self.format_error_message([expected_tok]))
