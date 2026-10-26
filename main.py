@@ -226,6 +226,7 @@ if __name__ == "__main__":
     data = sys.stdin.read()
     if not data.endswith("\n"):
         data += "\n"
+
     lexer = Lexer(data)
     try:
         parser = ASDR(lexer)

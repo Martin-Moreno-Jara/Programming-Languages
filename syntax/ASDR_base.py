@@ -7,7 +7,7 @@ class ASDR_base():
         self.lexer = lexer
         self.cur_tok:Token
         self.pending:set = set()
-        self.sorting_order = {"tkn_num": "valor_numerico", "tkn_str": "cadena_de_caracteres"}
+        self.sorting_order = {"tkn_num": "valor_numerico", "tkn_str": "cadena_de_caracteres","$":"final de archivo"}
         self.operand_symbols_dict: dict = {
                     "tkn_bit_and": "&",
                     "tkn_bit_or": "|",
