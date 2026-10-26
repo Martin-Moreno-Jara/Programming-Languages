@@ -23,7 +23,7 @@ final_grammar: dict[str, list[list[str]]] = {
         ["tkn_semicolon"], # empty statement
         # varlist and functionall factor prefixexp
         ["NAME","AFTER_VAR"],
-        ["tkn_opening_par","EXP", "tkn_closing_par","AFTER_VAR"],
+        #["tkn_opening_par","EXP", "tkn_closing_par","AFTER_VAR"],
         ["LABEL"],
         ["break"],
         ["goto", "NAME"],
@@ -78,13 +78,12 @@ final_grammar: dict[str, list[list[str]]] = {
     # the optional ATTRIB is factored out so "global <attrib> *" and
     # "global <attrib> name ..." don't share a prediction
     "GLOBAL_DEC": [["global", "GLOBAL_OPT"]],
-    "GLOBAL_OPT": [["FUNC_DEC"], ["ATTRIB", "GLOBAL_TAIL"]],
-    "GLOBAL_TAIL": [["tkn_times"], ["NAME", "ATTRIB", "NAME_ATTRIB_LIST", "OPT_EXPLIST"]],
+    "GLOBAL_OPT": [["FUNC_DEC"], ["ATTNAMELIST", "OPT_EXPLIST"]],
 
     "FUNC_DEC": [["function", "NAME", "FUNCBODY"]],
     "OPT_EXPLIST": [["tkn_assign", "EXPLIST"], ["ε"]],
 
-    "ATTNAMELIST": [["ATTRIB", "NAME", "ATTRIB", "NAME_ATTRIB_LIST"]],
+    "ATTNAMELIST": [["NAME", "ATTRIB", "NAME_ATTRIB_LIST"]],
     "NAME_ATTRIB_LIST": [["tkn_comma", "NAME", "ATTRIB", "NAME_ATTRIB_LIST"], ["ε"]],
     "ATTRIB": [["tkn_less", "NAME", "tkn_greater"], ["ε"]],
 
@@ -128,7 +127,7 @@ final_grammar: dict[str, list[list[str]]] = {
 
     "EXP_NOT_ID":  [
     ["nil", "EXP_PRIME"], ["false", "EXP_PRIME"], ["true", "EXP_PRIME"],
-    ["tkn_num", "EXP_PRIME"], ["tkn_str", "EXP_PRIME"], ["tkn_varargs", "EXP_PRIME"],
+    ["tkn_num", "EXP_PRIME"], ["tkn_str", "EXP_PRIME"],
     ["TABLECONSTRUCTOR", "EXP_PRIME"],
     ["UNOP", "EXP"],
     ["tkn_opening_par", "EXP", "tkn_closing_par", "EXP_PRIME"],
@@ -137,7 +136,7 @@ final_grammar: dict[str, list[list[str]]] = {
 
     # prefixexp replaces var and function call in the elimination of left recursion
     "PREFIXEXP": [
-        ["tkn_opening_par", "EXP", "tkn_closing_par", "PREFIXEXP_PRIME"],
+       # ["tkn_opening_par", "EXP", "tkn_closing_par", "PREFIXEXP_PRIME"],
         ["NAME", "PREFIXEXP_PRIME"],
     ],
     "PREFIXEXP_PRIME": [
@@ -150,9 +149,7 @@ final_grammar: dict[str, list[list[str]]] = {
     "FUNCTIONCALL": [["ARGS"],
             ["tkn_colon", "NAME", "ARGS"],],
     
-    "ARGS": [["tkn_opening_par", "MAYBE_EXPLIST", "tkn_closing_par"],
-             ["TABLECONSTRUCTOR"],
-             ["tkn_str"]],
+    "ARGS": [["tkn_opening_par", "MAYBE_EXPLIST", "tkn_closing_par"]],
 
     
 
@@ -196,12 +193,7 @@ pred_exceptions={
 }
 
 hidden_expected={
-    "EXP_NOT_ID": {5: {"tkn_varargs"}},  
-    "ARGS": {1: {"tkn_opening_key"}, 2: {"tkn_str"}},     
-    "STAT": {2: {"tkn_opening_par"}},          
-    "GLOBAL_OPT": {1: {"tkn_less"}},                      
-    "GLOBAL_TAIL": {0: {"tkn_times"}},                   
-    "ATTNAMELIST": {0: {"tkn_less"}},                     
+                 
 }
 
 if __name__ == "__main__":

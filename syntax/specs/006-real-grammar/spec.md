@@ -235,8 +235,6 @@ refactored. Line breaks inside a program are written as `↵`.
 | S7 | `::top::` | `label` |
 | S8 | `while true do break end` | `break` |
 | S9 | `goto top` | `goto Name` |
-| S10 | `do end` | `do block end`, empty block |
-| S11 | `do x = 1 end` | `do block end` |
 | S12 | `while x < 10 do x = x + 1 end` | `while exp do block end` |
 | S13 | `repeat x = x - 1 until x == 0` | `repeat block until exp` |
 | S14 | `if x then end` | `if`, no `elseif`, no `else` |
@@ -286,7 +284,7 @@ K4).
 | RT4 | `return;` | Optional `;` without values |
 | RT5 | `return f();` | Optional `;` with a value |
 | RT6 | `function f() return end` | Return as the last statement of a function body |
-| RT7 | `do return 1 end x = 2` | Return closes the inner block only. The outer block goes on |
+| RT7 | `while x do return 1 end x = 2` | Return closes the inner block only. The outer block goes on |
 | RT8 | `if x then return 1 elseif y then return 2 else return 3 end` | Return at the end of each branch |
 | RT9 | `while x do return end` | Return before `end` |
 | RT10 | `repeat return until x` | Return before `until` |
@@ -436,7 +434,7 @@ prefixexp | tableconstructor | exp binop exp | unop exp`
 | EA1 | The doc's first example: `function saludar(texto)` ... `saludar("¡Hola, mundo!")`, with its comments | Doc example, accepted |
 | EA2 | The doc's `local entrada` / `if entrada == nil then` ... `end` example | Doc example, accepted |
 | EA3 | `x = ` followed by 50 `(`, `1`, and 50 `)` | Deep recursion in expressions |
-| EA4 | 50 nested `do ... end` | Deep recursion in blocks |
+| EA4 | 50 nested `while x do ... end` | Deep recursion in blocks |
 | EA5 | 50 nested `if x then ... end` | Deep recursion through `if` |
 | EA6 | 50 nested tables `{{{...}}}` | Deep recursion in tables |
 | EA7 | 200 statements `x = 1` in a row | Long statement list |
@@ -513,6 +511,9 @@ list.
 | R44 | `x = (a) )` | 1:9 | `)` | exactly the operators, `,`, the statement starts and `"final de archivo"`, with no `":"`, `"["`, `"("`, `"."` (platform test 35) |
 | R45 | `x = (t).k` | 1:8 | `.` | exactly R44's list |
 | R46 | `x = (f)(1)` | EOF | `final de archivo` | `"="`: `(1)` is read as a new statement |
+| R47 | `do end` | 1:1 | `do` | exactly the statement starts + `"final de archivo"`: there is no `do … end` statement (platform test 16) |
+| R48 | `do = 5` | 1:1 | `do` | exactly R47's list |
+| R49 | `while x do do end end` | 1:12 | `do` | exactly the statement starts + `"end"` |
 
 **Only the first error.** R3 has a second error on the same line (`3` after
 `;`). R36 can be extended with another error on line 4. In both, only the
