@@ -54,18 +54,33 @@ Read the generated file and inspect it, for example with `ast.parse`:
 - It defines `class ASDR(ASDR_base)`.
 - There is exactly one `parse_A` method for **every** non-terminal `A`,
   including non-terminals that the start symbol never reaches.
-- `parse_A` has one `if`/`elif` branch per production of `A`, in the order
-  of the grammar. Branch `i` tests `self.cur_tok.type` against exactly the
-  tokens of `predict[A][i]`.
+- The expected list of an error is `self.pending`. It holds the tokens that
+  could have started an alternative skipped since the last token was
+  consumed. Rules that take an ε path add to it, `match` clears it after
+  consuming a token, and every error adds its own tokens before raising.
+- If `A` has a single production and it derives ε, `parse_A` has no `if`:
+  it calls that production's non-terminals in order, or is `pass` for a
+  lone ε.
+- Otherwise `parse_A` has one `if`/`elif` branch per production of `A` other
+  than a lone ε (the grammar puts ε last), in the order of the grammar.
+  Branch `i` tests `self.cur_tok.type` against exactly the tokens of
+  `predict[A][i]`.
 - Inside a branch, the symbols of the production appear in order:
-  `self.parse_X()` for a non-terminal `X`, `self.match('t')` for a terminal
-  `t`, and `pass` for ε.
-- The final `else` raises `SyntacticalError` through
-  `self.format_error_message([...])`, passing the **raw token types** of the
-  union of `A`'s prediction sets, sorted by type name, except that `tkn_num`
-  and `tkn_str` sort as `valor_numerico` and `cadena_de_caracteres` (the
-  grader's order).
-- `main`'s final check passes `["$"]`, and `match(t)` passes `[t]`.
+  `self.parse_X()` for a non-terminal `X` and `self.match('t')` for a
+  terminal `t`.
+- The final `else` starts with `self.pending|=set([...])`. The list holds the
+  **raw token types** that start each branch:
+  `(FIRST(production) − {ε}) ∩ predict[A][i]`. That leaves out FOLLOW(A) and
+  the tokens removed by prediction exceptions. The list is sorted so the
+  file is the same on every run.
+  - If `A` is nullable, that is the whole `else`.
+  - Otherwise it then raises
+    `SyntacticalError(self.format_error_message(self.report_expected_symbols()))`.
+- `main`'s final check adds `"$"` to `pending` and raises the same way.
+  `match(t)` adds `t` to `pending` and raises the same way.
+- `ASDR_base.report_expected_symbols` returns `pending` sorted by type
+  name, except that `tkn_num` and `tkn_str` sort as `valor_numerico` and
+  `cadena_de_caracteres` (the grader's order). It doesn't change `pending`.
 - `ASDR_base` shows them as the assignment doc asks:
   - `format_expected_symbol` shows a lexer symbol as itself (`tkn_plus` as
     `"+"`), `tkn_num` as `"valor_numerico"`, `tkn_str` as
@@ -97,17 +112,22 @@ Each case builds a grammar, generates the file and checks the points in
 |-----|---------|----------------|
 | G1  | S → a | Smallest grammar: one non-terminal, one production |
 | G2  | S → a \| b \| c | Several alternatives give one `if` and two `elif` branches, in order |
-| G3  | S → A b<br>A → a \| ε | An ε production gives `pass`, and its branch tests FOLLOW(A) |
+| G3  | S → A b<br>A → a \| ε | An ε production gets no branch; the `else` adds `a` to `pending` and doesn't raise |
 | G4  | S → a b c | A production with terminals only |
 | G5  | S → A B<br>A → a<br>B → b | A production with non-terminals only |
 | G6  | S → a A b B<br>A → x<br>B → y | Terminals and non-terminals mixed, order kept |
 | G7  | S → a a | The same terminal twice gives two `match` calls |
 | G8  | S → A<br>A → a \| ε | A prediction set that contains `$` |
-| G9  | S → a<br>U → u \| ε | Unreachable `U` still gets `parse_U`. Its ε branch has an empty prediction set, and `in []` is still valid Python |
+| G9  | S → a<br>U → u \| ε | Unreachable `U` still gets `parse_U` |
 | G10 | S → ' \| " \| \\ | Tokens that need escaping are written correctly |
 | G11 | S → if E then S end \| x<br>E → x == x \| y .. y | Multi-character tokens and keywords |
 | G12 | B → b<br>A → B | The start symbol is the first key, even when it isn't alphabetically first |
 | G13 | `grammar1` and `grammar2` in `main.py`, the expression grammar of spec 004 E1 (with `E'` and `T'` renamed to `Ep` and `Tp`, see §8), and the Lua-like grammar of spec 004 E2 | Realistic grammars |
+| G14 | S → A b<br>A → ε | A rule whose only production is ε gives `pass` |
+| G15 | S → A B<br>A → a \| ε<br>B → b \| ε | A single nullable production gives plain calls with no `if` |
+| G16 | S → A x<br>A → y \| B<br>B → b \| ε | A nullable production that isn't ε gets a branch that tests FOLLOW(A) too; `pending` leaves FOLLOW out |
+
+Two more cases check `pending`. In G16, `parse_A` adds `b` and `y` but not `x`. With `S → a | b` and an exception that removes `b` from the second production, the second branch tests `[]` and `pending` gets only `a`.
 
 ## 5. Behavior cases
 
@@ -126,6 +146,9 @@ always end with `$`.
 | A6 | Expression grammar | id + id * ( id ) | Nesting across several non-terminals |
 | A7 | Expression grammar | ( ( ( id ) ) ) with 50 levels | Deep recursion completes |
 | A8 | Lua-like grammar | a nested if block | Keywords and right recursion in `Block` |
+| A9 | G14 | b | A rule that is only ε |
+| A10 | G15 | (empty); a; b; a b | A nullable start symbol with plain calls |
+| A11 | G16 | x; y x; b x | Each path through a nullable production |
 
 ### 5.2 Reject (R)
 
@@ -138,7 +161,12 @@ always end with `$`.
 | R5 | G1 | (empty) | At `$` (empty input, start symbol not nullable) |
 | R6 | G3 | c | At `c`, expecting both `a` and `b` (the error names the whole union) |
 | R7 | Expression grammar | id + | At `$` (fails inside a recursive call) |
-| R8 | Expression grammar | ( id | At `$`, expecting `)` |
+| R8 | Expression grammar | ( id | At `$`, expecting `)`, `*` and `+` (`Tp` and `Ep` took ε there) |
+| R9 | grammar2 | d | At `d`, expecting `a`, `b` and `c` (pending builds up across rules) |
+| R10 | grammar2 | a d | At `d`, expecting `b` and `c` but not `a` (`match` clears pending) |
+| R11 | G16 | z | At `z`, expecting `b`, `x` and `y` |
+| R12 | G16 | b b | At the second `b`, expecting only `x` |
+| R13 | G15 | a a | At the second `a`, expecting `b` and `$` (`main` adds `$` to pending) |
 
 The tests check the line, column and lexeme in the message, and which tokens
 are named as expected. They don't check the rest of the wording.
@@ -154,7 +182,7 @@ import and `main()`.
 |----|--------|----------|
 | E1 | `x = 1` | Accepted |
 | E2 | `if x then y = 2 end` | Accepted |
-| E3 | `if x then y = 2` | Error at the end of input, expecting `end` |
+| E3 | `if x then y = 2` | Error at the end of input, expecting `end`, `id` and `if` |
 | E4 | `x = = 1` | Error at the second `=`, with its line and column |
 | E5 | Code spread over several lines with an error on line 3 | The error reports line 3 |
 

@@ -84,16 +84,18 @@ class FakeLexer:
         return self.end
 
 
-def _processed(grammar: dict[str, list[list[str]]]) -> Grammar:
+def _processed(grammar: dict[str, list[list[str]]], exceptions: dict | None = None) -> Grammar:
     """Build a Grammar on a private copy and compute its FIRST, FOLLOW and prediction sets."""
     g = Grammar(copy.deepcopy(grammar))
+    if exceptions:
+        g.set_pred_exceptions(copy.deepcopy(exceptions))
     g.process_grammar()
     return g
 
 
-def _generate(grammar: dict[str, list[list[str]]], out_dir) -> tuple[Grammar, str]:
+def _generate(grammar: dict[str, list[list[str]]], out_dir, exceptions: dict | None = None) -> tuple[Grammar, str]:
     """Generate the parser for grammar into out_dir; return the Grammar and the generated source."""
-    g = _processed(grammar)
+    g = _processed(grammar, exceptions)
     ASDR_generator(g).generate()
     return g, (out_dir / "ASDR.py").read_text()
 
@@ -128,8 +130,6 @@ def _expected_tokens(text: str) -> set[str]:
 
 # Lexer symbol table, reversed: token type -> the symbol a Lua programmer sees
 _SYMBOLS = {token_type: symbol for symbol, token_type in Lexer("").operand_symbols_dict.items()}
-# The grader's sort key for an expected list (platform tests 13, 14)
-_SORT_AS = {"tkn_num": "valor_numerico", "tkn_str": "cadena_de_caracteres"}
 
 
 def _class_def(source: str) -> ast.ClassDef:
@@ -179,6 +179,42 @@ def _expected_body(production: list[str], non_terminals: set[str]) -> list[tuple
     ]
 
 
+def _single_nullable(g: Grammar, productions: list[list[str]]) -> bool:
+    """True when A has one production and it derives ε: parse_A then calls its symbols with no if."""
+    return len(productions) == 1 and EPS in g.first_of_sequence(productions[0])
+
+
+def _is_nullable(g: Grammar, productions: list[list[str]]) -> bool:
+    return any(EPS in g.first_of_sequence(p) for p in productions)
+
+
+def _emitted(productions: list[list[str]]) -> list[tuple[int, list[str]]]:
+    """(index, production) of every production that gets a branch: all but a lone ε."""
+    return [(i, p) for i, p in enumerate(productions) if p != [EPS]]
+
+
+def _pending_tokens(g: Grammar, A: str) -> list[str]:
+    """The tokens parse_A's else adds to pending: what starts each branch, without FOLLOW or excepted tokens."""
+    tokens = set()
+    for i, p in _emitted(g.grammar[A]):
+        tokens |= (g.first_of_sequence(p) - {EPS}) & g.predict[A][i]
+    return sorted(tokens)
+
+
+def _pending_literal(stmt: ast.stmt) -> list[str]:
+    """Read `self.pending |= set([...])` back as its list of tokens."""
+    assert isinstance(stmt, ast.AugAssign) and isinstance(stmt.op, ast.BitOr), ast.unparse(stmt)
+    assert ast.unparse(stmt.target) == "self.pending"
+    assert isinstance(stmt.value, ast.Call) and ast.unparse(stmt.value.func) == "set", ast.unparse(stmt)
+    return ast.literal_eval(stmt.value.args[0])
+
+
+def _assert_raises_pending(stmt: ast.stmt) -> None:
+    """stmt is `raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))`."""
+    assert isinstance(stmt, ast.Raise), ast.unparse(stmt)
+    assert ast.unparse(stmt.exc) == "SyntacticalError(self.format_error_message(self.report_expected_symbols()))"
+
+
 # ---------------------------------------------------------------------------
 # Grammar table (spec §4, tasks.md §3)
 # ---------------------------------------------------------------------------
@@ -217,6 +253,12 @@ GRAMMARS: dict[str, dict[str, list[list[str]]]] = {
         "Stat": [["if", "Exp", "then", "Block", "end"], ["Name", "=", "Exp"]],
         "Exp": [["Name"], ["Number"]],
     },
+    # A rule whose only production is ε
+    "G14": {"S": [["A", "b"]], "A": [[EPS]]},
+    # A start symbol with a single nullable production of two non-terminals
+    "G15": {"S": [["A", "B"]], "A": [["a"], [EPS]], "B": [["b"], [EPS]]},
+    # A nullable production that isn't ε: its branch tests FOLLOW(A) too, its pending doesn't
+    "G16": {"S": [["A", "x"]], "A": [["y"], ["B"]], "B": [["b"], [EPS]]},
 }
 
 G_ROWS = [(name, grammar) for name, grammar in GRAMMARS.items()]
@@ -259,46 +301,73 @@ def test_branches_match_predict_sets(grammar, out_dir):
     g, source = _generate(grammar, out_dir)
     methods = _methods(_class_def(source))
     for A, productions in grammar.items():
+        if _single_nullable(g, productions):
+            continue
         branches, _ = _branches(methods[f"parse_{A}"])
-        assert len(branches) == len(productions), f"parse_{A}: one branch per production"
-        for i, (tokens, _) in enumerate(branches):
+        emitted = _emitted(productions)
+        assert len(branches) == len(emitted), f"parse_{A}: one branch per production that isn't ε"
+        for (tokens, _), (i, _) in zip(branches, emitted):
             assert len(tokens) == len(set(tokens)), f"parse_{A} branch {i}: repeated token"
             assert set(tokens) == g.predict[A][i], f"parse_{A} branch {i}: tokens differ from predict"
 
 
 @pytest.mark.parametrize("grammar", _params("test_branch_bodies_follow_productions", G_ROWS))
 def test_branch_bodies_follow_productions(grammar, out_dir):
-    _, source = _generate(grammar, out_dir)
-    methods = _methods(_class_def(source))
-    for A, productions in grammar.items():
-        branches, _ = _branches(methods[f"parse_{A}"])
-        for i, (_, body) in enumerate(branches):
-            assert body == _expected_body(productions[i], set(grammar)), f"parse_{A} branch {i}"
-
-
-@pytest.mark.parametrize("grammar", _params("test_else_names_union_of_predict_sets", G_ROWS))
-def test_else_names_union_of_predict_sets(grammar, out_dir):
     g, source = _generate(grammar, out_dir)
     methods = _methods(_class_def(source))
-    for A in grammar:
+    for A, productions in grammar.items():
+        if _single_nullable(g, productions):
+            continue
+        branches, _ = _branches(methods[f"parse_{A}"])
+        for (_, body), (i, production) in zip(branches, _emitted(productions)):
+            assert body == _expected_body(production, set(grammar)), f"parse_{A} branch {i}"
+
+
+@pytest.mark.parametrize("grammar", _params("test_single_nullable_production_has_no_if", G_ROWS))
+def test_single_nullable_production_has_no_if(grammar, out_dir):
+    g, source = _generate(grammar, out_dir)
+    methods = _methods(_class_def(source))
+    for A, productions in grammar.items():
+        if not _single_nullable(g, productions):
+            continue
+        # A lone ε gives pass, anything else calls its non-terminals in order
+        symbols = [s for s in productions[0] if s != EPS] or [EPS]
+        body = [_describe(stmt) for stmt in methods[f"parse_{A}"].body]
+        assert body == _expected_body(symbols, set(grammar)), f"parse_{A}"
+
+
+@pytest.mark.parametrize("grammar", _params("test_else_adds_pending_tokens", G_ROWS))
+def test_else_adds_pending_tokens(grammar, out_dir):
+    g, source = _generate(grammar, out_dir)
+    methods = _methods(_class_def(source))
+    for A, productions in grammar.items():
+        if _single_nullable(g, productions):
+            continue
         _, else_body = _branches(methods[f"parse_{A}"])
-        assert len(else_body) == 1 and isinstance(else_body[0], ast.Raise), f"parse_{A}: else must raise"
-        exc = else_body[0].exc
-        assert ast.unparse(exc.func) == "SyntacticalError"
-        message = exc.args[0]
-        assert ast.unparse(message.func) == "self.format_error_message"
-        # The raw token types in the grader's order; ASDR_base.format_error_message shows them as the doc asks
-        expected = sorted(set().union(*g.predict[A]), key=lambda t: _SORT_AS.get(t, t))
-        assert ast.literal_eval(message.args[0]) == expected, f"parse_{A}"
+        # The raw token types, sorted so the file is the same on every run; ASDR_base sorts them for the grader
+        assert _pending_literal(else_body[0]) == _pending_tokens(g, A), f"parse_{A}"
+        if _is_nullable(g, productions):
+            assert len(else_body) == 1, f"parse_{A}: a nullable rule must not raise"
+        else:
+            assert len(else_body) == 2, f"parse_{A}: a rule that isn't nullable must raise"
+            _assert_raises_pending(else_body[1])
 
 
-def test_else_list_sort_order(out_dir):
-    # Token types sort by name, except tkn_num and tkn_str, which sort as their shown names
-    grammar = {"S": [["tkn_num"], ["tkn_str"], ["tkn_plus"], ["id"], ["true"], ["tkn_varargs"], ["and"]]}
-    _, source = _generate(grammar, out_dir)
-    _, else_body = _branches(_methods(_class_def(source))["parse_S"])
-    listed = ast.literal_eval(else_body[0].exc.args[0].args[0])
-    assert listed == ["and", "tkn_str", "id", "tkn_plus", "tkn_varargs", "true", "tkn_num"]
+def test_pending_leaves_out_follow(out_dir):
+    # A → y | B with B nullable: the B branch tests FOLLOW(A) = {x}, but x isn't something A can start with
+    g, source = _generate(GRAMMARS["G16"], out_dir)
+    branches, else_body = _branches(_methods(_class_def(source))["parse_A"])
+    assert set(branches[1][0]) == {"b", "x"}
+    assert _pending_literal(else_body[0]) == ["b", "y"]
+
+
+def test_pending_leaves_out_excepted_tokens(out_dir):
+    # An exception removes b from the second branch, so the else doesn't name it either
+    grammar = {"S": [["a"], ["b"]]}
+    _, source = _generate(grammar, out_dir, exceptions={"S": {1: "b"}})
+    branches, else_body = _branches(_methods(_class_def(source))["parse_S"])
+    assert [tokens for tokens, _ in branches] == [["a"], []]
+    assert _pending_literal(else_body[0]) == ["a"]
 
 
 @pytest.mark.parametrize("grammar", _params("test_main_parses_start_symbol", G_ROWS))
@@ -311,9 +380,8 @@ def test_main_parses_start_symbol(grammar, out_dir):
     end_check = body[2]
     assert isinstance(end_check, ast.If)
     assert ast.unparse(end_check.test) == f"self.cur_tok.type != {END!r}"
-    assert isinstance(end_check.body[0], ast.Raise)
-    assert ast.unparse(end_check.body[0].exc.func) == "SyntacticalError"
-    assert ast.unparse(end_check.body[0].exc.args[0]) == f"self.format_error_message([{END!r}])"
+    assert ast.unparse(end_check.body[0]) == f"self.pending |= {{{END!r}}}"
+    _assert_raises_pending(end_check.body[1])
 
 
 # ---------------------------------------------------------------------------
@@ -366,6 +434,41 @@ def test_match_names_the_one_expected_token():
     with pytest.raises(SyntacticalError) as err:
         _base_at("id", "x").match("tkn_closing_par")
     assert err.value.message.endswith('se esperaba: ")".')
+
+
+def test_match_adds_its_token_to_pending():
+    base = _base_at("id", "x")
+    base.pending = {"tkn_plus", "end"}
+    with pytest.raises(SyntacticalError) as err:
+        base.match("tkn_closing_par")
+    assert err.value.message.endswith('se esperaba: "end", ")", "+".')
+
+
+def test_match_clears_pending():
+    base = ASDR_base(FakeLexer(["b"]))
+    base.cur_tok = Token("a", "a", 1, 1)
+    base.pending = {"x"}
+    base.match("a")
+    assert base.pending == set()
+    assert base.cur_tok.type == "b"
+
+
+def test_init_starts_with_empty_pending():
+    assert ASDR_base(None).pending == set()
+
+
+def test_report_expected_symbols_sort_order():
+    # Token types sort by name, except tkn_num and tkn_str, which sort as their shown names
+    base = ASDR_base(None)
+    base.pending = {"tkn_num", "tkn_str", "tkn_plus", "id", "true", "tkn_varargs", "and"}
+    assert base.report_expected_symbols() == ["and", "tkn_str", "id", "tkn_plus", "tkn_varargs", "true", "tkn_num"]
+
+
+def test_report_expected_symbols_keeps_pending():
+    base = ASDR_base(None)
+    base.pending = {"a", "b"}
+    base.report_expected_symbols()
+    assert base.pending == {"a", "b"}
 
 
 # ---------------------------------------------------------------------------
@@ -427,6 +530,14 @@ ACCEPT_ROWS = [
     ("A6-expression", "G13-expression", "id + id * ( id )".split()),
     ("A7-deep-nesting", "G13-expression", ["("] * 50 + ["id"] + [")"] * 50),
     ("A8-lua-nested-if", "G13-lua", "if Name then if Name then Name = Number end end".split()),
+    ("A9-only-epsilon", "G14", ["b"]),
+    ("A10-empty", "G15", []),
+    ("A10-a", "G15", ["a"]),
+    ("A10-b", "G15", ["b"]),
+    ("A10-ab", "G15", ["a", "b"]),
+    ("A11-x", "G16", ["x"]),
+    ("A11-yx", "G16", ["y", "x"]),
+    ("A11-bx", "G16", ["b", "x"]),
 ]
 
 
@@ -448,7 +559,13 @@ REJECT_ROWS = [
     ("R5-empty-not-nullable", "G1", [], (1, 1, EOF_SHOWN, {"a"})),
     ("R6-union-named", "G3", ["c"], (1, 1, "c", {"a", "b"})),
     ("R7-inside-recursion", "G13-expression", ["id", "+"], (1, 3, EOF_SHOWN, {"(", "id"})),
-    ("R8-missing-close-paren", "G13-expression", ["(", "id"], (1, 3, EOF_SHOWN, {")"})),
+    # Tp and Ep took ε at $, so * and + are pending too
+    ("R8-missing-close-paren", "G13-expression", ["(", "id"], (1, 3, EOF_SHOWN, {"*", "+", ")"})),
+    ("R9-pending-chain", "G13-grammar2", ["d"], (1, 1, "d", {"a", "b", "c"})),
+    ("R10-match-clears-pending", "G13-grammar2", ["a", "d"], (1, 2, "d", {"b", "c"})),
+    ("R11-nullable-production", "G16", ["z"], (1, 1, "z", {"b", "x", "y"})),
+    ("R12-after-nullable-production", "G16", ["b", "b"], (1, 2, "b", {"x"})),
+    ("R13-extra-after-nullable-start", "G15", ["a", "a"], (1, 2, "a", {"b", EOF_SHOWN})),
 ]
 
 
@@ -473,7 +590,8 @@ LEXER_GRAMMAR: dict[str, list[list[str]]] = {
 E2E_ROWS = [
     ("E1-assignment", "x = 1", None),
     ("E2-if-block", "if x then y = 2 end", None),
-    ("E3-missing-end", "if x then y = 2", (1, 16, EOF_SHOWN, {"end"})),
+    # Block took ε at $, so a new statement could start there too
+    ("E3-missing-end", "if x then y = 2", (1, 16, EOF_SHOWN, {"end", "id", "if"})),
     ("E4-double-assign", "x = = 1", (1, 5, "=", {"id", "valor_numerico"})),
     ("E5-error-on-line-3", "x = 1\ny = 2\nz = then\n", (3, 5, "then", {"id", "valor_numerico"})),
 ]

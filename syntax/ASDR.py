@@ -16,7 +16,7 @@ class ASDR(ASDR_base):
 			self.parse_STAT()
 			self.parse_STATLIST()
 		else:
-			self.pending|={'for', 'print', 'local', 'function', 'while', 'global', 'id', 'warn', 'tkn_opening_par', 'tkn_semicolon', 'if', 'repeat', 'goto', 'pcall', 'tkn_goto', 'error', 'do', 'xpcall', 'break'}
+			self.pending|=set(['break', 'do', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'warn', 'while', 'xpcall'])
 
 	def parse_STAT(self):
 		if self.cur_tok.type in ['tkn_semicolon']:
@@ -60,7 +60,8 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['global']:
 			self.parse_GLOBAL_DEC()
 		else:
-			raise SyntacticalError(self.format_error_message(['break', 'do', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'warn', 'while', 'xpcall']))
+			self.pending|=set(['break', 'do', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'warn', 'while', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_AFTER_VAR(self):
 		if self.cur_tok.type in ['tkn_opening_bra']:
@@ -80,7 +81,8 @@ class ASDR(ASDR_base):
 			self.match('tkn_assign')
 			self.parse_EXPLIST()
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_str', 'tkn_assign', 'tkn_colon', 'tkn_comma', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_period']))
+			self.pending|=set(['tkn_assign', 'tkn_colon', 'tkn_comma', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_period', 'tkn_str'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_AFTER_CALL(self):
 		if self.cur_tok.type in ['tkn_opening_bra']:
@@ -96,7 +98,7 @@ class ASDR(ASDR_base):
 			self.parse_FUNCTIONCALL()
 			self.parse_AFTER_CALL()
 		else:
-			self.pending|={'tkn_period', 'tkn_opening_par', 'tkn_str', 'tkn_colon', 'tkn_opening_bra', 'tkn_opening_key'}
+			self.pending|=set(['tkn_colon', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_period', 'tkn_str'])
 
 	def parse_LABEL(self):
 		if self.cur_tok.type in ['tkn_goto']:
@@ -104,7 +106,8 @@ class ASDR(ASDR_base):
 			self.parse_NAME()
 			self.match('tkn_goto')
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_goto']))
+			self.pending|=set(['tkn_goto'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_DO_BLOCK_END(self):
 		if self.cur_tok.type in ['do']:
@@ -112,7 +115,8 @@ class ASDR(ASDR_base):
 			self.parse_BLOCK()
 			self.match('end')
 		else:
-			raise SyntacticalError(self.format_error_message(['do']))
+			self.pending|=set(['do'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_IFSTAT(self):
 		if self.cur_tok.type in ['if']:
@@ -124,7 +128,8 @@ class ASDR(ASDR_base):
 			self.parse_ELSESTAT()
 			self.match('end')
 		else:
-			raise SyntacticalError(self.format_error_message(['if']))
+			self.pending|=set(['if'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_ELSEIFSTAT(self):
 		if self.cur_tok.type in ['elseif']:
@@ -134,14 +139,14 @@ class ASDR(ASDR_base):
 			self.parse_BLOCK()
 			self.parse_ELSEIFSTAT()
 		else:
-			self.pending|={'elseif'}
+			self.pending|=set(['elseif'])
 
 	def parse_ELSESTAT(self):
 		if self.cur_tok.type in ['else']:
 			self.match('else')
 			self.parse_BLOCK()
 		else:
-			self.pending|={'else'}
+			self.pending|=set(['else'])
 
 	def parse_FORSTAT(self):
 		if self.cur_tok.type in ['for']:
@@ -150,7 +155,8 @@ class ASDR(ASDR_base):
 			self.parse_FORTYPE()
 			self.parse_DO_BLOCK_END()
 		else:
-			raise SyntacticalError(self.format_error_message(['for']))
+			self.pending|=set(['for'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_FORTYPE(self):
 		if self.cur_tok.type in ['tkn_assign']:
@@ -158,7 +164,8 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['in', 'tkn_comma']:
 			self.parse_GENERIC_FOR()
 		else:
-			raise SyntacticalError(self.format_error_message(['in', 'tkn_assign', 'tkn_comma']))
+			self.pending|=set(['in', 'tkn_assign', 'tkn_comma'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_NUMERICAL_FOR(self):
 		if self.cur_tok.type in ['tkn_assign']:
@@ -168,14 +175,15 @@ class ASDR(ASDR_base):
 			self.parse_EXP()
 			self.parse_OPT_EXP()
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_assign']))
+			self.pending|=set(['tkn_assign'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_OPT_EXP(self):
 		if self.cur_tok.type in ['tkn_comma']:
 			self.match('tkn_comma')
 			self.parse_EXP()
 		else:
-			self.pending|={'tkn_comma'}
+			self.pending|=set(['tkn_comma'])
 
 	def parse_GENERIC_FOR(self):
 		if self.cur_tok.type in ['in', 'tkn_comma']:
@@ -183,7 +191,8 @@ class ASDR(ASDR_base):
 			self.match('in')
 			self.parse_EXPLIST()
 		else:
-			raise SyntacticalError(self.format_error_message(['in', 'tkn_comma']))
+			self.pending|=set(['in', 'tkn_comma'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_RETSTAT(self):
 		if self.cur_tok.type in ['return']:
@@ -191,20 +200,21 @@ class ASDR(ASDR_base):
 			self.parse_MAYBE_EXPLIST()
 			self.parse_OPT_SEMILOCON()
 		else:
-			self.pending|={'return'}
+			self.pending|=set(['return'])
 
 	def parse_OPT_SEMILOCON(self):
 		if self.cur_tok.type in ['tkn_semicolon']:
 			self.match('tkn_semicolon')
 		else:
-			self.pending|={'tkn_semicolon'}
+			self.pending|=set(['tkn_semicolon'])
 
 	def parse_LOCAL_DEC(self):
 		if self.cur_tok.type in ['local']:
 			self.match('local')
 			self.parse_LOCAL_OPT()
 		else:
-			raise SyntacticalError(self.format_error_message(['local']))
+			self.pending|=set(['local'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_LOCAL_OPT(self):
 		if self.cur_tok.type in ['function']:
@@ -212,21 +222,24 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']:
 			self.parse_ATTNAME_BRANCH()
 		else:
-			raise SyntacticalError(self.format_error_message(['error', 'function', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'function', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_ATTNAME_BRANCH(self):
 		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']:
 			self.parse_ATTNAMELIST()
 			self.parse_OPT_EXPLIST()
 		else:
-			raise SyntacticalError(self.format_error_message(['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_GLOBAL_DEC(self):
 		if self.cur_tok.type in ['global']:
 			self.match('global')
 			self.parse_GLOBAL_OPT()
 		else:
-			raise SyntacticalError(self.format_error_message(['global']))
+			self.pending|=set(['global'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_GLOBAL_OPT(self):
 		if self.cur_tok.type in ['function']:
@@ -235,7 +248,8 @@ class ASDR(ASDR_base):
 			self.parse_ATTRIB()
 			self.parse_GLOBAL_TAIL()
 		else:
-			raise SyntacticalError(self.format_error_message(['error', 'function', 'id', 'pcall', 'print', 'tkn_less', 'tkn_times', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'function', 'id', 'pcall', 'print', 'tkn_less', 'tkn_times', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_GLOBAL_TAIL(self):
 		if self.cur_tok.type in ['tkn_times']:
@@ -246,7 +260,8 @@ class ASDR(ASDR_base):
 			self.parse_NAME_ATTRIB_LIST()
 			self.parse_OPT_EXPLIST()
 		else:
-			raise SyntacticalError(self.format_error_message(['error', 'id', 'pcall', 'print', 'tkn_times', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'id', 'pcall', 'print', 'tkn_times', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_FUNC_DEC(self):
 		if self.cur_tok.type in ['function']:
@@ -254,14 +269,15 @@ class ASDR(ASDR_base):
 			self.parse_NAME()
 			self.parse_FUNCBODY()
 		else:
-			raise SyntacticalError(self.format_error_message(['function']))
+			self.pending|=set(['function'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_OPT_EXPLIST(self):
 		if self.cur_tok.type in ['tkn_assign']:
 			self.match('tkn_assign')
 			self.parse_EXPLIST()
 		else:
-			self.pending|={'tkn_assign'}
+			self.pending|=set(['tkn_assign'])
 
 	def parse_ATTNAMELIST(self):
 		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']:
@@ -270,7 +286,8 @@ class ASDR(ASDR_base):
 			self.parse_ATTRIB()
 			self.parse_NAME_ATTRIB_LIST()
 		else:
-			raise SyntacticalError(self.format_error_message(['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_NAME_ATTRIB_LIST(self):
 		if self.cur_tok.type in ['tkn_comma']:
@@ -279,7 +296,7 @@ class ASDR(ASDR_base):
 			self.parse_ATTRIB()
 			self.parse_NAME_ATTRIB_LIST()
 		else:
-			self.pending|={'tkn_comma'}
+			self.pending|=set(['tkn_comma'])
 
 	def parse_ATTRIB(self):
 		if self.cur_tok.type in ['tkn_less']:
@@ -287,7 +304,7 @@ class ASDR(ASDR_base):
 			self.parse_NAME()
 			self.match('tkn_greater')
 		else:
-			self.pending|={'tkn_less'}
+			self.pending|=set(['tkn_less'])
 
 	def parse_FUNCNAME(self):
 		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
@@ -295,7 +312,8 @@ class ASDR(ASDR_base):
 			self.parse_DOTTED_FUNCNAME()
 			self.parse_COLON_FUNCNAME()
 		else:
-			raise SyntacticalError(self.format_error_message(['error', 'id', 'pcall', 'print', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'id', 'pcall', 'print', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_DOTTED_FUNCNAME(self):
 		if self.cur_tok.type in ['tkn_period']:
@@ -303,21 +321,22 @@ class ASDR(ASDR_base):
 			self.parse_NAME()
 			self.parse_DOTTED_FUNCNAME()
 		else:
-			self.pending|={'tkn_period'}
+			self.pending|=set(['tkn_period'])
 
 	def parse_COLON_FUNCNAME(self):
 		if self.cur_tok.type in ['tkn_colon']:
 			self.match('tkn_colon')
 			self.parse_NAME()
 		else:
-			self.pending|={'tkn_colon'}
+			self.pending|=set(['tkn_colon'])
 
 	def parse_FUNCTIONDEF(self):
 		if self.cur_tok.type in ['function']:
 			self.match('function')
 			self.parse_FUNCBODY()
 		else:
-			raise SyntacticalError(self.format_error_message(['function']))
+			self.pending|=set(['function'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_FUNCBODY(self):
 		if self.cur_tok.type in ['tkn_opening_par']:
@@ -327,13 +346,14 @@ class ASDR(ASDR_base):
 			self.parse_BLOCK()
 			self.match('end')
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_opening_par']))
+			self.pending|=set(['tkn_opening_par'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_OPT_PARLIST(self):
 		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_varargs', 'warn', 'xpcall']:
 			self.parse_PARLIST()
 		else:
-			self.pending|={'id', 'pcall', 'print', 'error', 'xpcall', 'tkn_varargs', 'warn'}
+			self.pending|=set(['error', 'id', 'pcall', 'print', 'tkn_varargs', 'warn', 'xpcall'])
 
 	def parse_PARLIST(self):
 		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
@@ -342,14 +362,15 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['tkn_varargs']:
 			self.parse_VARPARAGRAM()
 		else:
-			raise SyntacticalError(self.format_error_message(['error', 'id', 'pcall', 'print', 'tkn_varargs', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'id', 'pcall', 'print', 'tkn_varargs', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_PARLIST_TAIL(self):
 		if self.cur_tok.type in ['tkn_comma']:
 			self.match('tkn_comma')
 			self.parse_PARLIST_AFTER_COMMA()
 		else:
-			self.pending|={'tkn_comma'}
+			self.pending|=set(['tkn_comma'])
 
 	def parse_PARLIST_AFTER_COMMA(self):
 		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
@@ -358,20 +379,22 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['tkn_varargs']:
 			self.parse_VARPARAGRAM()
 		else:
-			raise SyntacticalError(self.format_error_message(['error', 'id', 'pcall', 'print', 'tkn_varargs', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'id', 'pcall', 'print', 'tkn_varargs', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_VARPARAGRAM(self):
 		if self.cur_tok.type in ['tkn_varargs']:
 			self.match('tkn_varargs')
 			self.parse_OPT_NAME()
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_varargs']))
+			self.pending|=set(['tkn_varargs'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_OPT_NAME(self):
 		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
 			self.parse_NAME()
 		else:
-			self.pending|={'id', 'pcall', 'print', 'error', 'xpcall', 'warn'}
+			self.pending|=set(['error', 'id', 'pcall', 'print', 'warn', 'xpcall'])
 
 	def parse_MORE_NAMES(self):
 		if self.cur_tok.type in ['tkn_comma']:
@@ -379,7 +402,7 @@ class ASDR(ASDR_base):
 			self.parse_NAME()
 			self.parse_MORE_NAMES()
 		else:
-			self.pending|={'tkn_comma'}
+			self.pending|=set(['tkn_comma'])
 
 	def parse_MORE_VAR(self):
 		if self.cur_tok.type in ['tkn_comma']:
@@ -387,20 +410,21 @@ class ASDR(ASDR_base):
 			self.parse_PREFIXEXP()
 			self.parse_MORE_VAR()
 		else:
-			self.pending|={'tkn_comma'}
+			self.pending|=set(['tkn_comma'])
 
 	def parse_MAYBE_EXPLIST(self):
 		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall']:
 			self.parse_EXPLIST()
 		else:
-			self.pending|={'print', 'tkn_str', 'not', 'tkn_minus', 'tkn_opening_key', 'function', 'tkn_length', 'nil', 'false', 'id', 'tkn_varargs', 'warn', 'tkn_opening_par', 'true', 'tkn_num', 'pcall', 'error', 'xpcall'}
+			self.pending|=set(['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall'])
 
 	def parse_EXPLIST(self):
 		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall']:
 			self.parse_EXP()
 			self.parse_MORE_EXP()
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_str', 'error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_opening_key', 'tkn_opening_par', 'tkn_varargs', 'true', 'tkn_num', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_MORE_EXP(self):
 		if self.cur_tok.type in ['tkn_comma']:
@@ -408,7 +432,7 @@ class ASDR(ASDR_base):
 			self.parse_EXP()
 			self.parse_MORE_EXP()
 		else:
-			self.pending|={'tkn_comma'}
+			self.pending|=set(['tkn_comma'])
 
 	def parse_EXP(self):
 		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
@@ -418,7 +442,8 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['false', 'function', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true']:
 			self.parse_EXP_NOT_ID()
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_str', 'error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_opening_key', 'tkn_opening_par', 'tkn_varargs', 'true', 'tkn_num', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_EXP_NOT_ID(self):
 		if self.cur_tok.type in ['nil']:
@@ -455,14 +480,15 @@ class ASDR(ASDR_base):
 			self.parse_PREFIXEXP_PRIME()
 			self.parse_EXP_PRIME()
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_str', 'false', 'function', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_opening_key', 'tkn_opening_par', 'tkn_varargs', 'true', 'tkn_num']))
+			self.pending|=set(['false', 'function', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_EXP_PRIME(self):
 		if self.cur_tok.type in ['and', 'or', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times']:
 			self.parse_BINOP()
 			self.parse_EXP()
 		else:
-			self.pending|={'tkn_bitex_or', 'tkn_leq', 'tkn_plus', 'tkn_less', 'tkn_minus', 'tkn_power', 'tkn_equal', 'tkn_times', 'tkn_geq', 'tkn_div', 'tkn_neq', 'or', 'tkn_mod', 'tkn_greater', 'tkn_concat', 'tkn_floor_div', 'tkn_bit_and', 'tkn_right_shift', 'tkn_bit_or', 'tkn_left_shift', 'and'}
+			self.pending|=set(['and', 'or', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times'])
 
 	def parse_PREFIXEXP(self):
 		if self.cur_tok.type in ['tkn_opening_par']:
@@ -474,7 +500,8 @@ class ASDR(ASDR_base):
 			self.parse_NAME()
 			self.parse_PREFIXEXP_PRIME()
 		else:
-			raise SyntacticalError(self.format_error_message(['error', 'id', 'pcall', 'print', 'tkn_opening_par', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'id', 'pcall', 'print', 'tkn_opening_par', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_PREFIXEXP_PRIME(self):
 		if self.cur_tok.type in ['tkn_opening_bra']:
@@ -490,7 +517,7 @@ class ASDR(ASDR_base):
 			self.parse_FUNCTIONCALL()
 			self.parse_PREFIXEXP_PRIME()
 		else:
-			self.pending|={'tkn_period', 'tkn_opening_par', 'tkn_str', 'tkn_colon', 'tkn_opening_bra', 'tkn_opening_key'}
+			self.pending|=set(['tkn_colon', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_period', 'tkn_str'])
 
 	def parse_FUNCTIONCALL(self):
 		if self.cur_tok.type in ['tkn_opening_key', 'tkn_opening_par', 'tkn_str']:
@@ -500,7 +527,8 @@ class ASDR(ASDR_base):
 			self.parse_NAME()
 			self.parse_ARGS()
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_str', 'tkn_colon', 'tkn_opening_key', 'tkn_opening_par']))
+			self.pending|=set(['tkn_colon', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_ARGS(self):
 		if self.cur_tok.type in ['tkn_opening_par']:
@@ -512,7 +540,8 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['tkn_str']:
 			self.match('tkn_str')
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_str', 'tkn_opening_key', 'tkn_opening_par']))
+			self.pending|=set(['tkn_opening_key', 'tkn_opening_par', 'tkn_str'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_TABLECONSTRUCTOR(self):
 		if self.cur_tok.type in ['tkn_opening_key']:
@@ -520,21 +549,22 @@ class ASDR(ASDR_base):
 			self.parse_FIELDLIST()
 			self.match('tkn_closing_key')
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_opening_key']))
+			self.pending|=set(['tkn_opening_key'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_FIELDLIST(self):
 		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall']:
 			self.parse_FIELD()
 			self.parse_FIELD_TAIL()
 		else:
-			self.pending|={'print', 'tkn_str', 'not', 'tkn_opening_bra', 'tkn_minus', 'tkn_opening_key', 'function', 'tkn_length', 'nil', 'false', 'id', 'tkn_varargs', 'warn', 'tkn_opening_par', 'true', 'tkn_num', 'pcall', 'error', 'xpcall'}
+			self.pending|=set(['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall'])
 
 	def parse_FIELD_TAIL(self):
 		if self.cur_tok.type in ['tkn_comma', 'tkn_semicolon']:
 			self.parse_FIELDSEP()
 			self.parse_FIELDLIST()
 		else:
-			self.pending|={'tkn_comma', 'tkn_semicolon'}
+			self.pending|=set(['tkn_comma', 'tkn_semicolon'])
 
 	def parse_FIELD(self):
 		if self.cur_tok.type in ['tkn_opening_bra']:
@@ -549,7 +579,8 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['false', 'function', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true']:
 			self.parse_EXP_NOT_ID()
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_str', 'error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_varargs', 'true', 'tkn_num', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_FIELD_ID(self):
 		if self.cur_tok.type in ['tkn_assign']:
@@ -559,7 +590,7 @@ class ASDR(ASDR_base):
 			self.parse_PREFIXEXP_PRIME()
 			self.parse_EXP_PRIME()
 		else:
-			self.pending|={'tkn_bitex_or', 'tkn_comma', 'tkn_leq', 'tkn_plus', 'tkn_str', 'tkn_opening_bra', 'tkn_equal', 'tkn_opening_key', 'tkn_less', 'tkn_power', 'tkn_minus', 'tkn_times', 'tkn_geq', 'tkn_div', 'tkn_neq', 'or', 'tkn_closing_key', 'tkn_mod', 'tkn_greater', 'tkn_opening_par', 'tkn_semicolon', 'tkn_concat', 'tkn_assign', 'tkn_floor_div', 'tkn_colon', 'tkn_bit_and', 'tkn_right_shift', 'tkn_period', 'tkn_bit_or', 'tkn_left_shift', 'and'}
+			self.pending|=set(['and', 'or', 'tkn_assign', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_colon', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_period', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_str', 'tkn_times'])
 
 	def parse_FIELDSEP(self):
 		if self.cur_tok.type in ['tkn_comma']:
@@ -567,7 +598,8 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['tkn_semicolon']:
 			self.match('tkn_semicolon')
 		else:
-			raise SyntacticalError(self.format_error_message(['tkn_comma', 'tkn_semicolon']))
+			self.pending|=set(['tkn_comma', 'tkn_semicolon'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_BINOP(self):
 		if self.cur_tok.type in ['tkn_plus']:
@@ -613,7 +645,8 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['or']:
 			self.match('or')
 		else:
-			raise SyntacticalError(self.format_error_message(['and', 'or', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times']))
+			self.pending|=set(['and', 'or', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_UNOP(self):
 		if self.cur_tok.type in ['tkn_minus']:
@@ -623,7 +656,8 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['tkn_length']:
 			self.match('tkn_length')
 		else:
-			raise SyntacticalError(self.format_error_message(['not', 'tkn_length', 'tkn_minus']))
+			self.pending|=set(['not', 'tkn_length', 'tkn_minus'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_NAME(self):
 		if self.cur_tok.type in ['id']:
@@ -639,10 +673,12 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['xpcall']:
 			self.match('xpcall')
 		else:
-			raise SyntacticalError(self.format_error_message(['error', 'id', 'pcall', 'print', 'warn', 'xpcall']))
+			self.pending|=set(['error', 'id', 'pcall', 'print', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def main(self):
 		self.cur_tok = self.lexer.tokenize()
 		self.parse_CHUNK()
 		if self.cur_tok.type != "$":
-			raise SyntacticalError(self.format_error_message(["$"]))
+			self.pending|={"$"}
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))

@@ -287,7 +287,50 @@ _Done on 2026-10-23: all 193 pass against the current code, so `KNOWN_FAILURES` 
   which proves no test wrote outside `tmp_path`.
 - [x] Check that the other four suites still pass.
 
-## 12. Maintenance (recurring)
+## 12. Pending expected lists (spec §3.1)
+_Done on 2026-10-25. The generator now reports `self.pending` instead of each rule's predict union. This replaces parts of sections 3, 4, 7, 8 and 10 above._
+
+- [x] Helpers:
+  - `_processed` and `_generate` take optional prediction exceptions.
+  - `_single_nullable`, `_is_nullable` and `_emitted` (every production but a lone ε).
+  - `_pending_tokens(g, A)`: `(FIRST(p) − {ε}) ∩ predict[A][i]` over the emitted productions, sorted.
+  - `_pending_literal`: reads `self.pending |= set([...])` back.
+  - `_assert_raises_pending`.
+- [x] Grammars `G14` (A → ε only), `G15` (single nullable start production) and `G16` (a nullable production that isn't ε). `G_ROWS` has 19 rows.
+- [x] `test_branches_match_predict_sets` and `test_branch_bodies_follow_productions` skip single-nullable rules and compare only the emitted productions.
+- [x] `test_single_nullable_production_has_no_if`: the body is the calls in order, or `pass`.
+- [x] `test_else_adds_pending_tokens` replaces `test_else_names_union_of_predict_sets`:
+  - a nullable rule's `else` is only the `pending` update;
+  - for any other rule, the update is followed by the raise.
+- [x] `test_pending_leaves_out_follow` (G16) and `test_pending_leaves_out_excepted_tokens`.
+- [x] `test_main_parses_start_symbol`: the end check adds `{'$'}` and then raises.
+- [x] `ASDR_base`: `test_else_list_sort_order` became `test_report_expected_symbols_sort_order`. Also added:
+  - `test_report_expected_symbols_keeps_pending`;
+  - `test_match_adds_its_token_to_pending`;
+  - `test_match_clears_pending`;
+  - `test_init_starts_with_empty_pending`.
+- [x] Accept rows `A9` to `A11` (22 rows in total).
+- [x] Reject rows: `R8` now also expects `*` and `+`, and `R9` to `R13` are new (13 rows in total).
+- [x] `E3` now expects `end`, `id` and `if`.
+- [x] Counts: `test_code_generator.py` has 309 tests:
+  - 19 LL(1)
+  - 152 structural (8 × 19)
+  - 2 pending cases
+  - 4 unit
+  - 52 `ASDR_base`
+  - 22 accept
+  - 13 reject
+  - 5 end-to-end
+  - 19 deterministic
+  - 19 unmodified
+  - 2 single property tests
+- [x] Each fixed generator bug, put back in a scratch copy, makes tests fail:
+  - no `pending` update before the raise: 27 tests;
+  - excepted tokens kept in `pending`: 1;
+  - an unsorted set literal: 21;
+  - no `pass` for a lone ε: 9.
+
+## 13. Maintenance (recurring)
 
 - [ ] Before editing any test, re-read `code_generator_script.py` and
   `ASDR_base.py` and compare them with spec.md (AGENTS.md).

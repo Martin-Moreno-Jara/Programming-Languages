@@ -7,6 +7,7 @@ class ASDR_base():
         self.lexer = lexer
         self.cur_tok:Token
         self.pending:set = set()
+        self.sorting_order = {"tkn_num": "valor_numerico", "tkn_str": "cadena_de_caracteres"}
         self.operand_symbols_dict: dict = {
                     "tkn_bit_and": "&",
                     "tkn_bit_or": "|",
@@ -51,11 +52,14 @@ class ASDR_base():
                 return f"\"{self.operand_symbols_dict.get(s) if self.operand_symbols_dict.get(s) else s}\""
 
     
-    
     def format_error_message(self,expected:list[str]):
         lexeme = self.cur_tok.lexeme if self.cur_tok.lexeme != "$" else "final de archivo"
         expected = ", ".join(self.format_expected_symbol(s) for s in expected)
         return f"<{self.cur_tok.line}:{self.cur_tok.col}> Error sintactico: se encontro: \"{lexeme}\"; se esperaba: {expected}."
+
+    def report_expected_symbols(self):
+         expected = sorted(self.pending, key=lambda t: self.sorting_order.get(t, t))
+         return expected
 
 
     def match(self,expected_tok:str):
@@ -63,6 +67,7 @@ class ASDR_base():
             self.pending = set()
             self.cur_tok = self.lexer.tokenize()
         else:
-            raise SyntacticalError(self.format_error_message([expected_tok]))
+            self.pending|={expected_tok}
+            raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 
