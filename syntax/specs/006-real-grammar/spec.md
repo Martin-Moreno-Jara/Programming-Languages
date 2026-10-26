@@ -294,9 +294,6 @@ K4).
 | F5 | `function f(a, ...) end` | Names and varargs |
 | F6 | `function f(...args) end` | Named varargs (new in 5.5) |
 | F7 | `function f(a, ...rest) end` | Names and named varargs |
-| F8 | `x = function() end` | `functiondef` as an expression |
-| F9 | `x = function(a, ...) return a end` | `functiondef` with parameters and a return |
-| F10 | `f(function() end)` | `functiondef` as an argument |
 | F11 | `function f() function g() end end` | A function nested in a function |
 
 ### 5.6 Tables (T)
@@ -323,15 +320,16 @@ K4).
 
 ### 5.7 Expressions (E)
 
-`exp ::= nil | false | true | Numeral | LiteralString | '...' | functiondef |
+`exp ::= nil | false | true | Numeral | LiteralString |
 prefixexp | tableconstructor | exp binop exp | unop exp`
+
+Lua also has `'...'` and `functiondef` here. The grader's grammar has neither (platform tests 13 and 14), so they are reject cases R40 to R43.
 
 | ID | Program | What it checks |
 |----|---------|----------------|
 | E1 | `x = nil`, `x = false`, `x = true` | Each constant (three programs) |
 | E2 | `x = 42`, `x = 3.14`, `x = 0xFF` | Numbers |
 | E3 | `x = "s"`, `x = 'c'` | Strings with both quote kinds |
-| E4 | `function f(...) x = ... end` | `'...'` as an expression |
 | E5 | `x = y` | A name as an expression |
 | E6 | `x = (1)` | Parentheses |
 | E7 | `x = f(1)` | A call as an expression |
@@ -345,7 +343,6 @@ prefixexp | tableconstructor | exp binop exp | unop exp`
 | E15 | `x = a and b or not c` | Logical operators mixed |
 | E16 | `x = #t + 1` | Unary inside binary |
 | E17 | `x = "n"+a-true*(vari[3] % 70)` | The doc's semantic-error example is syntactically valid |
-| E18 | `x = function() end .. {}` | Odd operands are still valid syntax |
 | E19 | `x = a ~ b` | Binary `~` is allowed (only unary `~` is not) |
 | E20 | `x = a ~= b` | `~=` is one token, not `~` then `=` |
 
@@ -382,7 +379,6 @@ prefixexp | tableconstructor | exp binop exp | unop exp`
 | C19 | `(a).b = 1` | Field of a parenthesised expression as a target |
 | C20 | `a.b.c:d "x" {1} (2)` | Long chain with all three argument kinds |
 | C21 | `x = f(g(h(1)))` | Nested calls |
-| C22 | `function f(...) g(...) end` | Varargs as an argument |
 | C23 | `a, (b).c = 1, 2` | A parenthesised prefix expression as a later assignment target |
 
 ### 5.9 Built-in names (N)
@@ -430,10 +426,8 @@ prefixexp | tableconstructor | exp binop exp | unop exp`
 | EA6 | 50 nested tables `{{{...}}}` | Deep recursion in tables |
 | EA7 | 200 statements `x = 1` in a row | Long statement list |
 | EA8 | `x = 1 + 1 + ... + 1` with 200 terms | Long operator chain |
-| EA9 | `f = function() return function() return ... end end`, 10 levels | Nested function bodies |
 | EA10 | `function f() ; end` | A body with only an empty statement |
 | EA11 | Only comments and blank lines | Same as empty input |
-| EA12 | `return function() return {f = function() return end} end` | Return, functions and tables mixed |
 | EA13 | `f()↵(g)()` | `(` on the next line continues the call chain, read as `f()(g)()` (§4.1) |
 
 Every EA case has a time limit (§11), so a parser that loops forever fails
@@ -495,6 +489,10 @@ list.
 | R37 | `x = 1↵↵↵y = ` | EOF | `final de archivo` | `"id"` (EOF after blank lines) |
 | R38 | `t = {1,, 2}` | 1:8 | `,` | `"}"` |
 | R39 | `a = f↵(g).x = 1` | 2:7 | `=` | `"final de archivo"`, `"id"` (read greedily as `a = f(g).x`, then a second `=`, as in Lua) |
+| R40 | `x = function() end` | 1:5 | `function` | exactly the list of platform tests 13 and 14, which names neither `function` nor `...` |
+| R41 | `function f(...) x = ... end` | 1:21 | `...` | the same list as R40 |
+| R42 | `f(function() end)` | 1:3 | `function` | `")"` |
+| R43 | `function f(...) g(...) end` | 1:19 | `...` | `")"` |
 
 **Only the first error.** R3 has a second error on the same line (`3` after
 `;`). R36 can be extended with another error on line 4. In both, only the

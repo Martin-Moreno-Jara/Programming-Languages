@@ -96,7 +96,7 @@ final_grammar: dict[str, list[list[str]]] = {
     "DOTTED_FUNCNAME": [["tkn_period", "NAME", "DOTTED_FUNCNAME"], ["ε"]],
     "COLON_FUNCNAME": [["tkn_colon", "NAME"], ["ε"]],
 
-    "FUNCTIONDEF": [["function", "FUNCBODY"]],
+    #"FUNCTIONDEF": [["function", "FUNCBODY"]],
     "FUNCBODY": [["tkn_opening_par", "OPT_PARLIST", "tkn_closing_par", "BLOCK", "end"]],
 
     # parameter list: the comma is consumed before deciding between
@@ -128,9 +128,8 @@ final_grammar: dict[str, list[list[str]]] = {
 
     "EXP_NOT_ID":  [
     ["nil", "EXP_PRIME"], ["false", "EXP_PRIME"], ["true", "EXP_PRIME"],
-    ["tkn_num", "EXP_PRIME"], ["tkn_str", "EXP_PRIME"], ["tkn_varargs", "EXP_PRIME"],
+    ["tkn_num", "EXP_PRIME"], ["tkn_str", "EXP_PRIME"],
     ["TABLECONSTRUCTOR", "EXP_PRIME"],
-    ["FUNCTIONDEF", "EXP_PRIME"],
     ["UNOP", "EXP"],
     ["tkn_opening_par", "EXP", "tkn_closing_par", "PREFIXEXP_PRIME", "EXP_PRIME"],
 ],
