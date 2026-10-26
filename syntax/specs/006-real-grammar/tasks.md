@@ -152,11 +152,10 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
   `BO-floor-div`, `BO-power`, `BO-mod`, `BO-bit-and`, `BO-bit-xor`,
   `BO-bit-or`, `BO-right-shift`, `BO-left-shift`, `BO-concat`, `BO-less`,
   `BO-leq`, `BO-greater`, `BO-geq`, `BO-equal`, `BO-neq`, `BO-and`, `BO-or`.
-- [x] `CALL_ROWS`: `C1` to `C23`, with `C12-string` (`o:m"s"`) and
-  `C12-table` (`o:m{}`). 24 rows.
-- [x] `NAME_ROWS`: `N1` to `N15`. 15 rows.
+- [x] `CALL_ROWS`: `C1` to `C23` without `C10` to `C12`, `C20` and `C22`. 18 rows.
+- [x] `NAME_ROWS`: `N1` and `N3` to `N15`. 14 rows.
 - [x] `LAYOUT_ROWS`: `L1` to `L6`. 6 rows.
-- [x] `EDGE_ROWS`: `EA1` to `EA13`. 13 rows. Generated programs are built with
+- [x] `EDGE_ROWS`: `EA1` to `EA13` without `EA9` and `EA12`. 11 rows. Generated programs are built with
   string operations, never typed out:
   - `EA1`: the doc's `saludar` program, comments included:
     `"-- Definición de la función\nfunction saludar(texto)\n    print(texto)\nend\n\n-- Llamada a la función\nsaludar(\"¡Hola, mundo!\")\n"`.
@@ -169,9 +168,9 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
   - `EA8`: `"x = " + " + ".join(["1"] * 200)`.
   - `EA10` and `EA11`: as in the spec. `EA11` is `"-- a\n\n-- b\n"`.
   - `EA13`: `"f()\n(g)()"` (the greedy `(` of spec §4.1).
-- [x] `ACCEPT_ROWS`: all the tables above concatenated, **179 rows**. Assert
+- [x] `ACCEPT_ROWS`: all the tables above concatenated, **173 rows**. Assert
   the count at import time, so a lost table is noticed at once.
-- [x] `PRODUCTION_ROWS`: `ACCEPT_ROWS` without `EDGE_ROWS` (168 rows). Only
+- [x] `PRODUCTION_ROWS`: `ACCEPT_ROWS` without `EDGE_ROWS` (162 rows). Only
   this list is used for coverage in P7, because the spec ties coverage to
   §5.
 
@@ -196,8 +195,9 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
     `(4, 7)`, `"=="`, `["=", ":", ",", "[", "(", "."]`.
   - `R33`: `"local = 1"`, `(1, 7)`, `"="`, the same list as `R1`.
 - [x] The EOF rows are `R4` to `R10` and `R37`, with `position = None`.
-- [x] Assert 43 rows at import time.
+- [x] Assert 49 rows at import time.
 - [x] `R40` to `R43` (2026-10-25): anonymous functions and `...` used as a value. The grammar dropped them to match platform tests 13 and 14. They used to be accept rows `F8` to `F10`, `E4`, `E18`, `C22`, `EA9` and `EA12`. `R40` and `R41` check the exact list through `_EXP_LIST`.
+- [x] `R44` to `R49` (2026-10-25): calls with a string or table argument and no parentheses. The grammar dropped them from `ARGS` to match platform test 18. They used to be accept rows `C10`, `C11`, `C12-string`, `C12-table`, `C20` and `N2`. `R44` to `R46` check the R3 list exactly through `_AFTER_NAME_LIST`.
 - [x] All positions in spec §7 were checked against the real lexer on
   2026-10-25. Keep `test_reject_positions_match_lexer` (section 6) so they stay
   right if the lexer changes.
@@ -278,17 +278,17 @@ LL(1). Each one builds its own `processed_grammar()`.
 
 All tests use `lua_parser` and take `ASDR` from it.
 
-- [x] `test_accepts`: parametrized over `ACCEPT_ROWS` (179 rows). `parse`
+- [x] `test_accepts`: parametrized over `ACCEPT_ROWS` (173 rows). `parse`
   returns without raising. On `SyntacticalError`, fail with the source and the
   message, so the report shows where it was rejected.
-- [x] `test_rejects`: parametrized over `REJECT_ROWS` (43 rows).
+- [x] `test_rejects`: parametrized over `REJECT_ROWS` (49 rows).
   - `pytest.raises(SyntacticalError)` around `parse`.
   - `error_parts(err.value.message)` gives `(line, col, lexeme, shown)`.
   - Assert the lexeme, the position (when it is not `None`) and `contains <=
     set(shown)`.
   - When `exact` is set, assert `shown == exact` (order included).
 - [x] `test_reject_expected_list_order`: parametrized over `REJECT_ROWS`
-  (43 rows). `is_doc_order(shown)` is `True` (spec §8 cross-check). Kept
+  (49 rows). `is_doc_order(shown)` is `True` (spec §8 cross-check). Kept
   separate from `test_rejects`, so an order mistake doesn't hide a wrong
   position.
 - [x] `test_reports_only_first_error`: R3 and R36, plus a copy of R36 with a
@@ -336,9 +336,9 @@ _Done on 2026-10-25._
 ## 9. Counts
 
 - [x] `pytest tests/test_real_grammar_properties.py --collect-only -q` lists
-  8 + 222 + 35 + 1 = **266** tests.
+  8 + 222 + 41 + 1 = **272** tests.
 - [x] `pytest tests/test_real_grammar_parse.py --collect-only -q` lists
-  179 + 43 + 43 + 3 + 13 = **281** tests.
+  173 + 49 + 49 + 3 + 13 = **287** tests.
 - [x] `pytest tests/test_real_grammar_output.py --collect-only -q` lists
   **8** tests.
 - [x] `pytest tests/test_pred_exceptions.py --collect-only -q` lists **12** tests.

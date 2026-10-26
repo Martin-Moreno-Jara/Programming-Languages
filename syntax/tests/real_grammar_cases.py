@@ -146,10 +146,6 @@ CALL_ROWS = [
     ("C7", "a, b.c, d[1] = 1, 2, 3"),
     ("C8", "f()"),
     ("C9", "f(1, 2)"),
-    ("C10", 'f"str"'),
-    ("C11", "f{1, 2}"),
-    ("C12-string", 'o:m"s"'),
-    ("C12-table", "o:m{}"),
     ("C13", "f()()"),
     ("C14", "f().x = 1"),
     ("C15", "f()[1] = 2"),
@@ -157,14 +153,12 @@ CALL_ROWS = [
     ("C17", "(f)()"),
     ("C18", '("s"):upper()'),
     ("C19", "(a).b = 1"),
-    ("C20", 'a.b.c:d "x" {1} (2)'),
     ("C21", "x = f(g(h(1)))"),
     ("C23", "a, (b).c = 1, 2"),
 ]
 
 NAME_ROWS = [
     ("N1", 'print("hola")'),
-    ("N2", 'print "hola"'),
     ("N3", "print = 1"),
     ("N4", "local warn = 2"),
     ("N5", "function error() end"),
@@ -216,8 +210,8 @@ PRODUCTION_ROWS = (
     + EXPRESSION_ROWS + BINOP_ROWS + CALL_ROWS + NAME_ROWS + LAYOUT_ROWS
 )
 ACCEPT_ROWS = PRODUCTION_ROWS + EDGE_ROWS
-assert len(PRODUCTION_ROWS) == 168, len(PRODUCTION_ROWS)
-assert len(ACCEPT_ROWS) == 179, len(ACCEPT_ROWS)
+assert len(PRODUCTION_ROWS) == 162, len(PRODUCTION_ROWS)
+assert len(ACCEPT_ROWS) == 173, len(ACCEPT_ROWS)
 
 # ---------------------------------------------------------------------------
 # Reject rows (spec §7): (case_id, source, position, lexeme, contains, exact)
@@ -233,13 +227,15 @@ _EXP_LIST = [
     "cadena_de_caracteres", "error", "false", "id", "nil", "not", "pcall", "print", "#", "-", "{", "(",
     "true", "valor_numerico", "warn", "xpcall",
 ]
+# After a statement's name, as the grader lists it: no string or table call argument (platform test 18)
+_AFTER_NAME_LIST = ["=", ":", ",", "[", "(", "."]
 R3_SOURCE = "local i = 0;\n\nwhile (i < 5) do\n    p == [i];3\n    i = i + 1;\nend"
 R36_SOURCE = "local a = 1\nlocal b = 2\nlocal c = = 3"
 
 REJECT_ROWS = [
     ("R1", "local 1;", (1, 7), "1", set(), _LOCAL_LIST),
     ("R2", 'print(45"this")', (1, 9), "this", set(), _R2_LIST),
-    ("R3", R3_SOURCE, (4, 7), "==", set(), ["=", ":", ",", "[", "(", "."]),
+    ("R3", R3_SOURCE, (4, 7), "==", set(), _AFTER_NAME_LIST),
     ("R4", "if x then y = 1", None, EOF, {"end", "elseif", "else"}, None),
     ("R5", "repeat x = 1", None, EOF, {"until"}, None),
     ("R6", "function f() x = 1", None, EOF, {"end"}, None),
@@ -281,8 +277,15 @@ REJECT_ROWS = [
     ("R41", "function f(...) x = ... end", (1, 21), "...", set(), _EXP_LIST),
     ("R42", "f(function() end)", (1, 3), "function", {")"}, None),
     ("R43", "function f(...) g(...) end", (1, 19), "...", {")"}, None),
+    # Call arguments are only parenthesised in the grader's grammar
+    ("R44", 'f"str"', (1, 2), "str", set(), _AFTER_NAME_LIST),
+    ("R45", "f{1, 2}", (1, 2), "{", set(), _AFTER_NAME_LIST),
+    ("R46", 'print "hola"', (1, 7), "hola", set(), _AFTER_NAME_LIST),
+    ("R47", 'o:m"s"', (1, 4), "s", {"("}, None),
+    ("R48", "o:m{}", (1, 4), "{", {"("}, None),
+    ("R49", 'a.b.c:d "x" {1} (2)', (1, 9), "x", {"("}, None),
 ]
-assert len(REJECT_ROWS) == 43, len(REJECT_ROWS)
+assert len(REJECT_ROWS) == 49, len(REJECT_ROWS)
 
 # Only the first error is reported: (case_id, source, position)
 FIRST_ERROR_ROWS = [

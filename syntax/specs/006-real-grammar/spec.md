@@ -354,7 +354,9 @@ Lua also has `'...'` and `functiondef` here. The grader's grammar has neither (p
 `var ::= Name | prefixexp '[' exp ']' | prefixexp '.' Name`,
 `prefixexp ::= var | functioncall | '(' exp ')'`,
 `functioncall ::= prefixexp args | prefixexp ':' Name args`,
-`args ::= '(' [explist] ')' | tableconstructor | LiteralString`
+`args ::= '(' [explist] ')'`
+
+Lua also allows a table or a string as `args`. The grader doesn't (platform test 18), so those calls are reject cases R44 to R49.
 
 | ID | Program | What it checks |
 |----|---------|----------------|
@@ -367,9 +369,6 @@ Lua also has `'...'` and `functiondef` here. The grader's grammar has neither (p
 | C7 | `a, b.c, d[1] = 1, 2, 3` | Mixed targets in one assignment |
 | C8 | `f()` | Call with no arguments |
 | C9 | `f(1, 2)` | Call with several arguments |
-| C10 | `f"str"` | String argument without parentheses |
-| C11 | `f{1, 2}` | Table argument without parentheses |
-| C12 | `o:m"s"`, `o:m{}` | Method call with string and table arguments |
 | C13 | `f()()` | Calling the result of a call |
 | C14 | `f().x = 1` | Field of a call result as a target |
 | C15 | `f()[1] = 2` | Index of a call result as a target |
@@ -377,7 +376,6 @@ Lua also has `'...'` and `functiondef` here. The grader's grammar has neither (p
 | C17 | `(f)()` | Parenthesised expression called |
 | C18 | `("s"):upper()` | Method call on a parenthesised string |
 | C19 | `(a).b = 1` | Field of a parenthesised expression as a target |
-| C20 | `a.b.c:d "x" {1} (2)` | Long chain with all three argument kinds |
 | C21 | `x = f(g(h(1)))` | Nested calls |
 | C23 | `a, (b).c = 1, 2` | A parenthesised prefix expression as a later assignment target |
 
@@ -388,7 +386,6 @@ Lua also has `'...'` and `functiondef` here. The grader's grammar has neither (p
 | ID | Program | What it checks |
 |----|---------|----------------|
 | N1 | `print("hola")` | Call |
-| N2 | `print "hola"` | Call with a string argument |
 | N3 | `print = 1` | Assignment target |
 | N4 | `local warn = 2` | Local name |
 | N5 | `function error() end` | Function name |
@@ -493,6 +490,12 @@ list.
 | R41 | `function f(...) x = ... end` | 1:21 | `...` | the same list as R40 |
 | R42 | `f(function() end)` | 1:3 | `function` | `")"` |
 | R43 | `function f(...) g(...) end` | 1:19 | `...` | `")"` |
+| R44 | `f"str"` | 1:2 | `str` | exactly the R3 list |
+| R45 | `f{1, 2}` | 1:2 | `{` | exactly the R3 list |
+| R46 | `print "hola"` | 1:7 | `hola` | exactly the R3 list |
+| R47 | `o:m"s"` | 1:4 | `s` | `"("` |
+| R48 | `o:m{}` | 1:4 | `{` | `"("` |
+| R49 | `a.b.c:d "x" {1} (2)` | 1:9 | `x` | `"("` |
 
 **Only the first error.** R3 has a second error on the same line (`3` after
 `;`). R36 can be extended with another error on line 4. In both, only the
@@ -542,7 +545,7 @@ shows how it handles them, turn them into cases.
 | K5 | Other built-ins as names: `pairs`, `ipairs`, `tostring`, `tonumber`, `select`, `next`, `load`, `loadfile`, `dofile` | Ordinary names | The lexer gives them their own token types, and the doc lists only the five of §3.1 as identifiers. It is unknown whether the grader accepts `for k, v in pairs(t) do end`. Very common code, so worth asking on Campuswire |
 | K6 | `print` as a token | — | The grader treats `print` as its own token (R1 lists `"print"`), but it is commented out of `keywords_set` (`lexer/lexer.py:81`). As an `id`, R1, R33 and O3 lose `"print"` from the list |
 | K7 | Order of the expected list | — | The doc says "lexicographic" and "separated by a blank space", but its examples are sorted by token-type name and separated by `", "`. The spec follows the examples. Where `"final de archivo"` (`$`) goes in a sorted list is unknown |
-| K8 | Call suffixes in the R3 list | `p{...}` and `p"s"` are valid calls | The grader's list after `p` (`"=", ":", ",", "[", "(", "."`) has no `"{"` and no `"cadena_de_caracteres"`, although C10, C11 and N2 are valid Lua. Matching R3 exactly and accepting C10/C11 may not both be possible |
+| K8 | Call suffixes in the R3 list | `p{...}` and `p"s"` are valid calls | The grader's list after `p` (`"=", ":", ",", "[", "(", "."`) has no `"{"` and no `"cadena_de_caracteres"`, although such calls are valid Lua | **Resolved**: string and table arguments were dropped from `ARGS`, so R3 matches and those calls are reject cases R44 to R49 |
 | K9 | Position of an EOF error | — | The doc doesn't give an example, so it's unknown whether the grader reports the end of the last line or the next line |
 
 ## 10. Out of scope (behavior not defined)

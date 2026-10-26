@@ -150,9 +150,7 @@ final_grammar: dict[str, list[list[str]]] = {
     "FUNCTIONCALL": [["ARGS"],
             ["tkn_colon", "NAME", "ARGS"],],
     
-    "ARGS": [["tkn_opening_par", "MAYBE_EXPLIST", "tkn_closing_par"], 
-             ["TABLECONSTRUCTOR"],
-             ["tkn_str"]],
+    "ARGS": [["tkn_opening_par", "MAYBE_EXPLIST", "tkn_closing_par"]],
 
     
 
@@ -214,6 +212,8 @@ if __name__ == "__main__":
     ASDR_generator(myGrammar).generate()
     from syntax.ASDR import ASDR
     data = sys.stdin.read()
+    if not data.endswith("\n"):
+        data += "\n"
     lexer = Lexer(data)
     try:
         parser = ASDR(lexer)
