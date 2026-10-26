@@ -199,7 +199,7 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
     `(4, 7)`, `"=="`, `["=", ":", ",", "[", "(", "."]`.
   - `R33`: `"local = 1"`, `(1, 7)`, `"="`, the same list as `R1`.
 - [x] The EOF rows are `R4` to `R10` and `R37`, with `position = None`.
-- [x] Assert 42 rows at import time.
+- [x] Assert 46 rows at import time.
 - [x] All positions in spec §7 were checked against the real lexer on
   2026-10-25. Keep `test_reject_positions_match_lexer` (section 6) so they stay
   right if the lexer changes.

@@ -27,7 +27,6 @@ final_grammar: dict[str, list[list[str]]] = {
         ["LABEL"],
         ["break"],
         ["goto", "NAME"],
-        ["DO_BLOCK_END"],
         ["while", "EXP", "DO_BLOCK_END"],
         ["repeat", "BLOCK", "until", "EXP"],
         ["IFSTAT"],
@@ -199,7 +198,7 @@ pred_exceptions={
 hidden_expected={
     "EXP_NOT_ID": {5: {"tkn_varargs"}},  
     "ARGS": {1: {"tkn_opening_key"}, 2: {"tkn_str"}},     
-    "STAT": {2: {"tkn_opening_par"}, 6: {"do"}},          
+    "STAT": {2: {"tkn_opening_par"}},          
     "GLOBAL_OPT": {1: {"tkn_less"}},                      
     "GLOBAL_TAIL": {0: {"tkn_times"}},                   
     "ATTNAMELIST": {0: {"tkn_less"}},                     

@@ -12,7 +12,7 @@ class ASDR(ASDR_base):
 		self.parse_RETSTAT()
 
 	def parse_STATLIST(self):
-		if self.cur_tok.type in ['break', 'do', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'warn', 'while', 'xpcall']:
+		if self.cur_tok.type in ['break', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'warn', 'while', 'xpcall']:
 			self.parse_STAT()
 			self.parse_STATLIST()
 		else:
@@ -36,8 +36,6 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['goto']:
 			self.match('goto')
 			self.parse_NAME()
-		elif self.cur_tok.type in ['do']:
-			self.parse_DO_BLOCK_END()
 		elif self.cur_tok.type in ['while']:
 			self.match('while')
 			self.parse_EXP()
@@ -483,7 +481,6 @@ class ASDR(ASDR_base):
 			self.match('tkn_opening_par')
 			self.parse_EXP()
 			self.match('tkn_closing_par')
-			self.parse_PREFIXEXP_PRIME()
 			self.parse_EXP_PRIME()
 		else:
 			self.pending|=set(['false', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true'])

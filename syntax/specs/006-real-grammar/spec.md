@@ -506,6 +506,13 @@ list.
 | R37 | `x = 1↵↵↵y = ` | EOF | `final de archivo` | `"id"` (EOF after blank lines) |
 | R38 | `t = {1,, 2}` | 1:8 | `,` | `"}"` |
 | R39 | `a = f↵(g).x = 1` | 2:7 | `=` | `"final de archivo"`, `"id"` (read greedily as `a = f(g).x`, then a second `=`, as in Lua) |
+| R40 | `x = function() end .. {}` | 1:20 | `..` | `"final de archivo"`, `","` (no operator after a function) |
+| R41 | `while function() end do end` | 1:7 | `function` | exactly the list of platform tests 13 and 14 |
+| R42 | `x = 1, = 2` | 1:8 | `=` | exactly R14's list (`function` listed after a comma) |
+| R43 | `if (x > 5) { print(x) }` | 1:12 | `{` | exactly the operators + `then`: no call suffixes after `( exp )`, so the C-style `{` fails at once (platform test 24) |
+| R44 | `x = (a) )` | 1:9 | `)` | exactly the operators, `,`, the statement starts and `"final de archivo"`, with no `":"`, `"["`, `"("`, `"."` (platform test 35) |
+| R45 | `x = (t).k` | 1:8 | `.` | exactly R44's list |
+| R46 | `x = (f)(1)` | EOF | `final de archivo` | `"="`: `(1)` is read as a new statement |
 
 **Only the first error.** R3 has a second error on the same line (`3` after
 `;`). R36 can be extended with another error on line 4. In both, only the

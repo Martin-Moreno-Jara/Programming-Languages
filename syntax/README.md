@@ -216,7 +216,12 @@ Submission history (2026-10-25):
     - **The experiment fixed 35 and 24.** The reference takes no call, index, field or method suffix after `( exp )` inside an expression, so after `x = (a)` it doesn't list `":"`, `"["`, `"("`, `"."`. 24 was also this, not a table hypothesis: its input is most likely the C-style `if (x > 5) { … }`. The old grammar read `(x > 5) {…}` as a call with a table argument, so the error moved past the `}`. With the experiment, the error is at the `{`, and the list (operators + `then`) matches. Hypothesis A (no operator after a table) is dropped.
     - **36:** a relational operator comes right before the number: `while i <= 10 print(i)`. Our list is every binary operator + `do`. Hypothesis B (the reference's relational operators are non-associative, so it doesn't list `<`, `<=`, `>`, `>=`, `==`, `~=` after `a <= 10`) is the likely explanation, but nothing has tested it yet.
     - **16:** the token after `do` is not `)`, `]`, `}`, a literal, `{`, `-`, `not`, `#` or `...`. So it is `=`, another binary operator, `,`, `.`, `:`, or a keyword that can't start a statement (`then`, `else`, `elseif`, `until`, `in`). Our list there is the statement starts + `end`, the same set test 04 confirmed, so the difference may be before the `do` (something in the loop header our grammar accepts and the reference doesn't, like a numeric `for` step) rather than in the list.
-    - **Not in the repo yet:** the experiment's grammar line was only in the submitted code. `main.py` still has `PREFIXEXP_PRIME` after `( EXP )`.
+    - **Applied to `main.py`** (2026-10-26), with reject rows R43–R46 (`if (x > 5) { print(x) }`, `x = (a) )`, `x = (t).k`, `x = (f)(1)`). They fail on the old grammar.
+
+19. **Experiment for 36 + probe for 16 (2026-10-26).** `ExperimentASDR` left `<`, `<=`, `>`, `>=`, `==`, `~=` out of the expected list right after `a <relop> b` (tracked through tighter-binding operators and brackets, reset by `and`, `or`, `,` and keywords). The probe asked whether 16's `do` starts a `do … end` statement (TLE), closes a numeric `for` with a step (RT), or closes another loop (WA). Results: **36 passes, 16 TLE.** No other test changed.
+    - **36: the reference's relational operators are non-associative.** After `i <= 10` it lists the arithmetic, concatenation, bitwise and logical operators, but no comparison. `a < b < c` is presumably a syntax error there. The real fix is a comparison level in the expression grammar, not a list filter.
+    - **16: the `do` that fails starts a `do … end` statement** (for example `do = 5`). Combined with test 04 (no `do` listed at the start of a statement), the reference most likely has no `do … end` statement at all (redesign item 6). It would then report the error at the `do` itself.
+    - All 40 platform tests are now explained: the remaining two need these grammar changes.
 
 ## Why the remaining tests fail: grammar or platform?
 
@@ -303,7 +308,7 @@ The first attempt at a grammar fix removed `FUNCTIONDEF` entirely. That broke 05
    - **Side effect:** `(` could no longer start a statement, so the greedy-`(` ambiguity (`a = f↵(g).x`) should disappear. `pred_exceptions` might no longer be needed, and P8 would report that.
    - Accept rows that become rejects: C17, C18, C19, C23, EA13. R39 changes.
 
-6. **No `do … end` statement.** *Low confidence*: a single sample (04), and it's basic Lua.
+6. **No `do … end` statement.** **Supported by entry 19 (test 16's error is inside a `do` statement).** *Low confidence before that*: a single sample (04), and it's basic Lua.
    - Remove `STAT`'s `["DO_BLOCK_END"]` (line 30). `while` and `for` keep `DO_BLOCK_END`.
    - Accept rows that become rejects: S10, S11, EA4.
    - **Probe first.** If a passing test uses a `do` block, keep the production, and this would be the one token still hidden.

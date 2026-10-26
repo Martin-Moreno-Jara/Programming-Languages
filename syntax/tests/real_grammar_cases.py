@@ -24,8 +24,6 @@ STATEMENT_ROWS = [
     ("S7", "::top::"),
     ("S8", "while true do break end"),
     ("S9", "goto top"),
-    ("S10", "do end"),
-    ("S11", "do x = 1 end"),
     ("S12", "while x < 10 do x = x + 1 end"),
     ("S13", "repeat x = x - 1 until x == 0"),
     ("S14", "if x then end"),
@@ -66,7 +64,7 @@ RETURN_ROWS = [
     ("RT4", "return;"),
     ("RT5", "return f();"),
     ("RT6", "function f() return end"),
-    ("RT7", "do return 1 end x = 2"),
+    ("RT7", "while x do return 1 end x = 2"),
     ("RT8", "if x then return 1 elseif y then return 2 else return 3 end"),
     ("RT9", "while x do return end"),
     ("RT10", "repeat return until x"),
@@ -210,7 +208,7 @@ EDGE_ROWS = [
         '    print("Valor definido")\nend\n',
     ),
     ("EA3", "x = " + "(" * 50 + "1" + ")" * 50),
-    ("EA4", "do " * 50 + "end " * 50),
+    ("EA4", "while x do " * 50 + "end " * 50),
     ("EA5", "if x then " * 50 + "end " * 50),
     ("EA6", "t = " + "{" * 50 + "}" * 50),
     ("EA7", "x = 1\n" * 200),
@@ -227,8 +225,8 @@ PRODUCTION_ROWS = (
     + EXPRESSION_ROWS + BINOP_ROWS + CALL_ROWS + NAME_ROWS + LAYOUT_ROWS
 )
 ACCEPT_ROWS = PRODUCTION_ROWS + EDGE_ROWS
-assert len(PRODUCTION_ROWS) == 177, len(PRODUCTION_ROWS)
-assert len(ACCEPT_ROWS) == 190, len(ACCEPT_ROWS)
+assert len(PRODUCTION_ROWS) == 175, len(PRODUCTION_ROWS)
+assert len(ACCEPT_ROWS) == 188, len(ACCEPT_ROWS)
 
 # ---------------------------------------------------------------------------
 # Reject rows (spec §7): (case_id, source, position, lexeme, contains, exact)
@@ -249,6 +247,24 @@ _EXP_LIST = [
 _EXPLIST_START = _EXP_LIST[:3] + ["function"] + _EXP_LIST[3:]
 # After a statement's name, as the grader lists it: string and table call arguments are parsed but hidden (platform test 18)
 _AFTER_NAME_LIST = ["=", ":", ",", "[", "(", "."]
+# After a condition in parentheses: no call suffixes after `( exp )`, so a C-style `{` fails at once (platform test 24)
+_IF_GROUPING_LIST = [
+    "and", "or", "then", "&", "|", "~", "..", "/", "==", "//", ">=", ">", "<<", "<=", "<", "-", "%", "~=", "+", "^",
+    ">>", "*",
+]
+# After `x = ( exp )` at the top level: operators, `,` and the statement starts, but no call suffixes (platform test 35)
+_AFTER_GROUPING_LIST = [
+    "and", "break", "error", EOF, "for", "function", "global", "goto", "id", "if", "local", "or", "pcall", "print",
+    "repeat", "return", "&", "|", "~", ",", "..", "/", "==", "//", ">=", "::", ">", "<<", "<=", "<", "-", "%", "~=",
+    "+", "^", ">>", ";", "*", "warn", "while", "xpcall",
+]
+# The start of a statement, as the grader lists it: no `do … end` statement and no `(` (platform tests 04, 16)
+_STATEMENT_START = [
+    "break", "error", "for", "function", "global", "goto", "id", "if", "local", "pcall", "print", "repeat",
+    "return", "::", ";", "warn", "while", "xpcall",
+]
+_TOP_STATEMENT_LIST = _STATEMENT_START[:2] + [EOF] + _STATEMENT_START[2:]
+_BLOCK_STATEMENT_LIST = _STATEMENT_START[:1] + ["end"] + _STATEMENT_START[1:]
 R3_SOURCE = "local i = 0;\n\nwhile (i < 5) do\n    p == [i];3\n    i = i + 1;\nend"
 R36_SOURCE = "local a = 1\nlocal b = 2\nlocal c = = 3"
 
@@ -295,8 +311,15 @@ REJECT_ROWS = [
     ("R40", "x = function() end .. {}", (1, 20), "..", {EOF, ","}, None),
     ("R41", "while function() end do end", (1, 7), "function", set(), _EXP_LIST),
     ("R42", "x = 1, = 2", (1, 8), "=", set(), _EXPLIST_START),
+    ("R43", "if (x > 5) { print(x) }", (1, 12), "{", set(), _IF_GROUPING_LIST),
+    ("R44", "x = (a) )", (1, 9), ")", set(), _AFTER_GROUPING_LIST),
+    ("R45", "x = (t).k", (1, 8), ".", set(), _AFTER_GROUPING_LIST),
+    ("R46", "x = (f)(1)", None, EOF, {"="}, None),
+    ("R47", "do end", (1, 1), "do", set(), _TOP_STATEMENT_LIST),
+    ("R48", "do = 5", (1, 1), "do", set(), _TOP_STATEMENT_LIST),
+    ("R49", "while x do do end end", (1, 12), "do", set(), _BLOCK_STATEMENT_LIST),
 ]
-assert len(REJECT_ROWS) == 42, len(REJECT_ROWS)
+assert len(REJECT_ROWS) == 49, len(REJECT_ROWS)
 
 # Only the first error is reported: (case_id, source, position)
 FIRST_ERROR_ROWS = [
