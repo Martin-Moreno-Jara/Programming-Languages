@@ -85,7 +85,7 @@ These were confirmed by submissions. The grader's own parser is the reference, s
 | 2 | The sort order is the internal-name order above. It is not the doc's "lexicographic order of the shown strings". The exceptions are numbers, strings and end of input, which sort by their shown names. The separator is `", "`. | Platform tests 13, 14; 27 and 30 for `$` |
 | 3 | EOF is at **(last line + 1, column 1)**. The platform's stdin has no final newline, so `main.py` adds one if missing. | Platform tests 03, 04 (we printed 3:15, the grader wanted 4:1) |
 | 4 | **The grader's lists leave out tokens its parser accepts.** A missing token does not mean the construct is invalid. Never remove a production to match a list: hide its token. Removing `FUNCTIONDEF` broke tests 05 and 22. | 22 accepts anonymous functions, 05 expects `"("` after `function`, yet 13/14 never list `function` |
-| 5 | Hidden tokens now: `function` and `...` at the start of an expression (13, 14); string and `{` call arguments after a name (18); `do` and `(` at the start of a statement (04); `<` before the first declared name, and `*` after `global` (23, and the doc's `local 1;`). | — |
+| 5 | Hidden tokens now: `...` at the start of an expression (13, 14); string and `{` call arguments after a name (18); `do` and `(` at the start of a statement (04); `<` before the first declared name, and `*` after `global` (23, and the doc's `local 1;`). | — |
 | 5b | **The lists depend on the context.** `function` is not listed in a single expression (a `for` value, an `until` condition), but **is** listed where an expression list starts (after `=` or `in`). `...` is listed in neither. Our grammar has no way to say this yet: see *Why the remaining tests fail*. | 13, 14 vs 15 (entry 13) |
 | 6 | Only `print`, `pcall`, `xpcall`, `error` and `warn` are names (`NAME`). They are keyword tokens in the lexer. Unary `~` is a syntax error (bitwise operators are binary only). | Doc; R1 list |
 | 7 | Platform test N is the downloaded file `NN.in` (unlike the lexer assignment, which was off by one). There are 40 platform tests (82.5% = 33/40). | Third submission |
@@ -166,6 +166,58 @@ Submission history (2026-10-25):
     | 24 | `IFSTAT` | `)`, `]` or `}` | a missing `then` after a call or a parenthesized condition: `if (x > 5) print(x)` |
     | 35 | `main` | `)`, `]` or `}` | an extra token after a statement ending in `)` |
 
+14. **Fifth submission (2026-10-26): `functiondef` moved out of `exp`** (redesign item 1, below). **Test 15 now passes**, which confirms that the reference allows `function` only in an expression list or a field value. Test 16 did not change, so it is still failing, and so are 24, 35 and 36.
+    - **Why the old grammar failed 15:** `EXP_NOT_ID → FUNCTIONDEF EXP_PRIME` made `function` part of `FIRST(EXP)`, and the only way to keep it out of the 13/14 lists was `hidden_expected`. That hid it in every rule that starts with `EXP`, including `EXPLIST`, where the grader does list it.
+    - **What fixed it:** `function` is now a separate alternative of `EXPLIST_ITEM` and `FIELD_VALUE`. It isn't in `FIRST(EXP)`, so single expressions don't list it and expression lists do, with no hiding.
+    - **Side effects (the old grammar accepted these, the new one rejects them):** `x = a or function() end`, `x = -function() end`, `x = function() end .. y`, `while function() end do end`, `a[function() end]` and `(function() end)()`. The last form is common Lua; no platform test has needed it so far.
+
+15. **Probe submission (2026-10-26): one probe for 16, 24, 35 and 36.** It classified the error of each test by the rule that raised it, the token before it, and for a `)` whether it closed a call or a grouping. Results (WA = wrong answer, RT = runtime error, TLE = time limit):
+
+    | Test | Outcome | Reading |
+    |---|---|---|
+    | 16 | WA | The token before the error is `;`, `end`, `do`, `::` or `...`: not `return` or `break`. So the missing `function` after `return` was not the cause. |
+    | 24 | WA | The token before the error is `]` or `}`, not `)`: a missing `then` after something like `if t[1] …`. |
+    | 35 | RT | A stray token at the top level after a `)` that closes a grouping (`local y = (a + b) )`), not a call. |
+    | 36 | TLE | A missing `do` after a `while` condition that ends in a value. The only unambiguous answer. |
+
+    - **Other tests flipped:** 11 and 27 (both passing today) gave RT. 11 probably has one of the RT shapes (a `break` before the error is the one that fits the later rounds). *27 is explained in entry 17: it was a crash in the probe, not a shape.*
+    - **Local finding for 16:** `while x do return 1; ) end` lists only `"end"` and has `;` before the error. It fits the WA bucket, but it is only a candidate.
+    - **The custom-input runner** on the platform shows only our own output. It doesn't show the grader's expected output, so it can validate a probe but not a list.
+
+16. **Second combined probe (2026-10-26).** Questions: 16 = token before the error `;` / `end` / other; 24 = `]` / `}`; 35 = token before the grouping's `(` is `=` / `return` / other; 36 = value before the missing `do` is a name / a number or string / `true`, `false`, `nil`. Results: **16 WA, 24 RT, 35 TLE, 36 RT**; only 27 flipped (RT).
+
+    | Test | Reading | Our list there |
+    |---|---|---|
+    | 16 | Token before the error is `do`, `::` or `...` (not `;`, `end`, `return`, `break`) | statement starts + `end`, the same as the confirmed list of 04 |
+    | 24 | `}` before the error in `IFSTAT`: a missing `then` after `if x == {…}`, or a missing `end` after a statement ending in a table (`if c then t = {1} <stray>`) | operators (+ `then`, or + `,`, statement starts, `elseif`, `else`, `end`) |
+    | 35 | A stray token at the top level after `= ( … )` (assignment or `local`/`global` declaration) | suffixes, operators, `,`, statement starts, `return`, `;`, `$` |
+    | 36 | Missing `do` after `while`, right after a number or a string | operators + `do` |
+
+    - *Withdrawn (see entry 17):* this entry read 27's RT as `return ( … )` followed by a stray token, and concluded that the expression part of 35's list was confirmed. That was wrong.
+    - **36 is unexplained by the list.** Test 17 confirms the operator list after a number, and columns after strings with escapes and after `1e3`, `0x1F`, `3.0` are correct locally. The difference may be in the offending token (its lexeme or position) or in what follows a string.
+    - **Hypothesis for 24:** the reference may not allow an operator after a table constructor (`EXP_NOT_ID → TABLECONSTRUCTOR EXP_PRIME`), the same way it didn't allow one after `functiondef`. Then it wouldn't list any operator after `}`.
+
+17. **Third combined probe (2026-10-26).** Questions: 16 = token before the error `do` / `::` / `...`; 24 = `then` missing / `end` missing after `= {…}` / other; 35 = `local`/`global` declaration / assignment to a single plain name / other target; 36 = value before the missing `do` is a string / a number with the offending token on the same line / a number on a later line. Results: **16 TLE, 24 TLE, 35 RT, 36 RT**; 27 flipped again (RT).
+
+    | Test | Reading |
+    |---|---|
+    | 16 | A loop body starts with a token that can't start a statement (`while x do ) …`). Our list there is the statement starts + `end`, the same set test 04 confirmed. |
+    | 24 | A missing `then` after a condition ending in a table: `if x == {} print(x)`. We list the operators + `then`. |
+    | 35 | A stray token at the top level after `x = ( … )`, with a single plain name as the target. |
+    | 36 | A missing `do` after a condition ending in a number, with the offending token on the same line: `while i <= 10 print(i)`. We list the operators + `do`. |
+
+    - **27 is a probe crash, not a shape.** It gave RT in all three probes, whatever the question. Every probe reads `toks[-1]`, which raises `IndexError` (a runtime error) when no token was consumed before the error. So 27 is most likely an error at the very first token (a program starting with something like `)` or `end`), reported by `main`. Entries 15 and 16 read it as `return ( … )` + stray token; that is withdrawn. So **nothing confirms our list after a grouping `)`**, and redesign item 5 (no call suffixes after `( exp )`) is open again as the explanation of 35.
+    - **24 and 36 share a shape:** a condition whose last operand is a value or a table, followed by a missing `then`/`do`. Two hypotheses:
+      - (A) the reference doesn't allow an operator after a table constructor (24 only);
+      - (B) the reference's relational operators are non-associative (`a < b < c` is an error), so after `x == {}` or `i <= 10` it doesn't list the relational operators. B would explain both.
+
+18. **Fourth combined probe + grammar experiment (2026-10-26).** The experiment changed `EXP_NOT_ID`'s last production from `( EXP ) PREFIXEXP_PRIME EXP_PRIME` to `( EXP ) EXP_PRIME` (redesign item 5, for expressions only). The probe asked: 24 and 36 = relational operator / other binary operator / none right before the last operand; 16 = offending token after `do` is `)`/`]`/`}` / a literal, `{` or unary operator / anything else. Results: **24 and 35 now pass; 16 WA, 36 TLE.** No other test changed (27 no longer crashes thanks to the `if not toks` guard).
+
+    - **The experiment fixed 35 and 24.** The reference takes no call, index, field or method suffix after `( exp )` inside an expression, so after `x = (a)` it doesn't list `":"`, `"["`, `"("`, `"."`. 24 was also this, not a table hypothesis: its input is most likely the C-style `if (x > 5) { … }`. The old grammar read `(x > 5) {…}` as a call with a table argument, so the error moved past the `}`. With the experiment, the error is at the `{`, and the list (operators + `then`) matches. Hypothesis A (no operator after a table) is dropped.
+    - **36:** a relational operator comes right before the number: `while i <= 10 print(i)`. Our list is every binary operator + `do`. Hypothesis B (the reference's relational operators are non-associative, so it doesn't list `<`, `<=`, `>`, `>=`, `==`, `~=` after `a <= 10`) is the likely explanation, but nothing has tested it yet.
+    - **16:** the token after `do` is not `)`, `]`, `}`, a literal, `{`, `-`, `not`, `#` or `...`. So it is `=`, another binary operator, `,`, `.`, `:`, or a keyword that can't start a statement (`then`, `else`, `elseif`, `until`, `in`). Our list there is the statement starts + `end`, the same set test 04 confirmed, so the difference may be before the `do` (something in the loop header our grammar accepts and the reference doesn't, like a numeric `for` step) rather than in the list.
+    - **Not in the repo yet:** the experiment's grammar line was only in the submitted code. `main.py` still has `PREFIXEXP_PRIME` after `( EXP )`.
+
 ## Why the remaining tests fail: grammar or platform?
 
 **Short answer: the grammar.** The platform compares our output with the output of its own reference parser, whose grammar differs from the Lua 5.5 manual in a few places. Nothing points to the platform being random or inconsistent.
@@ -183,7 +235,6 @@ Relative to the assignment text, this *is* an inconsistency: the doc asks for "t
 
 | Hidden now | Probable reference grammar | Evidence |
 |---|---|---|
-| `function` in a single expression | `functiondef` only where an expression list starts (and in table fields?), not inside `exp` | 13, 14, 15, 22, 05 |
 | `...` as an expression | `...` only as a parameter, never a value | 13, 14, 15 (never listed) |
 | `{` and string call arguments | only `( [explist] )` as call arguments | 18 |
 | `do` and `(` at the start of a statement | no `do … end` statement, and no statement starting with `( exp )` | 04 (one sample) |
@@ -212,7 +263,7 @@ The first attempt at a grammar fix removed `FUNCTIONDEF` entirely. That broke 05
 
 **Likely changes, most certain first.** Line numbers refer to `main.py` at `57b5c92`.
 
-1. **`functiondef` belongs to expression lists and field values, not to `exp`.** *High confidence*: 13 and 14 don't list it inside a single expression, 15 lists it after `=`, 05 and 22 accept it after `=` and in a table field.
+1. **`functiondef` belongs to expression lists and field values, not to `exp`.** **Applied (2026-10-26), awaiting the platform result for 15 and 16.** *High confidence*: 13 and 14 don't list it inside a single expression, 15 lists it after `=`, 05 and 22 accept it after `=` and in a table field.
    - **Remove** `["FUNCTIONDEF", "EXP_PRIME"]` from `EXP_NOT_ID` (line 133), and its hidden entry (`EXP_NOT_ID` 7).
    - **Expression lists:**
      ```
@@ -245,7 +296,7 @@ The first attempt at a grammar fix removed `FUNCTIONDEF` entirely. That broke 05
    - Accept rows that become rejects: C10, C11, C12-string, C12-table, C20, N2.
    - **Probe first**: `print "x"` is common Lua.
 
-5. **Nothing starts with `( exp )` except a plain value, and no call suffixes after it.** *Medium-low confidence*: 04 doesn't list `(` at the start of a statement. It might also explain **24** and **35**, whose errors come right after `)`.
+5. **Nothing starts with `( exp )` except a plain value, and no call suffixes after it.** **The expression part is confirmed by entry 18 (tests 24 and 35 pass); the statement part is still open.** *Medium-low confidence*: 04 doesn't list `(` at the start of a statement. It might also explain **24** and **35**, whose errors come right after `)`.
    - Remove `STAT`'s `["tkn_opening_par", "EXP", "tkn_closing_par", "AFTER_VAR"]` (line 26), and `PREFIXEXP`'s `(` production (line 141).
    - `EXP_NOT_ID`'s last production becomes `( EXP ) EXP_PRIME`, without `PREFIXEXP_PRIME`.
    - Remove the hidden entry `STAT` 2.

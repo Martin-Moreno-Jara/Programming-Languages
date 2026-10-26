@@ -174,14 +174,14 @@ greedy rule).
 
 ### 4.2 Hidden expected tokens
 
-The grader's expected lists leave out some tokens its parser accepts. Platform test 22 parses an anonymous `function`, but the lists of tests 13 and 14 don't name it. Those productions stay in the grammar, and their tokens are hidden from `pending` instead:
+The grader's expected lists leave out some tokens its parser accepts. Those productions stay in the grammar, and their tokens are hidden from `pending` instead. (`function` is no longer one of them: tests 13, 14 and 15 showed that the reference allows `functiondef` only in an expression list or a field value, so `EXPLIST_ITEM` and `FIELD_VALUE` carry it and it's not part of `EXP`.)
 
 ```python
-hidden_expected = {"EXP_NOT_ID": {5: {"tkn_varargs"}, 7: {"function"}}, ...}  # main.py
+hidden_expected = {"EXP_NOT_ID": {5: {"tkn_varargs"}}, ...}  # main.py
 ASDR_generator(g, hidden_expected).generate()
 ```
 
-`{A: {i: tokens}}` keeps the tokens in the branch test of production `i` of `A`, but never names them in an error. A hidden token also stays hidden in every rule that starts with `A`: the 13/14 error is raised in `parse_EXP`, not `parse_EXP_NOT_ID`. Currently hidden: `function` and `...` at the start of an expression (13, 14), string and table call arguments (18), `do` and `(` at the start of a statement (04), and `<` and `*` before the first name of a declaration (23, R1).
+`{A: {i: tokens}}` keeps the tokens in the branch test of production `i` of `A`, but never names them in an error. A hidden token also stays hidden in every rule that starts with `A`: the 13/14 error is raised in `parse_EXP`, not `parse_EXP_NOT_ID`. Currently hidden: `...` at the start of an expression (13, 14), string and table call arguments (18), `do` and `(` at the start of a statement (04), and `<` and `*` before the first name of a declaration (23, R1).
 
 Unit tests for the two new `Grammar` methods (`test_pred_exceptions.py`),
 using the dangling-else grammar of spec 004 E8 with `{"Sp": {1: "e"}}`:
@@ -357,7 +357,6 @@ prefixexp | tableconstructor | exp binop exp | unop exp`
 | E15 | `x = a and b or not c` | Logical operators mixed |
 | E16 | `x = #t + 1` | Unary inside binary |
 | E17 | `x = "n"+a-true*(vari[3] % 70)` | The doc's semantic-error example is syntactically valid |
-| E18 | `x = function() end .. {}` | Odd operands are still valid syntax |
 | E19 | `x = a ~ b` | Binary `~` is allowed (only unary `~` is not) |
 | E20 | `x = a ~= b` | `~=` is one token, not `~` then `=` |
 
@@ -481,7 +480,7 @@ list.
 | R11 | `if x y = 1 end` | 1:6 | `y` | `"then"` |
 | R12 | `while x y() end` | 1:9 | `y` | `"do"` |
 | R13 | `return 1 x = 2` | 1:10 | `x` | `"final de archivo"`, `";"`, `","` |
-| R14 | `x = = 1` | 1:5 | `=` | exactly the list of platform tests 13 and 14, with `function` and `...` hidden (§4.2) |
+| R14 | `x = = 1` | 1:5 | `=` | the list of platform tests 13 and 14 plus `function` (an expression list starts here, test 15), with `...` hidden (§4.2). R41 (`while function() end do end`) has exactly the 13/14 list; R40 and R42 cover a function followed by an operator and after a comma |
 | R15 | `x = ~y` | 1:5 | `~` | `"id"`, `"-"`, `"not"`, `"#"` |
 | R16 | `x = a ~ ~b` | 1:9 | `~` | `"id"`, `"-"` (binary `~` was accepted, the unary one is not) |
 | R17 | `for i = 1 do end` | 1:11 | `do` | `","` |

@@ -172,9 +172,9 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
     function returns the next one; a bare `function()` is not a statement).
   - `EA10` to `EA12`: as in the spec. `EA11` is `"-- a\n\n-- b\n"`.
   - `EA13`: `"f()\n(g)()"` (the greedy `(` of spec §4.1).
-- [x] `ACCEPT_ROWS`: all the tables above concatenated, **187 rows**. Assert
+- [x] `ACCEPT_ROWS`: all the tables above concatenated, **190 rows**. Assert
   the count at import time, so a lost table is noticed at once.
-- [x] `PRODUCTION_ROWS`: `ACCEPT_ROWS` without `EDGE_ROWS` (174 rows). Only
+- [x] `PRODUCTION_ROWS`: `ACCEPT_ROWS` without `EDGE_ROWS` (177 rows). Only
   this list is used for coverage in P7, because the spec ties coverage to
   §5.
 
@@ -199,7 +199,7 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
     `(4, 7)`, `"=="`, `["=", ":", ",", "[", "(", "."]`.
   - `R33`: `"local = 1"`, `(1, 7)`, `"="`, the same list as `R1`.
 - [x] The EOF rows are `R4` to `R10` and `R37`, with `position = None`.
-- [x] Assert 39 rows at import time.
+- [x] Assert 42 rows at import time.
 - [x] All positions in spec §7 were checked against the real lexer on
   2026-10-25. Keep `test_reject_positions_match_lexer` (section 6) so they stay
   right if the lexer changes.
@@ -280,7 +280,7 @@ LL(1). Each one builds its own `processed_grammar()`.
 
 All tests use `lua_parser` and take `ASDR` from it.
 
-- [x] `test_accepts`: parametrized over `ACCEPT_ROWS` (187 rows). `parse`
+- [x] `test_accepts`: parametrized over `ACCEPT_ROWS` (190 rows). `parse`
   returns without raising. On `SyntacticalError`, fail with the source and the
   message, so the report shows where it was rejected.
 - [x] `test_rejects`: parametrized over `REJECT_ROWS` (39 rows).

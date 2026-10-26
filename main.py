@@ -118,8 +118,9 @@ final_grammar: dict[str, list[list[str]]] = {
 
     # MORE_EXP created to add several expressions
     "MAYBE_EXPLIST": [["EXPLIST"], ["ε"]],
-    "EXPLIST": [["EXP", "MORE_EXP"]],
-    "MORE_EXP": [["tkn_comma", "EXP", "MORE_EXP"], ["ε"]],
+    "EXPLIST": [["EXPLIST_ITEM", "MORE_EXP"]],
+    "MORE_EXP": [["tkn_comma", "EXPLIST_ITEM", "MORE_EXP"],["ε"]],
+    "EXPLIST_ITEM": [["EXP"],["FUNCTIONDEF"]],
 
     # ------------------------------------------------------------------
     # Expressions
@@ -130,9 +131,8 @@ final_grammar: dict[str, list[list[str]]] = {
     ["nil", "EXP_PRIME"], ["false", "EXP_PRIME"], ["true", "EXP_PRIME"],
     ["tkn_num", "EXP_PRIME"], ["tkn_str", "EXP_PRIME"], ["tkn_varargs", "EXP_PRIME"],
     ["TABLECONSTRUCTOR", "EXP_PRIME"],
-    ["FUNCTIONDEF", "EXP_PRIME"],
     ["UNOP", "EXP"],
-    ["tkn_opening_par", "EXP", "tkn_closing_par", "PREFIXEXP_PRIME", "EXP_PRIME"],
+    ["tkn_opening_par", "EXP", "tkn_closing_par", "EXP_PRIME"],
 ],
     "EXP_PRIME": [["BINOP", "EXP"], ["ε"]],
 
@@ -163,9 +163,10 @@ final_grammar: dict[str, list[list[str]]] = {
     "TABLECONSTRUCTOR":[["tkn_opening_key","FIELDLIST","tkn_closing_key"]],
     "FIELDLIST":[["FIELD","FIELD_TAIL"],["ε"]],
     "FIELD_TAIL": [["FIELDSEP","FIELDLIST"],["ε"]],
-    "FIELD": [["tkn_opening_bra","EXP","tkn_closing_bra","tkn_assign", "EXP"],
-              ["NAME", "FIELD_ID"], ["EXP_NOT_ID"]],
-    "FIELD_ID": [["tkn_assign", "EXP"],["PREFIXEXP_PRIME", "EXP_PRIME"]],
+    "FIELD": [["tkn_opening_bra","EXP","tkn_closing_bra","tkn_assign", "FIELD_VALUE"],
+              ["NAME", "FIELD_ID"], ["EXP_NOT_ID"],["FUNCTIONDEF"]],
+    "FIELD_ID": [["tkn_assign", "FIELD_VALUE"],["PREFIXEXP_PRIME", "EXP_PRIME"]],
+    "FIELD_VALUE": [["EXP"],["FUNCTIONDEF"]],
     "FIELDSEP":[["tkn_comma"],["tkn_semicolon"]],
 
     # ------------------------------------------------------------------
@@ -196,7 +197,7 @@ pred_exceptions={
 }
 
 hidden_expected={
-    "EXP_NOT_ID": {5: {"tkn_varargs"}, 7: {"function"}},  
+    "EXP_NOT_ID": {5: {"tkn_varargs"}},  
     "ARGS": {1: {"tkn_opening_key"}, 2: {"tkn_str"}},     
     "STAT": {2: {"tkn_opening_par"}, 6: {"do"}},          
     "GLOBAL_OPT": {1: {"tkn_less"}},                      

@@ -84,6 +84,7 @@ FUNCTION_ROWS = [
     ("F9", "x = function(a, ...) return a end"),
     ("F10", "f(function() end)"),
     ("F11", "function f() function g() end end"),
+    ("F12", "x, y = 1, function() end"),
 ]
 
 TABLE_ROWS = [
@@ -100,6 +101,9 @@ TABLE_ROWS = [
     ("T11", "t = {x}"),
     ("T12", "t = {x == 1, y .. z}"),
     ("T13", "t = {x = y}"),
+    ("T14", "t = {function() end}"),
+    ("T15", "t = {[1] = function() end}"),
+    ("T16", "t = {f = function() end, 2}"),
 ]
 
 EXPRESSION_ROWS = [
@@ -128,7 +132,6 @@ EXPRESSION_ROWS = [
     ("E15", "x = a and b or not c"),
     ("E16", "x = #t + 1"),
     ("E17", 'x = "n"+a-true*(vari[3] % 70)'),
-    ("E18", "x = function() end .. {}"),
     ("E19", "x = a ~ b"),
     ("E20", "x = a ~= b"),
 ]
@@ -224,8 +227,8 @@ PRODUCTION_ROWS = (
     + EXPRESSION_ROWS + BINOP_ROWS + CALL_ROWS + NAME_ROWS + LAYOUT_ROWS
 )
 ACCEPT_ROWS = PRODUCTION_ROWS + EDGE_ROWS
-assert len(PRODUCTION_ROWS) == 174, len(PRODUCTION_ROWS)
-assert len(ACCEPT_ROWS) == 187, len(ACCEPT_ROWS)
+assert len(PRODUCTION_ROWS) == 177, len(PRODUCTION_ROWS)
+assert len(ACCEPT_ROWS) == 190, len(ACCEPT_ROWS)
 
 # ---------------------------------------------------------------------------
 # Reject rows (spec §7): (case_id, source, position, lexeme, contains, exact)
@@ -236,11 +239,14 @@ _R2_LIST = [
     "and", "or", "&", "|", "~", ")", ",", "..", "/", "==", "//", ">=", ">", "<<", "<=", "<",
     "-", "%", "~=", "+", "^", ">>", "*",
 ]
-# The start of an expression, as the grader lists it: `function` and `...` are parsed but hidden (platform tests 13, 14)
+# The start of a single expression, as the grader lists it: `function` is only valid in an expression list or a
+# field value, and `...` is parsed but hidden (platform tests 13, 14)
 _EXP_LIST = [
     "cadena_de_caracteres", "error", "false", "id", "nil", "not", "pcall", "print", "#", "-", "{", "(",
     "true", "valor_numerico", "warn", "xpcall",
 ]
+# The start of an expression list (after `=`, `in`, `return`, `(`): the same plus `function` (platform test 15)
+_EXPLIST_START = _EXP_LIST[:3] + ["function"] + _EXP_LIST[3:]
 # After a statement's name, as the grader lists it: string and table call arguments are parsed but hidden (platform test 18)
 _AFTER_NAME_LIST = ["=", ":", ",", "[", "(", "."]
 R3_SOURCE = "local i = 0;\n\nwhile (i < 5) do\n    p == [i];3\n    i = i + 1;\nend"
@@ -260,7 +266,7 @@ REJECT_ROWS = [
     ("R11", "if x y = 1 end", (1, 6), "y", {"then"}, None),
     ("R12", "while x y() end", (1, 9), "y", {"do"}, None),
     ("R13", "return 1 x = 2", (1, 10), "x", {EOF, ";", ","}, None),
-    ("R14", "x = = 1", (1, 5), "=", set(), _EXP_LIST),
+    ("R14", "x = = 1", (1, 5), "=", set(), _EXPLIST_START),
     ("R15", "x = ~y", (1, 5), "~", {"id", "-", "not", "#"}, None),
     ("R16", "x = a ~ ~b", (1, 9), "~", {"id", "-"}, None),
     ("R17", "for i = 1 do end", (1, 11), "do", {","}, None),
@@ -286,8 +292,11 @@ REJECT_ROWS = [
     ("R37", "x = 1\n\n\ny = ", None, EOF, {"id"}, None),
     ("R38", "t = {1,, 2}", (1, 8), ",", {"}"}, None),
     ("R39", "a = f\n(g).x = 1", (2, 7), "=", {EOF, "id"}, None),
+    ("R40", "x = function() end .. {}", (1, 20), "..", {EOF, ","}, None),
+    ("R41", "while function() end do end", (1, 7), "function", set(), _EXP_LIST),
+    ("R42", "x = 1, = 2", (1, 8), "=", set(), _EXPLIST_START),
 ]
-assert len(REJECT_ROWS) == 39, len(REJECT_ROWS)
+assert len(REJECT_ROWS) == 42, len(REJECT_ROWS)
 
 # Only the first error is reported: (case_id, source, position)
 FIRST_ERROR_ROWS = [
