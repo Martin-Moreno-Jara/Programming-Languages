@@ -9,7 +9,7 @@ final_grammar: dict[str, list[list[str]]] = {
     # ------------------------------------------------------------------
     # Program structure
     # ------------------------------------------------------------------
-    # CHUNK must stay first: it is the initial symbol
+    # CHUNK is the initial symbol
     "CHUNK": [["BLOCK"]],
     # The block can have several statements and optionally a return statement
     "BLOCK": [["STATLIST", "RETSTAT"]],
@@ -183,6 +183,16 @@ final_grammar: dict[str, list[list[str]]] = {
         # logical
         ["and"], ["or"],
     ],
+    "ARITH_OP": [["tkn_plus"], ["tkn_minus"], ["tkn_times"], ["tkn_div"], ["tkn_floor_div"],
+            ["tkn_power"], ["tkn_mod"],],
+    "RELATIONAL_OP": [["tkn_less"], ["tkn_leq"], ["tkn_greater"], ["tkn_geq"],
+            ["tkn_equal"], ["tkn_neq"],],
+    "LOGICAL_OP": [["and"], ["or"]],
+    "BITWISE_OP" : [["tkn_bit_and"], ["tkn_bitex_or"], ["tkn_bit_or"],
+            ["tkn_right_shift"], ["tkn_left_shift"],],
+
+    "OTHER_OP": [["tkn_concat"]],
+
     "UNOP": [["tkn_minus"], ["not"], ["tkn_length"]],
     "NAME": [["id"],["print"],["pcall"],["error"],["warn"],["xpcall"]],
 }
