@@ -1,47 +1,14 @@
 from .grammar import Grammar
 
 class ASDR_generator():
-    def __init__(self,grammar:Grammar,hidden_expected:dict=None):
+    def __init__(self,grammar:Grammar):
         self.grammar = grammar
-        # {A: {production index: tokens}}: still parsed, but never named in an error's expected list
-        self.hidden_expected = hidden_expected or {}
         self.lines = ["from exceptions.custom_exceptions import SyntacticalError","from lexer.lexer import Lexer","from .ASDR_base import ASDR_base", "", "class ASDR(ASDR_base):\n"]
         self.eps = "ε"
-
-    def hidden(self, A:str, i:int) -> set:
-        return set(self.hidden_expected.get(A, {}).get(i, set()))
-
-    def compute_visible_first(self) -> dict:
-        """FIRST without ε and without hidden tokens, which stay hidden in every rule that starts with them."""
-        visible = {A: set() for A in self.grammar.get_grammar()}
-        changed = True
-        while changed:
-            changed = False
-            for A, alts in self.grammar.get_grammar().items():
-                for i, alt in enumerate(alts):
-                    new = self.visible_first_of_sequence(alt, visible) - self.hidden(A, i)
-                    if not new <= visible[A]:
-                        visible[A] |= new
-                        changed = True
-        return visible
-
-    def visible_first_of_sequence(self, symbols:list, visible:dict) -> set:
-        result = set()
-        for symbol in symbols:
-            if symbol == self.eps:
-                continue
-            if symbol not in self.grammar.non_terminals_set:
-                result.add(symbol)
-                return result
-            result |= visible[symbol]
-            if self.eps not in self.grammar.first_of_sequence([symbol]):
-                return result
-        return result
 
     def populate_lines(self):
 
         predict = self.grammar.predict
-        visible = self.compute_visible_first()
         grammar_dict = self.grammar.get_grammar()
         for A, alts in grammar_dict.items():
             is_nullable=False
@@ -66,8 +33,8 @@ class ASDR_generator():
 
                 # each if branch representing the alternatives of that non-terminal. 2 levels of identation
                 branch_pred = predict[A][i]
-                # only the tokens that start the alternative, without FOLLOW, the excepted and the hidden ones
-                pending_acc |= (self.visible_first_of_sequence(alt, visible) & branch_pred) - self.hidden(A, i)
+                # only the tokens that start the alternative, without FOLLOW and the excepted ones
+                pending_acc |= (self.grammar.first_of_sequence(alt) - {self.eps}) & branch_pred
                 cond = "if" if i==0 else "elif"
                 self.lines.append(f"\t\t{cond} self.cur_tok.type in {sorted(branch_pred)!r}:")
                 for symbol in alt:

@@ -331,7 +331,7 @@ _Done on 2026-10-25. The generator now reports `self.pending` instead of each ru
   - no `pass` for a lone ε: 9.
 
 ## 13. Hidden expected tokens (spec §3.1)
-_Done on 2026-10-25._
+_Done on 2026-10-25. **Removed on 2026-10-27** with `hidden_expected` itself (no longer used): the generator takes only the grammar, and the 7 tests below were deleted._
 
 - [x] `_generate` and `_run` take an optional `hidden`, passed to `ASDR_generator`.
 - [x] `test_visible_first_without_hidden_is_first`: over `G_ROWS`, `compute_visible_first()` equals FIRST without ε.

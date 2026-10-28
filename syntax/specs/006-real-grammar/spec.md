@@ -172,16 +172,9 @@ g.process_grammar()   # FIRST, FOLLOW, predict, then apply_pred_exceptions()
 prefix expression always continues it as a call and never ends it (Lua's
 greedy rule).
 
-### 4.2 Hidden expected tokens
+### 4.2 Hidden expected tokens (removed)
 
-The grader's expected lists leave out some tokens its parser accepts. Those productions stay in the grammar, and their tokens are hidden from `pending` instead. (`function` is no longer one of them: tests 13, 14 and 15 showed that the reference allows `functiondef` only in an expression list or a field value, so `EXPLIST_ITEM` and `FIELD_VALUE` carry it and it's not part of `EXP`.)
-
-```python
-hidden_expected = {"EXP_NOT_ID": {5: {"tkn_varargs"}}, ...}  # main.py
-ASDR_generator(g, hidden_expected).generate()
-```
-
-`{A: {i: tokens}}` keeps the tokens in the branch test of production `i` of `A`, but never names them in an error. A hidden token also stays hidden in every rule that starts with `A`: the 13/14 error is raised in `parse_EXP`, not `parse_EXP_NOT_ID`. Currently hidden: `...` at the start of an expression (13, 14), string and table call arguments (18), `do` and `(` at the start of a statement (04), and `<` and `*` before the first name of a declaration (23, R1).
+`hidden_expected` kept a production's tokens out of the expected lists while still parsing them. It was removed on 2026-10-27: each hidden token marked a construct the reference grammar rejects, so they were all replaced by grammar changes (README, submission entry 21).
 
 Unit tests for the two new `Grammar` methods (`test_pred_exceptions.py`),
 using the dangling-else grammar of spec 004 E8 with `{"Sp": {1: "e"}}`:
@@ -478,7 +471,7 @@ list.
 | R11 | `if x y = 1 end` | 1:6 | `y` | `"then"` |
 | R12 | `while x y() end` | 1:9 | `y` | `"do"` |
 | R13 | `return 1 x = 2` | 1:10 | `x` | `"final de archivo"`, `";"`, `","` |
-| R14 | `x = = 1` | 1:5 | `=` | the list of platform tests 13 and 14 plus `function` (an expression list starts here, test 15), with `...` hidden (§4.2). R41 (`while function() end do end`) has exactly the 13/14 list; R40 and R42 cover a function followed by an operator and after a comma |
+| R14 | `x = = 1` | 1:5 | `=` | the list of platform tests 13 and 14 plus `function` (an expression list starts here, test 15); `...` is never a value. R41 (`while function() end do end`) has exactly the 13/14 list; R40 and R42 cover a function followed by an operator and after a comma |
 | R15 | `x = ~y` | 1:5 | `~` | `"id"`, `"-"`, `"not"`, `"#"` |
 | R16 | `x = a ~ ~b` | 1:9 | `~` | `"id"`, `"-"` (binary `~` was accepted, the unary one is not) |
 | R17 | `for i = 1 do end` | 1:11 | `do` | `","` |
@@ -563,11 +556,11 @@ shows how it handles them, turn them into cases.
 | K1 | A prefix expression that is not a call, used as a statement: `x`, `t.k`, `(f)`, `f().x` | Syntax error ("syntax error near ...") | The parser only knows the last suffix after it has read the whole prefix expression. Rejecting these needs a check after parsing that the last suffix was a call, not a grammar rule |
 | K2 | A call on the left of `=`: `f() = 1`, `a:m() = 2` | Syntax error | Same reason as K1, but checking that the last suffix was **not** a call |
 | K3 | `a = f↵(g).x = 1` | Read greedily as one statement, `a = f(g).x = 1`, so the second `=` is the error | **Resolved** by the exception of §4.1, and now tested as EA13 and R39 |
-| K4 | An attribute before the first name: `local <const> x`, `global <const> x` | Valid in the 5.5 manual | The doc's R1 list has no `"<"` | **Resolved**: the attribute is parsed, but `<` is hidden before the first name (§4.2) |
+| K4 | An attribute before the first name: `local <const> x`, `global <const> x` | Valid in the 5.5 manual | The doc's R1 list has no `"<"` | **Resolved**: attributes only after a name (the Lua 5.4 form) |
 | K5 | Other built-ins as names: `pairs`, `ipairs`, `tostring`, `tonumber`, `select`, `next`, `load`, `loadfile`, `dofile` | Ordinary names | The lexer gives them their own token types, and the doc lists only the five of §3.1 as identifiers. It is unknown whether the grader accepts `for k, v in pairs(t) do end`. Very common code, so worth asking on Campuswire |
 | K6 | `print` as a token | — | The grader treats `print` as its own token (R1 lists `"print"`), but it is commented out of `keywords_set` (`lexer/lexer.py:81`). As an `id`, R1, R33 and O3 lose `"print"` from the list |
 | K7 | Order of the expected list | — | The doc says "lexicographic" and "separated by a blank space", but its examples are sorted by token-type name and separated by `", "`. The spec follows the examples. `$` sorts as `final de archivo` (**resolved** by platform tests 27 and 30) |
-| K8 | Call suffixes in the R3 list | `p{...}` and `p"s"` are valid calls | The grader's list after `p` (`"=", ":", ",", "[", "(", "."`) has no `"{"` and no `"cadena_de_caracteres"`, although C10, C11 and N2 are valid Lua | **Resolved**: they are parsed, but hidden from the list (§4.2) |
+| K8 | Call suffixes in the R3 list | `p{...}` and `p"s"` are valid calls | The grader's list after `p` (`"=", ":", ",", "[", "(", "."`) has no `"{"` and no `"cadena_de_caracteres"`, although C10, C11 and N2 are valid Lua | **Resolved**: call arguments are only `( … )` |
 | K9 | Position of an EOF error | — | The doc doesn't give an example, so it's unknown whether the grader reports the end of the last line or the next line |
 
 ## 10. Out of scope (behavior not defined)

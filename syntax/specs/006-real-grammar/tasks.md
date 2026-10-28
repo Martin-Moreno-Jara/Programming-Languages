@@ -59,7 +59,7 @@ until it is.
   Import inside the function, so the import cost only applies to tests that
   need it.
 - [x] `lua_pred_exceptions()`: a deep copy of `pred_exceptions` from `main.py`.
-- [x] `lua_hidden_expected()`: a deep copy of `hidden_expected` from `main.py` (2026-10-25). `generate_parser` passes it to `ASDR_generator`.
+- [x] ~~`lua_hidden_expected()`~~: removed on 2026-10-27 with `hidden_expected`.
 - [x] `processed_grammar(with_exceptions=True)`: `Grammar(lua_grammar())`, then
   `set_pred_exceptions(lua_pred_exceptions())` unless `with_exceptions` is
   `False` (P8 needs the raw sets), then `process_grammar()`,

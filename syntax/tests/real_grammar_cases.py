@@ -238,14 +238,14 @@ _R2_LIST = [
     "-", "%", "~=", "+", "^", ">>", "*",
 ]
 # The start of a single expression, as the grader lists it: `function` is only valid in an expression list or a
-# field value, and `...` is parsed but hidden (platform tests 13, 14)
+# field value, and `...` is never a value (platform tests 13, 14)
 _EXP_LIST = [
     "cadena_de_caracteres", "error", "false", "id", "nil", "not", "pcall", "print", "#", "-", "{", "(",
     "true", "valor_numerico", "warn", "xpcall",
 ]
 # The start of an expression list (after `=`, `in`, `return`, `(`): the same plus `function` (platform test 15)
 _EXPLIST_START = _EXP_LIST[:3] + ["function"] + _EXP_LIST[3:]
-# After a statement's name, as the grader lists it: string and table call arguments are parsed but hidden (platform test 18)
+# After a statement's name, as the grader lists it: call arguments are only `( … )` (platform test 18)
 _AFTER_NAME_LIST = ["=", ":", ",", "[", "(", "."]
 # After a condition in parentheses: no call suffixes after `( exp )`, so a C-style `{` fails at once (platform test 24)
 _IF_GROUPING_LIST = [

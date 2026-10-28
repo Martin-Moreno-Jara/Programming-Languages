@@ -49,13 +49,6 @@ def lua_pred_exceptions() -> dict[str, dict[int, str]]:
     return copy.deepcopy(pred_exceptions)
 
 
-def lua_hidden_expected() -> dict[str, dict[int, set[str]]]:
-    """A private copy of hidden_expected from main.py: tokens parsed but never named in an expected list."""
-    from main import hidden_expected
-
-    return copy.deepcopy(hidden_expected)
-
-
 def processed_grammar(with_exceptions: bool = True) -> Grammar:
     """final_grammar processed as main.py does it; with_exceptions=False gives the raw prediction sets."""
     g = Grammar(lua_grammar())
@@ -72,7 +65,7 @@ def generate_parser(folder) -> tuple[Grammar, type] | None:
         return None
     with pytest.MonkeyPatch.context() as mp:
         mp.chdir(folder.parent)
-        ASDR_generator(g, lua_hidden_expected()).generate()
+        ASDR_generator(g).generate()
     spec = importlib.util.spec_from_file_location(PARSER_MODULE, folder / "ASDR.py")
     module = importlib.util.module_from_spec(spec)
     sys.modules[PARSER_MODULE] = module

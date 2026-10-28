@@ -123,16 +123,18 @@ final_grammar: dict[str, list[list[str]]] = {
     # ------------------------------------------------------------------
     # Expressions
     # ------------------------------------------------------------------
-    "EXP": [["NAME", "PREFIXEXP_PRIME", "EXP_PRIME"], ["EXP_NOT_ID"]],
+    "EXP": [["OPERAND","EXP_PRIME"]],
 
-    "EXP_NOT_ID":  [
-    ["nil", "EXP_PRIME"], ["false", "EXP_PRIME"], ["true", "EXP_PRIME"],
-    ["tkn_num", "EXP_PRIME"], ["tkn_str", "EXP_PRIME"],
-    ["TABLECONSTRUCTOR", "EXP_PRIME"],
-    ["UNOP", "EXP"],
-    ["tkn_opening_par", "EXP", "tkn_closing_par", "EXP_PRIME"],
+    "OPERAND_NOT_ID":  [
+    ["nil"], ["false"], ["true"],
+    ["tkn_num"], ["tkn_str"],
+    ["TABLECONSTRUCTOR",],
+    ["UNOP", "OPERAND"],
+    ["tkn_opening_par", "EXP", "tkn_closing_par"],
 ],
-    "EXP_PRIME": [["BINOP", "EXP"], ["ε"]],
+    "EXP_PRIME": [["ARITH_TAIL", "CMP_TAIL", "LOGIC_TAIL"]],
+
+    "OPERAND": [["NAME", "PREFIXEXP_PRIME"], ["OPERAND_NOT_ID"]],
 
     # prefixexp replaces var and function call in the elimination of left recursion
     "PREFIXEXP": [
@@ -151,7 +153,7 @@ final_grammar: dict[str, list[list[str]]] = {
     
     "ARGS": [["tkn_opening_par", "MAYBE_EXPLIST", "tkn_closing_par"]],
 
-    
+
 
     # ------------------------------------------------------------------
     # Tables
@@ -160,7 +162,7 @@ final_grammar: dict[str, list[list[str]]] = {
     "FIELDLIST":[["FIELD","FIELD_TAIL"],["ε"]],
     "FIELD_TAIL": [["FIELDSEP","FIELDLIST"],["ε"]],
     "FIELD": [["tkn_opening_bra","EXP","tkn_closing_bra","tkn_assign", "FIELD_VALUE"],
-              ["NAME", "FIELD_ID"], ["EXP_NOT_ID"],["FUNCTIONDEF"]],
+              ["NAME", "FIELD_ID"], ["OPERAND_NOT_ID", "EXP_PRIME"],["FUNCTIONDEF"]],
     "FIELD_ID": [["tkn_assign", "FIELD_VALUE"],["PREFIXEXP_PRIME", "EXP_PRIME"]],
     "FIELD_VALUE": [["EXP"],["FUNCTIONDEF"]],
     "FIELDSEP":[["tkn_comma"],["tkn_semicolon"]],
@@ -168,30 +170,28 @@ final_grammar: dict[str, list[list[str]]] = {
     # ------------------------------------------------------------------
     # Operators
     # ------------------------------------------------------------------
-    "BINOP": [
-        # arithmetic
-        ["tkn_plus"], ["tkn_minus"], ["tkn_times"], ["tkn_div"], ["tkn_floor_div"],
-        ["tkn_power"], ["tkn_mod"],
-        # bitwise
-        ["tkn_bit_and"], ["tkn_bitex_or"], ["tkn_bit_or"],
-        ["tkn_right_shift"], ["tkn_left_shift"],
-        # concatenation
-        ["tkn_concat"],
-        # relational
-        ["tkn_less"], ["tkn_leq"], ["tkn_greater"], ["tkn_geq"],
-        ["tkn_equal"], ["tkn_neq"],
-        # logical
-        ["and"], ["or"],
-    ],
+
+    "LOGIC_TAIL": [["LOGICAL_OP", "CMP_EXP","LOGIC_TAIL"],["ε"]],
+    "CMP_EXP": [["ARTH_EXP", "CMP_TAIL"]],
+    "CMP_TAIL": [["RELATIONAL_OP", "ARTH_EXP"],["ε"]],
+    "ARTH_EXP": [["OPERAND", "ARITH_TAIL"]],
+    "ARITH_TAIL": [["FLAT_OP", "OPERAND", "ARITH_TAIL"], ["ε"]],
+
+
     "ARITH_OP": [["tkn_plus"], ["tkn_minus"], ["tkn_times"], ["tkn_div"], ["tkn_floor_div"],
             ["tkn_power"], ["tkn_mod"],],
+
     "RELATIONAL_OP": [["tkn_less"], ["tkn_leq"], ["tkn_greater"], ["tkn_geq"],
             ["tkn_equal"], ["tkn_neq"],],
+
     "LOGICAL_OP": [["and"], ["or"]],
+
     "BITWISE_OP" : [["tkn_bit_and"], ["tkn_bitex_or"], ["tkn_bit_or"],
             ["tkn_right_shift"], ["tkn_left_shift"],],
 
     "OTHER_OP": [["tkn_concat"]],
+
+    "FLAT_OP": [["ARITH_OP"],["BITWISE_OP"],["OTHER_OP"]],
 
     "UNOP": [["tkn_minus"], ["not"], ["tkn_length"]],
     "NAME": [["id"],["print"],["pcall"],["error"],["warn"],["xpcall"]],
@@ -200,10 +200,6 @@ final_grammar: dict[str, list[list[str]]] = {
 pred_exceptions={
     "PREFIXEXP_PRIME": {3:"tkn_opening_par"},
     "AFTER_CALL": {3:"tkn_opening_par"}
-}
-
-hidden_expected={
-                 
 }
 
 if __name__ == "__main__":
@@ -223,7 +219,7 @@ if __name__ == "__main__":
                         print(f"\t{p}")
                 else: check_set=check_set|p
         exit()
-    ASDR_generator(myGrammar, hidden_expected).generate()
+    ASDR_generator(myGrammar).generate()
     from syntax.ASDR import ASDR
     data = sys.stdin.read()
     if not data.endswith("\n"):

@@ -10,6 +10,8 @@ venv/bin/python -m pytest syntax/tests -q                    # run all suites
 venv/bin/python -m pytest syntax/tests -q -k platform        # only the grader's own cases
 ```
 
+**Status: 40/40 platform tests pass** (2026-10-27, entry 22).
+
 The full statement is in `docs/Analizador Sintáctico - Lenguaje Lua.docx`. This file collects what the statement doesn't say: what the grader (UNCode) actually does, as learned from submissions, and the decisions made because of it.
 
 ## Output format
@@ -35,22 +37,39 @@ El analisis sintactico ha finalizado exitosamente.
 ## Pipeline
 
 ```
-main.py: final_grammar, pred_exceptions, hidden_expected
+main.py: final_grammar, pred_exceptions
    │
    ├─ grammar.py: Grammar.process_grammar()       FIRST → FOLLOW → predict → apply_pred_exceptions()
    │                 check_LL1_condition()          refuses to continue if any prediction sets overlap
-   ├─ code_generator_script.py: ASDR_generator(g, hidden_expected).generate()
+   ├─ code_generator_script.py: ASDR_generator(g).generate()        
    │                 writes syntax/ASDR.py           one parse_A method per non-terminal
    └─ ASDR(Lexer(stdin)).main()                     ASDR extends ASDR_base (match, error formatting)
 ```
 
 | File | Role |
 |---|---|
-| `../main.py` | The grammar (`final_grammar`), `pred_exceptions`, `hidden_expected`, and the program entry point. It regenerates `ASDR.py` on every run. |
+| `../main.py` | The grammar (`final_grammar`), `pred_exceptions`, and the program entry point. It regenerates `ASDR.py` on every run. |
 | `grammar.py` | FIRST, FOLLOW and prediction sets, the LL(1) check, and prediction exceptions. This is the core of the assignment: AGENTS.md says only the author edits it. |
 | `code_generator_script.py` | Writes `ASDR.py` from the processed grammar. |
 | `ASDR_base.py` | `match`, the `pending` set, error formatting and sorting. |
 | `ASDR.py` | Generated. Never edit it by hand. |
+
+### Expression grammar
+
+Precedence is built into the grammar with three levels, loosest first. Each level parses the tighter level first, then a tail decides whether one of its own operators follows:
+
+```
+EXP        → OPERAND EXP_PRIME
+EXP_PRIME  → ARITH_TAIL CMP_TAIL LOGIC_TAIL          the rest of the chain after the first operand
+LOGIC_TAIL → LOGICAL_OP CMP_EXP LOGIC_TAIL | ε       and, or
+CMP_EXP    → ARTH_EXP CMP_TAIL
+CMP_TAIL   → RELATIONAL_OP ARTH_EXP | ε              no recursion: comparisons are non-associative
+ARTH_EXP   → OPERAND ARITH_TAIL
+ARITH_TAIL → FLAT_OP OPERAND ARITH_TAIL | ε          arithmetic, bitwise and .. in one flat level
+OPERAND    → NAME PREFIXEXP_PRIME | OPERAND_NOT_ID
+```
+
+`OPERAND_NOT_ID` covers literals, table constructors, `( EXP )` (no suffixes after it) and `UNOP OPERAND`. `FIELD` uses `OPERAND_NOT_ID EXP_PRIME` and `NAME FIELD_ID` to tell `{x = 1}` from `{x + 1}`. Only the comparison level matters to the grader: splitting the flat level into Lua's real precedence levels would give the same expected lists.
 
 ### Generated code, and how the expected list is built
 
@@ -61,19 +80,16 @@ For each non-terminal `A`:
   - Any other rule's `else` adds them too and then raises.
   - `match(t)` clears `pending` when it succeeds. When it fails, it adds `t` and raises.
   - `main` adds `$` before its final check.
-- **The tokens added** are the visible FIRST of the production, `∩ predict[A][i]`, minus the hidden tokens. That leaves out FOLLOW tokens, excepted tokens and hidden ones.
+- **The tokens added** are FIRST of the production without ε, `∩ predict[A][i]`. That leaves out FOLLOW tokens and excepted tokens.
 - **Sort key:** keywords as themselves, symbols by their internal `tkn_*` name, except that `tkn_num`, `tkn_str` and `$` sort by their shown names: `valor_numerico`, `cadena_de_caracteres` and `final de archivo` (between `end` and `for`). This gives the grader's order: `"=", ":", ",", "[", "(", "."` is `tkn_assign`, `tkn_colon`, `tkn_comma`, `tkn_opening_bra`, `tkn_opening_par`, `tkn_period`.
 
-### `pred_exceptions` and `hidden_expected`
+### `pred_exceptions`
 
-Both are configured in `main.py`, next to the grammar.
+Configured in `main.py`, next to the grammar. `{A: {i: token}}` removes a token from `predict[A][i]` after the sets are computed, so a real Lua ambiguity resolves the way Lua does. It was used for `(` after a prefix expression (greedy, `a = f↵(g).x`).
 
-| Setting | Shape | Effect | Used for |
-|---|---|---|---|
-| `pred_exceptions` | `{A: {i: token}}` | Removes a token from `predict[A][i]` after the sets are computed, so a real Lua ambiguity resolves the way Lua does. | `(` after a prefix expression always continues it as a call (greedy, `a = f↵(g).x`). |
-| `hidden_expected` | `{A: {i: {tokens}}}` | The production still parses the tokens, but they are never named in an error. A hidden token also stays out of every rule that starts with `A`. | See *Grader findings*. |
+It is keyed by **production index**: reordering or inserting productions in those rules means updating the indexes. `test_platform_output` catches a mismatch.
 
-Both are keyed by **production index**: reordering or inserting productions in those rules means updating the indexes. `test_platform_output` catches a mismatch.
+*`hidden_expected` (tokens parsed but never named in an error) was removed on 2026-10-27: every hidden token turned out to mark a construct the reference grammar rejects, and entry 21 replaced them all with grammar changes. The history below still mentions it.*
 
 ## Grader findings
 
@@ -84,9 +100,10 @@ These were confirmed by submissions. The grader's own parser is the reference, s
 | 1 | The expected list holds the tokens valid **at that exact point**, including the starting tokens of ε-productions just passed (the `pending` design). It is not the global FOLLOW set and not one rule's predict union. | Platform tests 04, 17 |
 | 2 | The sort order is the internal-name order above. It is not the doc's "lexicographic order of the shown strings". The exceptions are numbers, strings and end of input, which sort by their shown names. The separator is `", "`. | Platform tests 13, 14; 27 and 30 for `$` |
 | 3 | EOF is at **(last line + 1, column 1)**. The platform's stdin has no final newline, so `main.py` adds one if missing. | Platform tests 03, 04 (we printed 3:15, the grader wanted 4:1) |
-| 4 | **The grader's lists leave out tokens its parser accepts.** A missing token does not mean the construct is invalid. Never remove a production to match a list: hide its token. Removing `FUNCTIONDEF` broke tests 05 and 22. | 22 accepts anonymous functions, 05 expects `"("` after `function`, yet 13/14 never list `function` |
-| 5 | Hidden tokens now: `...` at the start of an expression (13, 14); string and `{` call arguments after a name (18); `do` and `(` at the start of a statement (04); `<` before the first declared name, and `*` after `global` (23, and the doc's `local 1;`). | — |
-| 5b | **The lists depend on the context.** `function` is not listed in a single expression (a `for` value, an `until` condition), but **is** listed where an expression list starts (after `=` or `in`). `...` is listed in neither. Our grammar has no way to say this yet: see *Why the remaining tests fail*. | 13, 14 vs 15 (entry 13) |
+| 4 | **Each list holds exactly what the reference grammar accepts at that point.** A token missing from a list marks a construct the reference rejects there, so the fix is a grammar change, not hiding the token. *Superseded the earlier reading ("the lists leave out tokens the parser accepts"), which led to `hidden_expected`.* Move productions rather than remove them: removing `FUNCTIONDEF` outright broke 05 and 22. | 15 (entry 14), entry 21 (all hidden tokens removed, no regression) |
+| 5 | Constructs the reference rejects, unlike the 5.5 manual: `...` as a value (13, 14); string and `{` call arguments (18); `do … end` and a statement starting with `(` (04, 16); `<` before the first declared name, and `global *` (23, the doc's `local 1;`); call suffixes after `( exp )` (24, 35). | Entries 18–21 |
+| 5b | **The lists depend on the context.** `function` is not listed in a single expression (a `for` value, an `until` condition), but **is** listed where an expression list starts (after `=` or `in`). `...` is listed in neither. The grammar handles this with `EXPLIST_ITEM` and `FIELD_VALUE` (entry 14). | 13, 14 vs 15 (entry 13) |
+| 5c | **Comparison operators are non-associative.** `a < b < c` is an error, and after `a <= b` the list has every binary operator except the comparisons. `and`/`or`, `,` and brackets allow them again. | 36 (entries 19, 22) |
 | 6 | Only `print`, `pcall`, `xpcall`, `error` and `warn` are names (`NAME`). They are keyword tokens in the lexer. Unary `~` is a syntax error (bitwise operators are binary only). | Doc; R1 list |
 | 7 | Platform test N is the downloaded file `NN.in` (unlike the lexer assignment, which was off by one). There are 40 platform tests (82.5% = 33/40). | Third submission |
 
@@ -229,7 +246,12 @@ Submission history (2026-10-25):
     - **Not fully in the repo yet:** the local `main.py` only has part of these changes (`...` removed, and `global *` removed from `GLOBAL_TAIL` while its hidden entry is still there). It should be brought in line with the submitted grammar before the tests are updated.
     - **What's left:** 36 (relational operators are non-associative), with the comparison-level grammar designed in entry 19.
 
+22. **Submission (2026-10-27): comparison level in the expression grammar. 40/40.** The flat `EXP_PRIME → BINOP EXP` became the three-level chain in *Expression grammar*: `CMP_TAIL` takes at most one relational operator, so after `i <= 10` the list has no comparisons. `EXP_NOT_ID` became `OPERAND_NOT_ID` (operands without the trailing `EXP_PRIME`), unary operators take an `OPERAND`, and `BINOP` was removed. `hidden_expected` was removed from `main.py` and the generator.
+    - **Local suite not yet in line:** 17 tests fail. They are the accept rows for constructs entry 21 removed (S33, S34, E4, C10, C11, C12, C17–C20, C22, C23, N2), R32 and R46, which still expect `(` in their lists, and P8, because `pred_exceptions` still has two entries that resolve no conflict now that no statement starts with `(`.
+
 ## Why the remaining tests fail: grammar or platform?
+
+*Historical (written at 33–39/40). Every point below was resolved by entries 14–22.*
 
 **Short answer: the grammar.** The platform compares our output with the output of its own reference parser, whose grammar differs from the Lua 5.5 manual in a few places. Nothing points to the platform being random or inconsistent.
 - Every result so far has been reproducible.
@@ -266,7 +288,7 @@ The first attempt at a grammar fix removed `FUNCTIONDEF` entirely. That broke 05
 
 ## Proposed grammar redesign
 
-*Analysis only (2026-10-25). Nothing below is applied yet: `final_grammar` and `hidden_expected` are as in commit `57b5c92`.*
+*Historical (2026-10-25). All of it has since been applied (entries 14–21), and item 7 was solved by the comparison level (entry 22). Line numbers refer to commit `57b5c92`.*
 
 **Is `hidden_expected` only hiding grammar mismatches?** Almost certainly. Each list the grader prints is what its reference grammar accepts at that point, and test 15 removed the only case that seemed to contradict this. So every hidden token marks a place where our grammar accepts something the reference doesn't. Hiding fixes the list but not the acceptance. Each entry should become a grammar change, until `hidden_expected` is empty. Whether the generator keeps its (then unused) hidden-token support is the author's call.
 
@@ -344,7 +366,7 @@ Tests use pytest (with pytest-timeout) and live in `tests/`. Each suite has a sp
 |---|---|---|
 | `test_first_set.py`, `test_follow_set.py`, `test_predict_set.py`, `test_ll1_condition.py` | 001–004 | `grammar.py` on small grammars |
 | `test_pred_exceptions.py` | 006 §4.1 | `set_pred_exceptions` / `apply_pred_exceptions` |
-| `test_code_generator.py` | 005 | Generated code structure, `pending`, hidden tokens, `ASDR_base`, small grammars run end to end |
+| `test_code_generator.py` | 005 | Generated code structure, `pending`, `ASDR_base`, small grammars run end to end |
 | `test_real_grammar_properties.py` | 006 | The real grammar is LL(1), reachable and productive; every production is covered by an accept row; every exception is still needed |
 | `test_real_grammar_parse.py` | 006 | Accept and reject rows (`real_grammar_cases.py`), with exact expected lists where the grader's list is known |
 | `test_real_grammar_output.py` | 006 §8 | Runs `main.py` as a subprocess. `test_platform_output` checks every `test_files/*.in` against line 1 of its output file. |

@@ -12,7 +12,7 @@ class ASDR(ASDR_base):
 		self.parse_RETSTAT()
 
 	def parse_STATLIST(self):
-		if self.cur_tok.type in ['break', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'tkn_goto', 'tkn_opening_par', 'tkn_semicolon', 'warn', 'while', 'xpcall']:
+		if self.cur_tok.type in ['break', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'tkn_goto', 'tkn_semicolon', 'warn', 'while', 'xpcall']:
 			self.parse_STAT()
 			self.parse_STATLIST()
 		else:
@@ -23,11 +23,6 @@ class ASDR(ASDR_base):
 			self.match('tkn_semicolon')
 		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
 			self.parse_NAME()
-			self.parse_AFTER_VAR()
-		elif self.cur_tok.type in ['tkn_opening_par']:
-			self.match('tkn_opening_par')
-			self.parse_EXP()
-			self.match('tkn_closing_par')
 			self.parse_AFTER_VAR()
 		elif self.cur_tok.type in ['tkn_goto']:
 			self.parse_LABEL()
@@ -71,7 +66,7 @@ class ASDR(ASDR_base):
 			self.match('tkn_period')
 			self.parse_NAME()
 			self.parse_AFTER_VAR()
-		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str']:
+		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_par']:
 			self.parse_FUNCTIONCALL()
 			self.parse_AFTER_CALL()
 		elif self.cur_tok.type in ['tkn_assign', 'tkn_comma']:
@@ -92,7 +87,7 @@ class ASDR(ASDR_base):
 			self.match('tkn_period')
 			self.parse_NAME()
 			self.parse_AFTER_VAR()
-		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str']:
+		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_par']:
 			self.parse_FUNCTIONCALL()
 			self.parse_AFTER_CALL()
 		else:
@@ -217,14 +212,14 @@ class ASDR(ASDR_base):
 	def parse_LOCAL_OPT(self):
 		if self.cur_tok.type in ['function']:
 			self.parse_FUNC_DEC()
-		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']:
+		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
 			self.parse_ATTNAME_BRANCH()
 		else:
 			self.pending|=set(['error', 'function', 'id', 'pcall', 'print', 'warn', 'xpcall'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_ATTNAME_BRANCH(self):
-		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']:
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
 			self.parse_ATTNAMELIST()
 			self.parse_OPT_EXPLIST()
 		else:
@@ -242,23 +237,11 @@ class ASDR(ASDR_base):
 	def parse_GLOBAL_OPT(self):
 		if self.cur_tok.type in ['function']:
 			self.parse_FUNC_DEC()
-		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_less', 'tkn_times', 'warn', 'xpcall']:
-			self.parse_ATTRIB()
-			self.parse_GLOBAL_TAIL()
-		else:
-			self.pending|=set(['error', 'function', 'id', 'pcall', 'print', 'warn', 'xpcall'])
-			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
-
-	def parse_GLOBAL_TAIL(self):
-		if self.cur_tok.type in ['tkn_times']:
-			self.match('tkn_times')
 		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
-			self.parse_NAME()
-			self.parse_ATTRIB()
-			self.parse_NAME_ATTRIB_LIST()
+			self.parse_ATTNAMELIST()
 			self.parse_OPT_EXPLIST()
 		else:
-			self.pending|=set(['error', 'id', 'pcall', 'print', 'warn', 'xpcall'])
+			self.pending|=set(['error', 'function', 'id', 'pcall', 'print', 'warn', 'xpcall'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_FUNC_DEC(self):
@@ -278,8 +261,7 @@ class ASDR(ASDR_base):
 			self.pending|=set(['tkn_assign'])
 
 	def parse_ATTNAMELIST(self):
-		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'tkn_less', 'warn', 'xpcall']:
-			self.parse_ATTRIB()
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
 			self.parse_NAME()
 			self.parse_ATTRIB()
 			self.parse_NAME_ATTRIB_LIST()
@@ -411,13 +393,13 @@ class ASDR(ASDR_base):
 			self.pending|=set(['tkn_comma'])
 
 	def parse_MAYBE_EXPLIST(self):
-		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall']:
+		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall']:
 			self.parse_EXPLIST()
 		else:
 			self.pending|=set(['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall'])
 
 	def parse_EXPLIST(self):
-		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall']:
+		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall']:
 			self.parse_EXPLIST_ITEM()
 			self.parse_MORE_EXP()
 		else:
@@ -433,7 +415,7 @@ class ASDR(ASDR_base):
 			self.pending|=set(['tkn_comma'])
 
 	def parse_EXPLIST_ITEM(self):
-		if self.cur_tok.type in ['error', 'false', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall']:
+		if self.cur_tok.type in ['error', 'false', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall']:
 			self.parse_EXP()
 		elif self.cur_tok.type in ['function']:
 			self.parse_FUNCTIONDEF()
@@ -442,68 +424,58 @@ class ASDR(ASDR_base):
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_EXP(self):
-		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
-			self.parse_NAME()
-			self.parse_PREFIXEXP_PRIME()
+		if self.cur_tok.type in ['error', 'false', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall']:
+			self.parse_OPERAND()
 			self.parse_EXP_PRIME()
-		elif self.cur_tok.type in ['false', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true']:
-			self.parse_EXP_NOT_ID()
 		else:
 			self.pending|=set(['error', 'false', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
-	def parse_EXP_NOT_ID(self):
+	def parse_OPERAND_NOT_ID(self):
 		if self.cur_tok.type in ['nil']:
 			self.match('nil')
-			self.parse_EXP_PRIME()
 		elif self.cur_tok.type in ['false']:
 			self.match('false')
-			self.parse_EXP_PRIME()
 		elif self.cur_tok.type in ['true']:
 			self.match('true')
-			self.parse_EXP_PRIME()
 		elif self.cur_tok.type in ['tkn_num']:
 			self.match('tkn_num')
-			self.parse_EXP_PRIME()
 		elif self.cur_tok.type in ['tkn_str']:
 			self.match('tkn_str')
-			self.parse_EXP_PRIME()
-		elif self.cur_tok.type in ['tkn_varargs']:
-			self.match('tkn_varargs')
-			self.parse_EXP_PRIME()
 		elif self.cur_tok.type in ['tkn_opening_key']:
 			self.parse_TABLECONSTRUCTOR()
-			self.parse_EXP_PRIME()
 		elif self.cur_tok.type in ['not', 'tkn_length', 'tkn_minus']:
 			self.parse_UNOP()
-			self.parse_EXP()
+			self.parse_OPERAND()
 		elif self.cur_tok.type in ['tkn_opening_par']:
 			self.match('tkn_opening_par')
 			self.parse_EXP()
 			self.match('tkn_closing_par')
-			self.parse_EXP_PRIME()
 		else:
 			self.pending|=set(['false', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_EXP_PRIME(self):
-		if self.cur_tok.type in ['and', 'or', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times']:
-			self.parse_BINOP()
-			self.parse_EXP()
+		self.parse_ARITH_TAIL()
+		self.parse_CMP_TAIL()
+		self.parse_LOGIC_TAIL()
+
+	def parse_OPERAND(self):
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
+			self.parse_NAME()
+			self.parse_PREFIXEXP_PRIME()
+		elif self.cur_tok.type in ['false', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true']:
+			self.parse_OPERAND_NOT_ID()
 		else:
-			self.pending|=set(['and', 'or', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times'])
+			self.pending|=set(['error', 'false', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_PREFIXEXP(self):
-		if self.cur_tok.type in ['tkn_opening_par']:
-			self.match('tkn_opening_par')
-			self.parse_EXP()
-			self.match('tkn_closing_par')
-			self.parse_PREFIXEXP_PRIME()
-		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
+		if self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
 			self.parse_NAME()
 			self.parse_PREFIXEXP_PRIME()
 		else:
-			self.pending|=set(['error', 'id', 'pcall', 'print', 'tkn_opening_par', 'warn', 'xpcall'])
+			self.pending|=set(['error', 'id', 'pcall', 'print', 'warn', 'xpcall'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_PREFIXEXP_PRIME(self):
@@ -516,14 +488,14 @@ class ASDR(ASDR_base):
 			self.match('tkn_period')
 			self.parse_NAME()
 			self.parse_PREFIXEXP_PRIME()
-		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str']:
+		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_par']:
 			self.parse_FUNCTIONCALL()
 			self.parse_PREFIXEXP_PRIME()
 		else:
 			self.pending|=set(['tkn_colon', 'tkn_opening_bra', 'tkn_opening_par', 'tkn_period'])
 
 	def parse_FUNCTIONCALL(self):
-		if self.cur_tok.type in ['tkn_opening_key', 'tkn_opening_par', 'tkn_str']:
+		if self.cur_tok.type in ['tkn_opening_par']:
 			self.parse_ARGS()
 		elif self.cur_tok.type in ['tkn_colon']:
 			self.match('tkn_colon')
@@ -538,10 +510,6 @@ class ASDR(ASDR_base):
 			self.match('tkn_opening_par')
 			self.parse_MAYBE_EXPLIST()
 			self.match('tkn_closing_par')
-		elif self.cur_tok.type in ['tkn_opening_key']:
-			self.parse_TABLECONSTRUCTOR()
-		elif self.cur_tok.type in ['tkn_str']:
-			self.match('tkn_str')
 		else:
 			self.pending|=set(['tkn_opening_par'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
@@ -556,7 +524,7 @@ class ASDR(ASDR_base):
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_FIELDLIST(self):
-		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall']:
+		if self.cur_tok.type in ['error', 'false', 'function', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall']:
 			self.parse_FIELD()
 			self.parse_FIELD_TAIL()
 		else:
@@ -579,8 +547,9 @@ class ASDR(ASDR_base):
 		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
 			self.parse_NAME()
 			self.parse_FIELD_ID()
-		elif self.cur_tok.type in ['false', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true']:
-			self.parse_EXP_NOT_ID()
+		elif self.cur_tok.type in ['false', 'nil', 'not', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true']:
+			self.parse_OPERAND_NOT_ID()
+			self.parse_EXP_PRIME()
 		elif self.cur_tok.type in ['function']:
 			self.parse_FUNCTIONDEF()
 		else:
@@ -591,14 +560,14 @@ class ASDR(ASDR_base):
 		if self.cur_tok.type in ['tkn_assign']:
 			self.match('tkn_assign')
 			self.parse_FIELD_VALUE()
-		elif self.cur_tok.type in ['and', 'or', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_closing_key', 'tkn_colon', 'tkn_comma', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_opening_bra', 'tkn_opening_key', 'tkn_opening_par', 'tkn_period', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_semicolon', 'tkn_str', 'tkn_times']:
+		elif self.cur_tok.type in ['and', 'or', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_closing_key', 'tkn_colon', 'tkn_comma', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_opening_bra', 'tkn_opening_par', 'tkn_period', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_semicolon', 'tkn_times']:
 			self.parse_PREFIXEXP_PRIME()
 			self.parse_EXP_PRIME()
 		else:
 			self.pending|=set(['and', 'or', 'tkn_assign', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_colon', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_opening_bra', 'tkn_opening_par', 'tkn_period', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times'])
 
 	def parse_FIELD_VALUE(self):
-		if self.cur_tok.type in ['error', 'false', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'tkn_varargs', 'true', 'warn', 'xpcall']:
+		if self.cur_tok.type in ['error', 'false', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall']:
 			self.parse_EXP()
 		elif self.cur_tok.type in ['function']:
 			self.parse_FUNCTIONDEF()
@@ -615,7 +584,46 @@ class ASDR(ASDR_base):
 			self.pending|=set(['tkn_comma', 'tkn_semicolon'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
-	def parse_BINOP(self):
+	def parse_LOGIC_TAIL(self):
+		if self.cur_tok.type in ['and', 'or']:
+			self.parse_LOGICAL_OP()
+			self.parse_CMP_EXP()
+			self.parse_LOGIC_TAIL()
+		else:
+			self.pending|=set(['and', 'or'])
+
+	def parse_CMP_EXP(self):
+		if self.cur_tok.type in ['error', 'false', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall']:
+			self.parse_ARTH_EXP()
+			self.parse_CMP_TAIL()
+		else:
+			self.pending|=set(['error', 'false', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
+
+	def parse_CMP_TAIL(self):
+		if self.cur_tok.type in ['tkn_equal', 'tkn_geq', 'tkn_greater', 'tkn_leq', 'tkn_less', 'tkn_neq']:
+			self.parse_RELATIONAL_OP()
+			self.parse_ARTH_EXP()
+		else:
+			self.pending|=set(['tkn_equal', 'tkn_geq', 'tkn_greater', 'tkn_leq', 'tkn_less', 'tkn_neq'])
+
+	def parse_ARTH_EXP(self):
+		if self.cur_tok.type in ['error', 'false', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall']:
+			self.parse_OPERAND()
+			self.parse_ARITH_TAIL()
+		else:
+			self.pending|=set(['error', 'false', 'id', 'nil', 'not', 'pcall', 'print', 'tkn_length', 'tkn_minus', 'tkn_num', 'tkn_opening_key', 'tkn_opening_par', 'tkn_str', 'true', 'warn', 'xpcall'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
+
+	def parse_ARITH_TAIL(self):
+		if self.cur_tok.type in ['tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_concat', 'tkn_div', 'tkn_floor_div', 'tkn_left_shift', 'tkn_minus', 'tkn_mod', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times']:
+			self.parse_FLAT_OP()
+			self.parse_OPERAND()
+			self.parse_ARITH_TAIL()
+		else:
+			self.pending|=set(['tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_concat', 'tkn_div', 'tkn_floor_div', 'tkn_left_shift', 'tkn_minus', 'tkn_mod', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times'])
+
+	def parse_ARITH_OP(self):
 		if self.cur_tok.type in ['tkn_plus']:
 			self.match('tkn_plus')
 		elif self.cur_tok.type in ['tkn_minus']:
@@ -630,19 +638,12 @@ class ASDR(ASDR_base):
 			self.match('tkn_power')
 		elif self.cur_tok.type in ['tkn_mod']:
 			self.match('tkn_mod')
-		elif self.cur_tok.type in ['tkn_bit_and']:
-			self.match('tkn_bit_and')
-		elif self.cur_tok.type in ['tkn_bitex_or']:
-			self.match('tkn_bitex_or')
-		elif self.cur_tok.type in ['tkn_bit_or']:
-			self.match('tkn_bit_or')
-		elif self.cur_tok.type in ['tkn_right_shift']:
-			self.match('tkn_right_shift')
-		elif self.cur_tok.type in ['tkn_left_shift']:
-			self.match('tkn_left_shift')
-		elif self.cur_tok.type in ['tkn_concat']:
-			self.match('tkn_concat')
-		elif self.cur_tok.type in ['tkn_less']:
+		else:
+			self.pending|=set(['tkn_div', 'tkn_floor_div', 'tkn_minus', 'tkn_mod', 'tkn_plus', 'tkn_power', 'tkn_times'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
+
+	def parse_RELATIONAL_OP(self):
+		if self.cur_tok.type in ['tkn_less']:
 			self.match('tkn_less')
 		elif self.cur_tok.type in ['tkn_leq']:
 			self.match('tkn_leq')
@@ -654,12 +655,50 @@ class ASDR(ASDR_base):
 			self.match('tkn_equal')
 		elif self.cur_tok.type in ['tkn_neq']:
 			self.match('tkn_neq')
-		elif self.cur_tok.type in ['and']:
+		else:
+			self.pending|=set(['tkn_equal', 'tkn_geq', 'tkn_greater', 'tkn_leq', 'tkn_less', 'tkn_neq'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
+
+	def parse_LOGICAL_OP(self):
+		if self.cur_tok.type in ['and']:
 			self.match('and')
 		elif self.cur_tok.type in ['or']:
 			self.match('or')
 		else:
-			self.pending|=set(['and', 'or', 'tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_concat', 'tkn_div', 'tkn_equal', 'tkn_floor_div', 'tkn_geq', 'tkn_greater', 'tkn_left_shift', 'tkn_leq', 'tkn_less', 'tkn_minus', 'tkn_mod', 'tkn_neq', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times'])
+			self.pending|=set(['and', 'or'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
+
+	def parse_BITWISE_OP(self):
+		if self.cur_tok.type in ['tkn_bit_and']:
+			self.match('tkn_bit_and')
+		elif self.cur_tok.type in ['tkn_bitex_or']:
+			self.match('tkn_bitex_or')
+		elif self.cur_tok.type in ['tkn_bit_or']:
+			self.match('tkn_bit_or')
+		elif self.cur_tok.type in ['tkn_right_shift']:
+			self.match('tkn_right_shift')
+		elif self.cur_tok.type in ['tkn_left_shift']:
+			self.match('tkn_left_shift')
+		else:
+			self.pending|=set(['tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_left_shift', 'tkn_right_shift'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
+
+	def parse_OTHER_OP(self):
+		if self.cur_tok.type in ['tkn_concat']:
+			self.match('tkn_concat')
+		else:
+			self.pending|=set(['tkn_concat'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
+
+	def parse_FLAT_OP(self):
+		if self.cur_tok.type in ['tkn_div', 'tkn_floor_div', 'tkn_minus', 'tkn_mod', 'tkn_plus', 'tkn_power', 'tkn_times']:
+			self.parse_ARITH_OP()
+		elif self.cur_tok.type in ['tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_left_shift', 'tkn_right_shift']:
+			self.parse_BITWISE_OP()
+		elif self.cur_tok.type in ['tkn_concat']:
+			self.parse_OTHER_OP()
+		else:
+			self.pending|=set(['tkn_bit_and', 'tkn_bit_or', 'tkn_bitex_or', 'tkn_concat', 'tkn_div', 'tkn_floor_div', 'tkn_left_shift', 'tkn_minus', 'tkn_mod', 'tkn_plus', 'tkn_power', 'tkn_right_shift', 'tkn_times'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
 	def parse_UNOP(self):
