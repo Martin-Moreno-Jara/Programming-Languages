@@ -1,6 +1,7 @@
 # Fdb version 4
-["pdflatex"] 1793237138.62274 "grammar.tex" "grammar.pdf" "grammar" 1793237139.1201 0
+["pdflatex"] 1793237321.5683 "/home/martin/Documents/university/PL/Programming-Languages/syntax/grammar_design/grammar.tex" "grammar.pdf" "grammar" 1793237322.05769 0
   "/etc/texmf/web2c/texmf.cnf" 1788922458.67671 475 c0e671620eb5563b2130f56340a5fde8 ""
+  "/home/martin/Documents/university/PL/Programming-Languages/syntax/grammar_design/grammar.tex" 1793237321.34822 10039 4eaa683b80ca5f68bc146f1676e5589c ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecbx1440.tfm" 1136768653 3584 13049b61b922a28b158a38aeff75ee9b ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecrm0600.tfm" 1136768653 3584 291a5713401683441e0a8c8f4417b17b ""
@@ -62,14 +63,15 @@
   "/usr/share/texmf/fonts/enc/dvips/cm-super/cm-super-t1.enc" 1636152094 2971 def0b6c1f0b107b3b936def894055589 ""
   "/usr/share/texmf/fonts/type1/public/cm-super/sfbx1440.pfb" 1788922472.95944 135942 859a90cad7494a1e79c94baf546d7de5 ""
   "/usr/share/texmf/fonts/type1/public/cm-super/sfrm1095.pfb" 1788922473.06925 145929 f25e56369a345c4ff583b067cd87ce8e ""
+  "/usr/share/texmf/fonts/type1/public/cm-super/sfrm1200.pfb" 1788922473.06943 136101 f533469f523533d38317ab5729d00c8a ""
   "/usr/share/texmf/fonts/type1/public/cm-super/sfrm1728.pfb" 1788922473.0715 131438 3aa300b3e40e5c8ba7b4e5c6cebc5dd6 ""
   "/usr/share/texmf/fonts/type1/public/cm-super/sfss1095.pfb" 1788922473.11749 97272 e31c1319e3ff43b442c57e2c8f2acc52 ""
   "/usr/share/texmf/fonts/type1/public/cm-super/sftt1095.pfb" 1788922473.16343 169670 48d12e69c9a3b23c81f6d703ccbd4554 ""
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1788922482.9463 5472669 54eaf61a88b6b7896ebd0dac973cb29c ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1788922591 8214353 94c3f02dae0bce35fd3f3cbc3b94c9d1 ""
-  "grammar.aux" 1793237139.05783 1769 72eb5037bd3fcb83b60a97443e6cac58 "pdflatex"
-  "grammar.tex" 1793237137.31231 10119 08f5a1775e7d3fdbe4f1585cb946fb4e ""
+  "grammar.aux" 1793237321.99221 1769 72eb5037bd3fcb83b60a97443e6cac58 "pdflatex"
+  "grammar.tex" 1793237321.34822 10039 4eaa683b80ca5f68bc146f1676e5589c ""
   (generated)
   "grammar.aux"
   "grammar.log"

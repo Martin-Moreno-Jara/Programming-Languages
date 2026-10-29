@@ -12,14 +12,14 @@
 \newcommand{\eps}{$\varepsilon$}
 
 \title{Gramática del analizador sintáctico de Lua 5.5}
-\author{}
+\author{Martin Moreno Jara}
 \date{}
 
 \begin{document}
 \maketitle
 
 \section*{Notación}
-Los no terminales se escriben $\langle\textsf{ESTE\_FORMATO}\rangle$ y los terminales en \texttt{máquina de escribir}. Los terminales son los tipos de token que produce el analizador léxico (\texttt{tkn\_...}, \texttt{id}) y las palabras reservadas. El símbolo inicial es \nt{CHUNK}. $\varepsilon$ es la cadena vacía, $\to$ introduce una regla y $\mid$ separa sus alternativas. La gramática es LL(1).
+Los no terminales se escriben así: $\langle\textsf{NON\_TERMINAL}\rangle$ y los terminales en minúsculas y sin llaves triangulares. El símbolo inicial de la gramática es es \nt{CHUNK}. $\varepsilon$ es la cadena vacía, $\to$ introduce una regla y $\mid$ separa sus alternativas. La gramática es LL(1).
 
 \section{Estructura del programa}
 Símbolo inicial, bloques y la sentencia \texttt{return}.
