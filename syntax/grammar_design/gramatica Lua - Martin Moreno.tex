@@ -29,8 +29,8 @@ Símbolo inicial, bloques y la sentencia \texttt{return}.
 \nt{CHUNK} & $\to$ & \nt{BLOCK} \\[10pt]
 \nt{BLOCK} & $\to$ & \nt{STATLIST}\ \ \nt{RETSTAT} \\[10pt]
 \nt{STATLIST} & $\to$ & \nt{STAT}\ \ \nt{STATLIST} \ \ $\mid$ \ \ \eps{} \\[10pt]
-\nt{RETSTAT} & $\to$ & \tk{return}\ \ \nt{MAYBE_EXPLIST}\ \ \nt{OPT_SEMILOCON} \ \ $\mid$ \ \ \eps{} \\[10pt]
-\nt{OPT_SEMILOCON} & $\to$ & \tk{\textquotesingle{};\textquotesingle{}} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{RETSTAT} & $\to$ & \tk{return}\ \ \nt{MAYBE_EXPLIST}\ \ \nt{OPT_SEMICOLON} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{OPT_SEMICOLON} & $\to$ & \tk{\textquotesingle{};\textquotesingle{}} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \end{longtable}
 
 \section{Sentencias}
