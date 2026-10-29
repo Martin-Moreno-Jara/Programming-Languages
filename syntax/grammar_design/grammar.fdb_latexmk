@@ -1,7 +1,7 @@
 # Fdb version 4
-["pdflatex"] 1793237321.5683 "/home/martin/Documents/university/PL/Programming-Languages/syntax/grammar_design/grammar.tex" "grammar.pdf" "grammar" 1793237322.05769 0
+["pdflatex"] 1793238510.70031 "/home/martin/Documents/university/PL/Programming-Languages/syntax/grammar_design/grammar.tex" "grammar.pdf" "grammar" 1793238511.18563 0
   "/etc/texmf/web2c/texmf.cnf" 1788922458.67671 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/martin/Documents/university/PL/Programming-Languages/syntax/grammar_design/grammar.tex" 1793237321.34822 10039 4eaa683b80ca5f68bc146f1676e5589c ""
+  "/home/martin/Documents/university/PL/Programming-Languages/syntax/grammar_design/grammar.tex" 1793238510.18288 9757 e2434a8b6c8f206a5d6bea92d988c816 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecbx1440.tfm" 1136768653 3584 13049b61b922a28b158a38aeff75ee9b ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecrm0600.tfm" 1136768653 3584 291a5713401683441e0a8c8f4417b17b ""
@@ -70,8 +70,8 @@
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1788922482.9463 5472669 54eaf61a88b6b7896ebd0dac973cb29c ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1788922591 8214353 94c3f02dae0bce35fd3f3cbc3b94c9d1 ""
-  "grammar.aux" 1793237321.99221 1769 72eb5037bd3fcb83b60a97443e6cac58 "pdflatex"
-  "grammar.tex" 1793237321.34822 10039 4eaa683b80ca5f68bc146f1676e5589c ""
+  "grammar.aux" 1793238511.12106 1767 736e959a1bfb56163e856071ef1e0e2e "pdflatex"
+  "grammar.tex" 1793238510.18288 9757 e2434a8b6c8f206a5d6bea92d988c816 ""
   (generated)
   "grammar.aux"
   "grammar.log"
