@@ -22,7 +22,7 @@ final_grammar: dict[str, list[list[str]]] = {
     "STAT": [
         ["tkn_semicolon"], # empty statement
         # varlist and functionall factor prefixexp
-        ["NAME","AFTER_VAR"],
+        ["NAME","VAR_STAT"],
         #["tkn_opening_par","EXP", "tkn_closing_par","AFTER_VAR"],
         ["LABEL"],
         ["break"],
@@ -36,21 +36,22 @@ final_grammar: dict[str, list[list[str]]] = {
         ["GLOBAL_DEC"],
     ],
 
-    "AFTER_VAR": [
-            ["tkn_opening_bra", "EXP", "tkn_closing_bra", "AFTER_VAR"],
-            ["tkn_period", "NAME", "AFTER_VAR"],
-            ["FUNCTIONCALL","AFTER_CALL"],
+    "LABEL": [["tkn_goto", "NAME", "tkn_goto"]],
+    "DO_BLOCK_END": [["do", "BLOCK", "end"]],
+
+    "VAR_STAT": [
+            ["tkn_opening_bra", "EXP", "tkn_closing_bra", "VAR_STAT"],
+            ["tkn_period", "NAME", "VAR_STAT"],
+            ["FUNCTIONCALL","FUNCALL_STAT"],
             ["MORE_VAR","tkn_assign","EXPLIST"]
             ],
 
-    "AFTER_CALL" : [
-                    ["tkn_opening_bra", "EXP", "tkn_closing_bra", "AFTER_VAR"],
-                    ["tkn_period", "NAME", "AFTER_VAR"],
-                    ["FUNCTIONCALL","AFTER_CALL"],
+    "FUNCALL_STAT" : [
+                    ["tkn_opening_bra", "EXP", "tkn_closing_bra", "VAR_STAT"],
+                    ["tkn_period", "NAME", "VAR_STAT"],
+                    ["FUNCTIONCALL","FUNCALL_STAT"],
                     ["ε"]
     ],
-    "LABEL": [["tkn_goto", "NAME", "tkn_goto"]],
-    "DO_BLOCK_END": [["do", "BLOCK", "end"]],
 
     # if statements
     "IFSTAT": [["if", "EXP", "then", "BLOCK", "ELSEIFSTAT", "ELSESTAT", "end"]],
@@ -71,14 +72,14 @@ final_grammar: dict[str, list[list[str]]] = {
     # ------------------------------------------------------------------
     # Declarations (local / global)
     # ------------------------------------------------------------------
-    "LOCAL_DEC": [["local", "LOCAL_OPT"]],
-    "LOCAL_OPT": [["FUNC_DEC"], ["ATTNAME_BRANCH"]],
+    "LOCAL_DEC": [["local", "LOCAL_OPTS"]],
+    "LOCAL_OPTS": [["FUNC_DEC"], ["ATTNAME_BRANCH"]],
     "ATTNAME_BRANCH": [["ATTNAMELIST", "OPT_EXPLIST"]],
 
     # the optional ATTRIB is factored out so "global <attrib> *" and
     # "global <attrib> name ..." don't share a prediction
-    "GLOBAL_DEC": [["global", "GLOBAL_OPT"]],
-    "GLOBAL_OPT": [["FUNC_DEC"], ["ATTNAMELIST", "OPT_EXPLIST"]],
+    "GLOBAL_DEC": [["global", "GLOBAL_OPTS"]],
+    "GLOBAL_OPTS": [["FUNC_DEC"], ["ATTNAMELIST", "OPT_EXPLIST"]],
 
     "FUNC_DEC": [["function", "NAME", "FUNCBODY"]],
     "OPT_EXPLIST": [["tkn_assign", "EXPLIST"], ["ε"]],
@@ -198,8 +199,7 @@ final_grammar: dict[str, list[list[str]]] = {
 }
 
 pred_exceptions={
-    "PREFIXEXP_PRIME": {3:"tkn_opening_par"},
-    "AFTER_CALL": {3:"tkn_opening_par"}
+  
 }
 
 if __name__ == "__main__":
@@ -209,15 +209,6 @@ if __name__ == "__main__":
 
     if not myGrammar.check_LL1_condition():
         print("Cannot procede. Grammar is not LL1")
-        pred_set = myGrammar.get_predict_set()
-        for NT,pred in pred_set.items():
-            check_set = set()
-            for p in pred:
-                if not check_set.isdisjoint(p):
-                    print(f"{NT}:")
-                    for p in pred:
-                        print(f"\t{p}")
-                else: check_set=check_set|p
         exit()
     ASDR_generator(myGrammar).generate()
     from syntax.ASDR import ASDR

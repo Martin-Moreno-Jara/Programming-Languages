@@ -45,8 +45,6 @@ STATEMENT_ROWS = [
     ("S30", "global x"),
     ("S31", "global x, y = 1, 2"),
     ("S32", "global function g() end"),
-    ("S33", "global *"),
-    ("S34", "global <const> *"),
 ]
 
 ATTRIB_ROWS = [
@@ -113,7 +111,6 @@ EXPRESSION_ROWS = [
     ("E2-hex", "x = 0xFF"),
     ("E3-double", 'x = "s"'),
     ("E3-single", "x = 'c'"),
-    ("E4", "function f(...) x = ... end"),
     ("E5", "x = y"),
     ("E6", "x = (1)"),
     ("E7", "x = f(1)"),
@@ -152,26 +149,16 @@ CALL_ROWS = [
     ("C7", "a, b.c, d[1] = 1, 2, 3"),
     ("C8", "f()"),
     ("C9", "f(1, 2)"),
-    ("C10", 'f"str"'),
-    ("C11", "f{1, 2}"),
-    ("C12-string", 'o:m"s"'),
-    ("C12-table", "o:m{}"),
     ("C13", "f()()"),
     ("C14", "f().x = 1"),
     ("C15", "f()[1] = 2"),
     ("C16", "a.b:c(1):d(2)"),
-    ("C17", "(f)()"),
-    ("C18", '("s"):upper()'),
-    ("C19", "(a).b = 1"),
-    ("C20", 'a.b.c:d "x" {1} (2)'),
+    ("C20", "a.b.c:d(1)(2)(3)"),
     ("C21", "x = f(g(h(1)))"),
-    ("C22", "function f(...) g(...) end"),
-    ("C23", "a, (b).c = 1, 2"),
 ]
 
 NAME_ROWS = [
     ("N1", 'print("hola")'),
-    ("N2", 'print "hola"'),
     ("N3", "print = 1"),
     ("N4", "local warn = 2"),
     ("N5", "function error() end"),
@@ -225,14 +212,16 @@ PRODUCTION_ROWS = (
     + EXPRESSION_ROWS + BINOP_ROWS + CALL_ROWS + NAME_ROWS + LAYOUT_ROWS
 )
 ACCEPT_ROWS = PRODUCTION_ROWS + EDGE_ROWS
-assert len(PRODUCTION_ROWS) == 175, len(PRODUCTION_ROWS)
-assert len(ACCEPT_ROWS) == 188, len(ACCEPT_ROWS)
+assert len(PRODUCTION_ROWS) == 162, len(PRODUCTION_ROWS)
+assert len(ACCEPT_ROWS) == 175, len(ACCEPT_ROWS)
 
 # ---------------------------------------------------------------------------
 # Reject rows (spec §7): (case_id, source, position, lexeme, contains, exact)
 # ---------------------------------------------------------------------------
 EOF = "final de archivo"
 _LOCAL_LIST = ["error", "function", "id", "pcall", "print", "warn", "xpcall"]
+# After `,` in a variable list: only a name, since `(` can't start a prefix expression (platform test 04)
+_NAME_LIST = ["error", "id", "pcall", "print", "warn", "xpcall"]
 _R2_LIST = [
     "and", "or", "&", "|", "~", ")", ",", "..", "/", "==", "//", ">=", ">", "<<", "<=", "<",
     "-", "%", "~=", "+", "^", ">>", "*",
@@ -265,6 +254,12 @@ _STATEMENT_START = [
 ]
 _TOP_STATEMENT_LIST = _STATEMENT_START[:2] + [EOF] + _STATEMENT_START[2:]
 _BLOCK_STATEMENT_LIST = _STATEMENT_START[:1] + ["end"] + _STATEMENT_START[1:]
+# After `x = a < b`: every binary operator except the comparisons, which are non-associative (platform test 36)
+_AFTER_COMPARISON_LIST = [
+    "and", "break", "error", EOF, "for", "function", "global", "goto", "id", "if", "local", "or", "pcall", "print",
+    "repeat", "return", "&", "|", "~", ":", ",", "..", "/", "//", "::", "<<", "-", "%", "[", "(", ".", "+", "^", ">>",
+    ";", "*", "warn", "while", "xpcall",
+]
 R3_SOURCE = "local i = 0;\n\nwhile (i < 5) do\n    p == [i];3\n    i = i + 1;\nend"
 R36_SOURCE = "local a = 1\nlocal b = 2\nlocal c = = 3"
 
@@ -300,7 +295,7 @@ REJECT_ROWS = [
     ("R29", "x. = 2", (1, 4), "=", {"id"}, None),
     ("R30", "t = {[1] 2}", (1, 10), "2", {"="}, None),
     ("R31", "function f() return 1 end end", (1, 27), "end", {EOF}, None),
-    ("R32", "x, = 1", (1, 4), "=", {"id", "("}, None),
+    ("R32", "x, = 1", (1, 4), "=", set(), _NAME_LIST),
     ("R33", "local = 1", (1, 7), "=", set(), _LOCAL_LIST),
     ("R34", "x = ()", (1, 6), ")", {"id", "valor_numerico"}, None),
     ("R35", "a.b:c = 1", (1, 7), "=", {"("}, None),
@@ -314,12 +309,33 @@ REJECT_ROWS = [
     ("R43", "if (x > 5) { print(x) }", (1, 12), "{", set(), _IF_GROUPING_LIST),
     ("R44", "x = (a) )", (1, 9), ")", set(), _AFTER_GROUPING_LIST),
     ("R45", "x = (t).k", (1, 8), ".", set(), _AFTER_GROUPING_LIST),
-    ("R46", "x = (f)(1)", None, EOF, {"="}, None),
+    ("R46", "x = (f)(1)", (1, 8), "(", set(), _AFTER_GROUPING_LIST),
     ("R47", "do end", (1, 1), "do", set(), _TOP_STATEMENT_LIST),
     ("R48", "do = 5", (1, 1), "do", set(), _TOP_STATEMENT_LIST),
     ("R49", "while x do do end end", (1, 12), "do", set(), _BLOCK_STATEMENT_LIST),
+    # Constructs the reference grammar rejects, unlike the 5.5 manual (README, Grader findings 5 and 5c)
+    ("R50", "global *", (1, 8), "*", set(), _LOCAL_LIST),
+    ("R51", "global <const> *", (1, 8), "<", set(), _LOCAL_LIST),
+    ("R52", "local <const> x", (1, 7), "<", set(), _LOCAL_LIST),
+    ("R53", "global <const> x", (1, 8), "<", set(), _LOCAL_LIST),
+    ("R54", "function f(...) x = ... end", (1, 21), "...", set(), _EXPLIST_START),
+    ("R55", "x = f(...)", (1, 7), "...", {"id", "function", ")"}, None),
+    ("R56", "t = {...}", (1, 6), "...", {"id", "function", "}", "["}, None),
+    ("R57", 'f"str"', (1, 2), "str", set(), _AFTER_NAME_LIST),
+    ("R58", "f{1, 2}", (1, 2), "{", set(), _AFTER_NAME_LIST),
+    ("R59", 'print "hola"', (1, 7), "hola", set(), _AFTER_NAME_LIST),
+    ("R60", 'o:m"s"', (1, 4), "s", set(), ["("]),
+    ("R61", "o:m{}", (1, 4), "{", set(), ["("]),
+    ("R62", 'x = f"s"', (1, 6), "s", {"(", "["}, None),
+    ("R63", "x = f{}", (1, 6), "{", {"(", "["}, None),
+    ("R64", "(f)()", (1, 1), "(", set(), _TOP_STATEMENT_LIST),
+    ("R65", '("s"):upper()', (1, 1), "(", set(), _TOP_STATEMENT_LIST),
+    ("R66", "(a).b = 1", (1, 1), "(", set(), _TOP_STATEMENT_LIST),
+    ("R67", "a, (b).c = 1, 2", (1, 4), "(", set(), _NAME_LIST),
+    ("R68", "x = a < b < c", (1, 11), "<", set(), _AFTER_COMPARISON_LIST),
+    ("R69", "x = a == b == c", (1, 12), "==", set(), _AFTER_COMPARISON_LIST),
 ]
-assert len(REJECT_ROWS) == 49, len(REJECT_ROWS)
+assert len(REJECT_ROWS) == 69, len(REJECT_ROWS)
 
 # Only the first error is reported: (case_id, source, position)
 FIRST_ERROR_ROWS = [

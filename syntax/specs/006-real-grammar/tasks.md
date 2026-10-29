@@ -135,16 +135,16 @@ Each table is a list of `(case_id, source)`. Copy the programs from the spec
 verbatim. The total is collected at the end in `ACCEPT_ROWS`.
 
 - [x] `STRUCTURE_ROWS`: `B1` to `B7`. `B1` is `""`. 7 rows.
-- [x] `STATEMENT_ROWS`: `S1` to `S34`. 34 rows.
+- [x] `STATEMENT_ROWS`: `S1` to `S32` without `S10` and `S11` (the `do … end` statement). 30 rows.
 - [x] `ATTRIB_ROWS`: `AT1` to `AT5`. 5 rows.
 - [x] `RETURN_ROWS`: `RT1` to `RT10`. 10 rows.
 - [x] `FUNCTION_ROWS`: `F1` to `F11`. 11 rows.
 - [x] `TABLE_ROWS`: `T1` to `T13`. 13 rows.
-- [x] `EXPRESSION_ROWS`: 28 rows.
+- [x] `EXPRESSION_ROWS`: 26 rows.
   - `E1-nil`, `E1-false`, `E1-true`;
   - `E2-int` (`x = 42`), `E2-float` (`x = 3.14`), `E2-hex` (`x = 0xFF`);
   - `E3-double` (`x = "s"`), `E3-single` (`x = 'c'`);
-  - `E4` to `E8`;
+  - `E5` to `E8` (`E4`, `...` as a value, is a reject since 2026-10-27);
   - `E9-minus`, `E9-not`, `E9-length`;
   - `E10-minus`, `E10-not`;
   - `E11` to `E20`.
@@ -153,9 +153,8 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
   `BO-floor-div`, `BO-power`, `BO-mod`, `BO-bit-and`, `BO-bit-xor`,
   `BO-bit-or`, `BO-right-shift`, `BO-left-shift`, `BO-concat`, `BO-less`,
   `BO-leq`, `BO-greater`, `BO-geq`, `BO-equal`, `BO-neq`, `BO-and`, `BO-or`.
-- [x] `CALL_ROWS`: `C1` to `C23`, with `C12-string` (`o:m"s"`) and
-  `C12-table` (`o:m{}`). 24 rows.
-- [x] `NAME_ROWS`: `N1` to `N15`. 15 rows.
+- [x] `CALL_ROWS`: `C1` to `C9`, `C13` to `C16`, `C20` (`a.b.c:d(1)(2)(3)`) and `C21`. 15 rows. The rows with string or table arguments, a parenthesised prefix expression or `...` as an argument are rejects now (`R57`–`R67`).
+- [x] `NAME_ROWS`: `N1` and `N3` to `N15`. 14 rows.
 - [x] `LAYOUT_ROWS`: `L1` to `L6`. 6 rows.
 - [x] `EDGE_ROWS`: `EA1` to `EA13`. 13 rows. Generated programs are built with
   string operations, never typed out:
@@ -172,9 +171,9 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
     function returns the next one; a bare `function()` is not a statement).
   - `EA10` to `EA12`: as in the spec. `EA11` is `"-- a\n\n-- b\n"`.
   - `EA13`: `"f()\n(g)()"` (the greedy `(` of spec §4.1).
-- [x] `ACCEPT_ROWS`: all the tables above concatenated, **188 rows**. Assert
+- [x] `ACCEPT_ROWS`: all the tables above concatenated, **175 rows**. Assert
   the count at import time, so a lost table is noticed at once.
-- [x] `PRODUCTION_ROWS`: `ACCEPT_ROWS` without `EDGE_ROWS` (175 rows). Only
+- [x] `PRODUCTION_ROWS`: `ACCEPT_ROWS` without `EDGE_ROWS` (162 rows). Only
   this list is used for coverage in P7, because the spec ties coverage to
   §5.
 
@@ -199,7 +198,7 @@ verbatim. The total is collected at the end in `ACCEPT_ROWS`.
     `(4, 7)`, `"=="`, `["=", ":", ",", "[", "(", "."]`.
   - `R33`: `"local = 1"`, `(1, 7)`, `"="`, the same list as `R1`.
 - [x] The EOF rows are `R4` to `R10` and `R37`, with `position = None`.
-- [x] Assert 49 rows at import time.
+- [x] Assert 69 rows at import time (`R50`–`R69` added 2026-10-28 for the constructs of README entries 21–22).
 - [x] All positions in spec §7 were checked against the real lexer on
   2026-10-25. Keep `test_reject_positions_match_lexer` (section 6) so they stay
   right if the lexer changes.
@@ -280,10 +279,10 @@ LL(1). Each one builds its own `processed_grammar()`.
 
 All tests use `lua_parser` and take `ASDR` from it.
 
-- [x] `test_accepts`: parametrized over `ACCEPT_ROWS` (188 rows). `parse`
+- [x] `test_accepts`: parametrized over `ACCEPT_ROWS` (175 rows). `parse`
   returns without raising. On `SyntacticalError`, fail with the source and the
   message, so the report shows where it was rejected.
-- [x] `test_rejects`: parametrized over `REJECT_ROWS` (39 rows).
+- [x] `test_rejects`: parametrized over `REJECT_ROWS` (69 rows).
   - `pytest.raises(SyntacticalError)` around `parse`.
   - `error_parts(err.value.message)` gives `(line, col, lexeme, shown)`.
   - Assert the lexeme, the position (when it is not `None`) and `contains <=

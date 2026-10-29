@@ -247,7 +247,8 @@ Submission history (2026-10-25):
     - **What's left:** 36 (relational operators are non-associative), with the comparison-level grammar designed in entry 19.
 
 22. **Submission (2026-10-27): comparison level in the expression grammar. 40/40.** The flat `EXP_PRIME → BINOP EXP` became the three-level chain in *Expression grammar*: `CMP_TAIL` takes at most one relational operator, so after `i <= 10` the list has no comparisons. `EXP_NOT_ID` became `OPERAND_NOT_ID` (operands without the trailing `EXP_PRIME`), unary operators take an `OPERAND`, and `BINOP` was removed. `hidden_expected` was removed from `main.py` and the generator.
-    - **Local suite not yet in line:** 17 tests fail. They are the accept rows for constructs entry 21 removed (S33, S34, E4, C10, C11, C12, C17–C20, C22, C23, N2), R32 and R46, which still expect `(` in their lists, and P8, because `pred_exceptions` still has two entries that resolve no conflict now that no statement starts with `(`.
+    - **Local suite brought in line (2026-10-28).** The accept rows for constructs entry 21 removed (S33, S34, E4, C10–C12, C17–C19, C22, C23, N2) became reject rows R50–R67, with the lists the grammar now prints; C20 was rewritten with parenthesised arguments. R32 and R46 got their new lists, and R68–R69 cover non-associative comparisons (`a < b < c`, `a == b == c`). 1784 tests pass.
+    - **Still failing: P8.** `pred_exceptions` in `main.py` still has `PREFIXEXP_PRIME[3]` and `AFTER_CALL[3]` (`(`). They resolve no conflict now that no statement starts with `(`. Running every case with `pred_exceptions = {}` gives the same results and the grammar stays LL(1), so the entries can be deleted (the author's call: `main.py` is core code).
 
 ## Why the remaining tests fail: grammar or platform?
 

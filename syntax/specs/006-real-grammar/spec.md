@@ -249,8 +249,6 @@ refactored. Line breaks inside a program are written as `↵`.
 | S30 | `global x` | `global attnamelist` |
 | S31 | `global x, y = 1, 2` | `global` with values (the doc uses `global b = 5`) |
 | S32 | `global function g() end` | `global function Name funcbody` |
-| S33 | `global *` | `global '*'` |
-| S34 | `global <const> *` | `global attrib '*'` |
 
 ### 5.3 Attributes (AT)
 
@@ -334,7 +332,6 @@ prefixexp | tableconstructor | exp binop exp | unop exp`
 | E1 | `x = nil`, `x = false`, `x = true` | Each constant (three programs) |
 | E2 | `x = 42`, `x = 3.14`, `x = 0xFF` | Numbers |
 | E3 | `x = "s"`, `x = 'c'` | Strings with both quote kinds |
-| E4 | `function f(...) x = ... end` | `'...'` as an expression |
 | E5 | `x = y` | A name as an expression |
 | E6 | `x = (1)` | Parentheses |
 | E7 | `x = f(1)` | A call as an expression |
@@ -372,20 +369,12 @@ prefixexp | tableconstructor | exp binop exp | unop exp`
 | C7 | `a, b.c, d[1] = 1, 2, 3` | Mixed targets in one assignment |
 | C8 | `f()` | Call with no arguments |
 | C9 | `f(1, 2)` | Call with several arguments |
-| C10 | `f"str"` | String argument without parentheses |
-| C11 | `f{1, 2}` | Table argument without parentheses |
-| C12 | `o:m"s"`, `o:m{}` | Method call with string and table arguments |
 | C13 | `f()()` | Calling the result of a call |
 | C14 | `f().x = 1` | Field of a call result as a target |
 | C15 | `f()[1] = 2` | Index of a call result as a target |
 | C16 | `a.b:c(1):d(2)` | Chain of method calls |
-| C17 | `(f)()` | Parenthesised expression called |
-| C18 | `("s"):upper()` | Method call on a parenthesised string |
-| C19 | `(a).b = 1` | Field of a parenthesised expression as a target |
-| C20 | `a.b.c:d "x" {1} (2)` | Long chain with all three argument kinds |
+| C20 | `a.b.c:d(1)(2)(3)` | Long chain of method and plain calls |
 | C21 | `x = f(g(h(1)))` | Nested calls |
-| C22 | `function f(...) g(...) end` | Varargs as an argument |
-| C23 | `a, (b).c = 1, 2` | A parenthesised prefix expression as a later assignment target |
 
 ### 5.9 Built-in names (N)
 
@@ -394,7 +383,6 @@ prefixexp | tableconstructor | exp binop exp | unop exp`
 | ID | Program | What it checks |
 |----|---------|----------------|
 | N1 | `print("hola")` | Call |
-| N2 | `print "hola"` | Call with a string argument |
 | N3 | `print = 1` | Assignment target |
 | N4 | `local warn = 2` | Local name |
 | N5 | `function error() end` | Function name |
@@ -489,7 +477,7 @@ list.
 | R29 | `x. = 2` | 1:4 | `=` | `"id"` |
 | R30 | `t = {[1] 2}` | 1:10 | `2` | `"="` |
 | R31 | `function f() return 1 end end` | 1:27 | `end` | `"final de archivo"` |
-| R32 | `x, = 1` | 1:4 | `=` | `"id"`, `"("` |
+| R32 | `x, = 1` | 1:4 | `=` | exactly the names: `"error"`, `"id"`, `"pcall"`, `"print"`, `"warn"`, `"xpcall"` (no `(`: a prefix expression can't start with it) |
 | R33 | `local = 1` | 1:7 | `=` | exactly the R1 list |
 | R34 | `x = ()` | 1:6 | `)` | `"id"`, `"valor_numerico"` |
 | R35 | `a.b:c = 1` | 1:7 | `=` | `"("` |
@@ -503,10 +491,30 @@ list.
 | R43 | `if (x > 5) { print(x) }` | 1:12 | `{` | exactly the operators + `then`: no call suffixes after `( exp )`, so the C-style `{` fails at once (platform test 24) |
 | R44 | `x = (a) )` | 1:9 | `)` | exactly the operators, `,`, the statement starts and `"final de archivo"`, with no `":"`, `"["`, `"("`, `"."` (platform test 35) |
 | R45 | `x = (t).k` | 1:8 | `.` | exactly R44's list |
-| R46 | `x = (f)(1)` | EOF | `final de archivo` | `"="`: `(1)` is read as a new statement |
+| R46 | `x = (f)(1)` | 1:8 | `(` | exactly R44's list: no call suffix after `( exp )` |
 | R47 | `do end` | 1:1 | `do` | exactly the statement starts + `"final de archivo"`: there is no `do … end` statement (platform test 16) |
 | R48 | `do = 5` | 1:1 | `do` | exactly R47's list |
 | R49 | `while x do do end end` | 1:12 | `do` | exactly the statement starts + `"end"` |
+| R50 | `global *` | 1:8 | `*` | exactly R1's list (names and `function`) |
+| R51 | `global <const> *` | 1:8 | `<` | exactly R1's list |
+| R52 | `local <const> x` | 1:7 | `<` | exactly R1's list: attributes only follow a name |
+| R53 | `global <const> x` | 1:8 | `<` | exactly R1's list |
+| R54 | `function f(...) x = ... end` | 1:21 | `...` | exactly the start of an expression list (R14's list): `...` is never a value |
+| R55 | `x = f(...)` | 1:7 | `...` | contains `"id"`, `"function"`, `")"` |
+| R56 | `t = {...}` | 1:6 | `...` | contains `"id"`, `"function"`, `"}"`, `"["` |
+| R57 | `f"str"` | 1:2 | `str` | exactly R3's list: call arguments are only `( … )` |
+| R58 | `f{1, 2}` | 1:2 | `{` | exactly R3's list |
+| R59 | `print "hola"` | 1:7 | `hola` | exactly R3's list |
+| R60 | `o:m"s"` | 1:4 | `s` | exactly `"("` |
+| R61 | `o:m{}` | 1:4 | `{` | exactly `"("` |
+| R62 | `x = f"s"` | 1:6 | `s` | contains `"("`, `"["` |
+| R63 | `x = f{}` | 1:6 | `{` | contains `"("`, `"["` |
+| R64 | `(f)()` | 1:1 | `(` | exactly R47's list: a statement can't start with `(` |
+| R65 | `("s"):upper()` | 1:1 | `(` | exactly R47's list |
+| R66 | `(a).b = 1` | 1:1 | `(` | exactly R47's list |
+| R67 | `a, (b).c = 1, 2` | 1:4 | `(` | exactly R32's list |
+| R68 | `x = a < b < c` | 1:11 | `<` | the operators except the comparisons, `:`, `[`, `(`, `.`, `,` and the statement starts (comparisons are non-associative, platform test 36) |
+| R69 | `x = a == b == c` | 1:12 | `==` | exactly R68's list |
 
 **Only the first error.** R3 has a second error on the same line (`3` after
 `;`). R36 can be extended with another error on line 4. In both, only the

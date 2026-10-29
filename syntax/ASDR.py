@@ -23,7 +23,7 @@ class ASDR(ASDR_base):
 			self.match('tkn_semicolon')
 		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
 			self.parse_NAME()
-			self.parse_AFTER_VAR()
+			self.parse_VAR_STAT()
 		elif self.cur_tok.type in ['tkn_goto']:
 			self.parse_LABEL()
 		elif self.cur_tok.type in ['break']:
@@ -56,43 +56,6 @@ class ASDR(ASDR_base):
 			self.pending|=set(['break', 'error', 'for', 'function', 'global', 'goto', 'id', 'if', 'local', 'pcall', 'print', 'repeat', 'tkn_goto', 'tkn_semicolon', 'warn', 'while', 'xpcall'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
-	def parse_AFTER_VAR(self):
-		if self.cur_tok.type in ['tkn_opening_bra']:
-			self.match('tkn_opening_bra')
-			self.parse_EXP()
-			self.match('tkn_closing_bra')
-			self.parse_AFTER_VAR()
-		elif self.cur_tok.type in ['tkn_period']:
-			self.match('tkn_period')
-			self.parse_NAME()
-			self.parse_AFTER_VAR()
-		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_par']:
-			self.parse_FUNCTIONCALL()
-			self.parse_AFTER_CALL()
-		elif self.cur_tok.type in ['tkn_assign', 'tkn_comma']:
-			self.parse_MORE_VAR()
-			self.match('tkn_assign')
-			self.parse_EXPLIST()
-		else:
-			self.pending|=set(['tkn_assign', 'tkn_colon', 'tkn_comma', 'tkn_opening_bra', 'tkn_opening_par', 'tkn_period'])
-			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
-
-	def parse_AFTER_CALL(self):
-		if self.cur_tok.type in ['tkn_opening_bra']:
-			self.match('tkn_opening_bra')
-			self.parse_EXP()
-			self.match('tkn_closing_bra')
-			self.parse_AFTER_VAR()
-		elif self.cur_tok.type in ['tkn_period']:
-			self.match('tkn_period')
-			self.parse_NAME()
-			self.parse_AFTER_VAR()
-		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_par']:
-			self.parse_FUNCTIONCALL()
-			self.parse_AFTER_CALL()
-		else:
-			self.pending|=set(['tkn_colon', 'tkn_opening_bra', 'tkn_opening_par', 'tkn_period'])
-
 	def parse_LABEL(self):
 		if self.cur_tok.type in ['tkn_goto']:
 			self.match('tkn_goto')
@@ -110,6 +73,43 @@ class ASDR(ASDR_base):
 		else:
 			self.pending|=set(['do'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
+
+	def parse_VAR_STAT(self):
+		if self.cur_tok.type in ['tkn_opening_bra']:
+			self.match('tkn_opening_bra')
+			self.parse_EXP()
+			self.match('tkn_closing_bra')
+			self.parse_VAR_STAT()
+		elif self.cur_tok.type in ['tkn_period']:
+			self.match('tkn_period')
+			self.parse_NAME()
+			self.parse_VAR_STAT()
+		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_par']:
+			self.parse_FUNCTIONCALL()
+			self.parse_FUNCALL_STAT()
+		elif self.cur_tok.type in ['tkn_assign', 'tkn_comma']:
+			self.parse_MORE_VAR()
+			self.match('tkn_assign')
+			self.parse_EXPLIST()
+		else:
+			self.pending|=set(['tkn_assign', 'tkn_colon', 'tkn_comma', 'tkn_opening_bra', 'tkn_opening_par', 'tkn_period'])
+			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
+
+	def parse_FUNCALL_STAT(self):
+		if self.cur_tok.type in ['tkn_opening_bra']:
+			self.match('tkn_opening_bra')
+			self.parse_EXP()
+			self.match('tkn_closing_bra')
+			self.parse_VAR_STAT()
+		elif self.cur_tok.type in ['tkn_period']:
+			self.match('tkn_period')
+			self.parse_NAME()
+			self.parse_VAR_STAT()
+		elif self.cur_tok.type in ['tkn_colon', 'tkn_opening_par']:
+			self.parse_FUNCTIONCALL()
+			self.parse_FUNCALL_STAT()
+		else:
+			self.pending|=set(['tkn_colon', 'tkn_opening_bra', 'tkn_opening_par', 'tkn_period'])
 
 	def parse_IFSTAT(self):
 		if self.cur_tok.type in ['if']:
@@ -204,12 +204,12 @@ class ASDR(ASDR_base):
 	def parse_LOCAL_DEC(self):
 		if self.cur_tok.type in ['local']:
 			self.match('local')
-			self.parse_LOCAL_OPT()
+			self.parse_LOCAL_OPTS()
 		else:
 			self.pending|=set(['local'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
-	def parse_LOCAL_OPT(self):
+	def parse_LOCAL_OPTS(self):
 		if self.cur_tok.type in ['function']:
 			self.parse_FUNC_DEC()
 		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
@@ -229,12 +229,12 @@ class ASDR(ASDR_base):
 	def parse_GLOBAL_DEC(self):
 		if self.cur_tok.type in ['global']:
 			self.match('global')
-			self.parse_GLOBAL_OPT()
+			self.parse_GLOBAL_OPTS()
 		else:
 			self.pending|=set(['global'])
 			raise SyntacticalError(self.format_error_message(self.report_expected_symbols()))
 
-	def parse_GLOBAL_OPT(self):
+	def parse_GLOBAL_OPTS(self):
 		if self.cur_tok.type in ['function']:
 			self.parse_FUNC_DEC()
 		elif self.cur_tok.type in ['error', 'id', 'pcall', 'print', 'warn', 'xpcall']:
