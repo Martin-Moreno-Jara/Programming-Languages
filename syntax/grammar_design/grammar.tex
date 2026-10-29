@@ -1,13 +1,14 @@
 \documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage{lmodern}
 \usepackage[spanish,es-noshorthands]{babel}
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{longtable}
 \usepackage{amsmath,amssymb}
 
 % Los terminales se escriben exactamente como en el diccionario de la gramática de main.py
-\newcommand{\tk}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\tk}[1]{\textbf{\texttt{#1}}}
 \newcommand{\nt}[1]{$\langle$\textsf{\detokenize{#1}}$\rangle$}
 \newcommand{\eps}{$\varepsilon$}
 
@@ -19,7 +20,7 @@
 \maketitle
 
 \section*{Notación}
-Los no terminales se escriben así: $\langle\textsf{NON\_TERMINAL}\rangle$ y los terminales en minúsculas y sin llaves triangulares. El símbolo inicial de la gramática es es \nt{CHUNK}. $\varepsilon$ es la cadena vacía, $\to$ introduce una regla y $\mid$ separa sus alternativas. La gramática es LL(1).
+Los no terminales se escriben así: $\langle\textsf{NON\_TERMINAL}\rangle$ y los terminales en minúsculas y negrilla. El símbolo inicial de la gramática es es \nt{CHUNK}. $\varepsilon$ es la cadena vacía, $\to$ introduce una regla y $\mid$ separa sus alternativas. La gramática es LL(1).
 
 \section{Estructura del programa}
 Símbolo inicial, bloques y la sentencia \texttt{return}.
@@ -29,14 +30,14 @@ Símbolo inicial, bloques y la sentencia \texttt{return}.
 \nt{BLOCK} & $\to$ & \nt{STATLIST}\ \ \nt{RETSTAT} \\[10pt]
 \nt{STATLIST} & $\to$ & \nt{STAT}\ \ \nt{STATLIST} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{RETSTAT} & $\to$ & \tk{return}\ \ \nt{MAYBE_EXPLIST}\ \ \nt{OPT_SEMILOCON} \ \ $\mid$ \ \ \eps{} \\[10pt]
-\nt{OPT_SEMILOCON} & $\to$ & \tk{tkn_semicolon} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{OPT_SEMILOCON} & $\to$ & \tk{\textquotesingle{};\textquotesingle{}} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \end{longtable}
 
 \section{Sentencias}
 Las asignaciones y las llamadas se factorizan después del primer nombre.
 
 \begin{longtable}{@{}r@{\ }c@{\ }l@{}}
-\nt{STAT} & $\to$ & \tk{tkn_semicolon} \\
+\nt{STAT} & $\to$ & \tk{\textquotesingle{};\textquotesingle{}} \\
  & & $\mid$ \nt{NAME}\ \ \nt{VAR_STAT} \\
  & & $\mid$ \nt{LABEL} \\
  & & $\mid$ \tk{break} \\
@@ -48,22 +49,22 @@ Las asignaciones y las llamadas se factorizan después del primer nombre.
  & & $\mid$ \tk{function}\ \ \nt{FUNCNAME}\ \ \nt{FUNCBODY} \\
  & & $\mid$ \nt{LOCAL_DEC} \\
  & & $\mid$ \nt{GLOBAL_DEC} \\[10pt]
-\nt{VAR_STAT} & $\to$ & \tk{tkn_opening_bra}\ \ \nt{EXP}\ \ \tk{tkn_closing_bra}\ \ \nt{VAR_STAT} \\
- & & $\mid$ \tk{tkn_period}\ \ \nt{NAME}\ \ \nt{VAR_STAT} \\
+\nt{VAR_STAT} & $\to$ & \tk{\textquotesingle{}[\textquotesingle{}}\ \ \nt{EXP}\ \ \tk{\textquotesingle{}]\textquotesingle{}}\ \ \nt{VAR_STAT} \\
+ & & $\mid$ \tk{\textquotesingle{}.\textquotesingle{}}\ \ \nt{NAME}\ \ \nt{VAR_STAT} \\
  & & $\mid$ \nt{FUNCTIONCALL}\ \ \nt{FUNCALL_STAT} \\
- & & $\mid$ \nt{MORE_VAR}\ \ \tk{tkn_assign}\ \ \nt{EXPLIST} \\[10pt]
-\nt{FUNCALL_STAT} & $\to$ & \tk{tkn_opening_bra}\ \ \nt{EXP}\ \ \tk{tkn_closing_bra}\ \ \nt{VAR_STAT} \\
- & & $\mid$ \tk{tkn_period}\ \ \nt{NAME}\ \ \nt{VAR_STAT} \\
+ & & $\mid$ \nt{MORE_VAR}\ \ \tk{\textquotesingle{}=\textquotesingle{}}\ \ \nt{EXPLIST} \\[10pt]
+\nt{FUNCALL_STAT} & $\to$ & \tk{\textquotesingle{}[\textquotesingle{}}\ \ \nt{EXP}\ \ \tk{\textquotesingle{}]\textquotesingle{}}\ \ \nt{VAR_STAT} \\
+ & & $\mid$ \tk{\textquotesingle{}.\textquotesingle{}}\ \ \nt{NAME}\ \ \nt{VAR_STAT} \\
  & & $\mid$ \nt{FUNCTIONCALL}\ \ \nt{FUNCALL_STAT} \ \ $\mid$ \ \ \eps{} \\[10pt]
-\nt{LABEL} & $\to$ & \tk{tkn_goto}\ \ \nt{NAME}\ \ \tk{tkn_goto} \\[10pt]
+\nt{LABEL} & $\to$ & \tk{\textquotesingle{}::\textquotesingle{}}\ \ \nt{NAME}\ \ \tk{\textquotesingle{}::\textquotesingle{}} \\[10pt]
 \nt{DO_BLOCK_END} & $\to$ & \tk{do}\ \ \nt{BLOCK}\ \ \tk{end} \\[10pt]
 \nt{IFSTAT} & $\to$ & \tk{if}\ \ \nt{EXP}\ \ \tk{then}\ \ \nt{BLOCK}\ \ \nt{ELSEIFSTAT}\ \ \nt{ELSESTAT}\ \ \tk{end} \\[10pt]
 \nt{ELSEIFSTAT} & $\to$ & \tk{elseif}\ \ \nt{EXP}\ \ \tk{then}\ \ \nt{BLOCK}\ \ \nt{ELSEIFSTAT} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{ELSESTAT} & $\to$ & \tk{else}\ \ \nt{BLOCK} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{FORSTAT} & $\to$ & \tk{for}\ \ \nt{NAME}\ \ \nt{FORTYPE}\ \ \nt{DO_BLOCK_END} \\[10pt]
 \nt{FORTYPE} & $\to$ & \nt{NUMERICAL_FOR} $\mid$ \nt{GENERIC_FOR} \\[10pt]
-\nt{NUMERICAL_FOR} & $\to$ & \tk{tkn_assign}\ \ \nt{EXP}\ \ \tk{tkn_comma}\ \ \nt{EXP}\ \ \nt{OPT_EXP} \\[10pt]
-\nt{OPT_EXP} & $\to$ & \tk{tkn_comma}\ \ \nt{EXP} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{NUMERICAL_FOR} & $\to$ & \tk{\textquotesingle{}=\textquotesingle{}}\ \ \nt{EXP}\ \ \tk{\textquotesingle{},\textquotesingle{}}\ \ \nt{EXP}\ \ \nt{OPT_EXP} \\[10pt]
+\nt{OPT_EXP} & $\to$ & \tk{\textquotesingle{},\textquotesingle{}}\ \ \nt{EXP} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{GENERIC_FOR} & $\to$ & \nt{MORE_NAMES}\ \ \tk{in}\ \ \nt{EXPLIST} \\[10pt]
 \end{longtable}
 
@@ -77,10 +78,10 @@ Las asignaciones y las llamadas se factorizan después del primer nombre.
 \nt{GLOBAL_DEC} & $\to$ & \tk{global}\ \ \nt{GLOBAL_OPTS} \\[10pt]
 \nt{GLOBAL_OPTS} & $\to$ & \nt{FUNC_DEC} $\mid$ \nt{ATTNAMELIST}\ \ \nt{OPT_EXPLIST} \\[10pt]
 \nt{FUNC_DEC} & $\to$ & \tk{function}\ \ \nt{NAME}\ \ \nt{FUNCBODY} \\[10pt]
-\nt{OPT_EXPLIST} & $\to$ & \tk{tkn_assign}\ \ \nt{EXPLIST} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{OPT_EXPLIST} & $\to$ & \tk{\textquotesingle{}=\textquotesingle{}}\ \ \nt{EXPLIST} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{ATTNAMELIST} & $\to$ & \nt{NAME}\ \ \nt{ATTRIB}\ \ \nt{NAME_ATTRIB_LIST} \\[10pt]
-\nt{NAME_ATTRIB_LIST} & $\to$ & \tk{tkn_comma}\ \ \nt{NAME}\ \ \nt{ATTRIB}\ \ \nt{NAME_ATTRIB_LIST} \ \ $\mid$ \ \ \eps{} \\[10pt]
-\nt{ATTRIB} & $\to$ & \tk{tkn_less}\ \ \nt{NAME}\ \ \tk{tkn_greater} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{NAME_ATTRIB_LIST} & $\to$ & \tk{\textquotesingle{},\textquotesingle{}}\ \ \nt{NAME}\ \ \nt{ATTRIB}\ \ \nt{NAME_ATTRIB_LIST} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{ATTRIB} & $\to$ & \tk{\textquotesingle{}<\textquotesingle{}}\ \ \nt{NAME}\ \ \tk{\textquotesingle{}>\textquotesingle{}} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \end{longtable}
 
 \section{Funciones}
@@ -88,15 +89,15 @@ Nombres de función, cuerpos y listas de parámetros.
 
 \begin{longtable}{@{}r@{\ }c@{\ }l@{}}
 \nt{FUNCNAME} & $\to$ & \nt{NAME}\ \ \nt{DOTTED_FUNCNAME}\ \ \nt{COLON_FUNCNAME} \\[10pt]
-\nt{DOTTED_FUNCNAME} & $\to$ & \tk{tkn_period}\ \ \nt{NAME}\ \ \nt{DOTTED_FUNCNAME} \ \ $\mid$ \ \ \eps{} \\[10pt]
-\nt{COLON_FUNCNAME} & $\to$ & \tk{tkn_colon}\ \ \nt{NAME} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{DOTTED_FUNCNAME} & $\to$ & \tk{\textquotesingle{}.\textquotesingle{}}\ \ \nt{NAME}\ \ \nt{DOTTED_FUNCNAME} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{COLON_FUNCNAME} & $\to$ & \tk{\textquotesingle{}:\textquotesingle{}}\ \ \nt{NAME} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{FUNCTIONDEF} & $\to$ & \tk{function}\ \ \nt{FUNCBODY} \\[10pt]
-\nt{FUNCBODY} & $\to$ & \tk{tkn_opening_par}\ \ \nt{OPT_PARLIST}\ \ \tk{tkn_closing_par}\ \ \nt{BLOCK}\ \ \tk{end} \\[10pt]
+\nt{FUNCBODY} & $\to$ & \tk{\textquotesingle{}(\textquotesingle{}}\ \ \nt{OPT_PARLIST}\ \ \tk{\textquotesingle{})\textquotesingle{}}\ \ \nt{BLOCK}\ \ \tk{end} \\[10pt]
 \nt{OPT_PARLIST} & $\to$ & \nt{PARLIST} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{PARLIST} & $\to$ & \nt{NAME}\ \ \nt{PARLIST_TAIL} $\mid$ \nt{VARPARAGRAM} \\[10pt]
-\nt{PARLIST_TAIL} & $\to$ & \tk{tkn_comma}\ \ \nt{PARLIST_AFTER_COMMA} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{PARLIST_TAIL} & $\to$ & \tk{\textquotesingle{},\textquotesingle{}}\ \ \nt{PARLIST_AFTER_COMMA} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{PARLIST_AFTER_COMMA} & $\to$ & \nt{NAME}\ \ \nt{PARLIST_TAIL} $\mid$ \nt{VARPARAGRAM} \\[10pt]
-\nt{VARPARAGRAM} & $\to$ & \tk{tkn_varargs}\ \ \nt{OPT_NAME} \\[10pt]
+\nt{VARPARAGRAM} & $\to$ & \tk{\textquotesingle{}...\textquotesingle{}}\ \ \nt{OPT_NAME} \\[10pt]
 \nt{OPT_NAME} & $\to$ & \nt{NAME} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \end{longtable}
 
@@ -104,11 +105,11 @@ Nombres de función, cuerpos y listas de parámetros.
 Listas de variables, de nombres y de expresiones.
 
 \begin{longtable}{@{}r@{\ }c@{\ }l@{}}
-\nt{MORE_NAMES} & $\to$ & \tk{tkn_comma}\ \ \nt{NAME}\ \ \nt{MORE_NAMES} \ \ $\mid$ \ \ \eps{} \\[10pt]
-\nt{MORE_VAR} & $\to$ & \tk{tkn_comma}\ \ \nt{PREFIXEXP}\ \ \nt{MORE_VAR} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{MORE_NAMES} & $\to$ & \tk{\textquotesingle{},\textquotesingle{}}\ \ \nt{NAME}\ \ \nt{MORE_NAMES} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{MORE_VAR} & $\to$ & \tk{\textquotesingle{},\textquotesingle{}}\ \ \nt{PREFIXEXP}\ \ \nt{MORE_VAR} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{MAYBE_EXPLIST} & $\to$ & \nt{EXPLIST} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{EXPLIST} & $\to$ & \nt{EXPLIST_ITEM}\ \ \nt{MORE_EXP} \\[10pt]
-\nt{MORE_EXP} & $\to$ & \tk{tkn_comma}\ \ \nt{EXPLIST_ITEM}\ \ \nt{MORE_EXP} \ \ $\mid$ \ \ \eps{} \\[10pt]
+\nt{MORE_EXP} & $\to$ & \tk{\textquotesingle{},\textquotesingle{}}\ \ \nt{EXPLIST_ITEM}\ \ \nt{MORE_EXP} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{EXPLIST_ITEM} & $\to$ & \nt{EXP} $\mid$  \nt{FUNCTIONDEF} \\[10pt]
 \end{longtable}
 
@@ -120,31 +121,31 @@ Operandos, expresiones prefijo y llamadas.
 \nt{EXP_PRIME} & $\to$ & \nt{ARITH_TAIL}\ \ \nt{CMP_TAIL}\ \ \nt{LOGIC_TAIL} \\[10pt]
 \nt{OPERAND} & $\to$ & \nt{NAME}\ \ \nt{PREFIXEXP_PRIME} $\mid$ \nt{OPERAND_NOT_ID} \\[10pt]
 \nt{OPERAND_NOT_ID} & $\to$ & \tk{nil} $\mid$ \tk{false} $\mid$ \tk{true} \\
- & & $\mid$ \tk{tkn_num} $\mid$ \tk{tkn_str} $\mid$ \nt{TABLECONSTRUCTOR} \\
- & & $\mid$ \nt{UNOP}\ \ \nt{OPERAND} $\mid$ \tk{tkn_opening_par}\ \ \nt{EXP}\ \ \tk{tkn_closing_par} \\[10pt]
+ & & $\mid$ \tk{valor\_numerico} $\mid$ \tk{cadena\_de\_caracteres} $\mid$ \nt{TABLECONSTRUCTOR} \\
+ & & $\mid$ \nt{UNOP}\ \ \nt{OPERAND} $\mid$ \tk{\textquotesingle{}(\textquotesingle{}}\ \ \nt{EXP}\ \ \tk{\textquotesingle{})\textquotesingle{}} \\[10pt]
 \nt{PREFIXEXP} & $\to$ & \nt{NAME}\ \ \nt{PREFIXEXP_PRIME} \\[10pt]
-\nt{PREFIXEXP_PRIME} & $\to$ & \tk{tkn_opening_bra}\ \ \nt{EXP}\ \ \tk{tkn_closing_bra}\ \ \nt{PREFIXEXP_PRIME} \\
- & & $\mid$ \tk{tkn_period}\ \ \nt{NAME}\ \ \nt{PREFIXEXP_PRIME} \\
+\nt{PREFIXEXP_PRIME} & $\to$ & \tk{\textquotesingle{}[\textquotesingle{}}\ \ \nt{EXP}\ \ \tk{\textquotesingle{}]\textquotesingle{}}\ \ \nt{PREFIXEXP_PRIME} \\
+ & & $\mid$ \tk{\textquotesingle{}.\textquotesingle{}}\ \ \nt{NAME}\ \ \nt{PREFIXEXP_PRIME} \\
  & & $\mid$ \nt{FUNCTIONCALL}\ \ \nt{PREFIXEXP_PRIME} \ \ $\mid$ \ \ \eps{} \\[10pt]
-\nt{FUNCTIONCALL} & $\to$ & \nt{ARGS} $\mid$ \tk{tkn_colon}\ \ \nt{NAME}\ \ \nt{ARGS} \\[10pt]
-\nt{ARGS} & $\to$ & \tk{tkn_opening_par}\ \ \nt{MAYBE_EXPLIST}\ \ \tk{tkn_closing_par} \\[10pt]
+\nt{FUNCTIONCALL} & $\to$ & \nt{ARGS} $\mid$ \tk{\textquotesingle{}:\textquotesingle{}}\ \ \nt{NAME}\ \ \nt{ARGS} \\[10pt]
+\nt{ARGS} & $\to$ & \tk{\textquotesingle{}(\textquotesingle{}}\ \ \nt{MAYBE_EXPLIST}\ \ \tk{\textquotesingle{})\textquotesingle{}} \\[10pt]
 \end{longtable}
 
 \section{Tablas}
 Constructores de tablas.
 
 \begin{longtable}{@{}r@{\ }c@{\ }l@{}}
-\nt{TABLECONSTRUCTOR} & $\to$ & \tk{tkn_opening_key}\ \ \nt{FIELDLIST}\ \ \tk{tkn_closing_key} \\[10pt]
+\nt{TABLECONSTRUCTOR} & $\to$ & \tk{\textquotesingle{}\{\textquotesingle{}}\ \ \nt{FIELDLIST}\ \ \tk{\textquotesingle{}\}\textquotesingle{}} \\[10pt]
 \nt{FIELDLIST} & $\to$ & \nt{FIELD}\ \ \nt{FIELD_TAIL} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{FIELD_TAIL} & $\to$ & \nt{FIELDSEP}\ \ \nt{FIELDLIST} \ \ $\mid$ \ \ \eps{} \\[10pt]
-\nt{FIELD} & $\to$ & \tk{tkn_opening_bra}\ \ \nt{EXP}\ \ \tk{tkn_closing_bra}\ \ \tk{tkn_assign}\ \ \nt{FIELD_VALUE} \\
+\nt{FIELD} & $\to$ & \tk{\textquotesingle{}[\textquotesingle{}}\ \ \nt{EXP}\ \ \tk{\textquotesingle{}]\textquotesingle{}}\ \ \tk{\textquotesingle{}=\textquotesingle{}}\ \ \nt{FIELD_VALUE} \\
  & & $\mid$ \nt{NAME}\ \ \nt{FIELD_ID} \\
  & & $\mid$ \nt{OPERAND_NOT_ID}\ \ \nt{EXP_PRIME} \\
  & & $\mid$ \nt{FUNCTIONDEF} \\[10pt]
-\nt{FIELD_ID} & $\to$ & \tk{tkn_assign}\ \ \nt{FIELD_VALUE} \\
+\nt{FIELD_ID} & $\to$ & \tk{\textquotesingle{}=\textquotesingle{}}\ \ \nt{FIELD_VALUE} \\
  & & $\mid$ \nt{PREFIXEXP_PRIME}\ \ \nt{EXP_PRIME} \\[10pt]
 \nt{FIELD_VALUE} & $\to$ & \nt{EXP} $\mid$ \nt{FUNCTIONDEF} \\[10pt]
-\nt{FIELDSEP} & $\to$ & \tk{tkn_comma} $\mid$ \tk{tkn_semicolon} \\[10pt]
+\nt{FIELDSEP} & $\to$ & \tk{\textquotesingle{},\textquotesingle{}} $\mid$ \tk{\textquotesingle{};\textquotesingle{}} \\[10pt]
 \end{longtable}
 
 \section{Operadores}
@@ -157,17 +158,41 @@ Operadores binarios por nivel, operadores unarios y nombres.
 \nt{ARTH_EXP} & $\to$ & \nt{OPERAND}\ \ \nt{ARITH_TAIL} \\[10pt]
 \nt{ARITH_TAIL} & $\to$ & \nt{FLAT_OP}\ \ \nt{OPERAND}\ \ \nt{ARITH_TAIL} \ \ $\mid$ \ \ \eps{} \\[10pt]
 \nt{FLAT_OP} & $\to$ & \nt{ARITH_OP} $\mid$ \nt{BITWISE_OP} $\mid$ \nt{OTHER_OP} \\[10pt]
-\nt{ARITH_OP} & $\to$ & \tk{tkn_plus} $\mid$ \tk{tkn_minus} $\mid$ \tk{tkn_times} $\mid$ \tk{tkn_div} \\
- & & $\mid$ \tk{tkn_floor_div} $\mid$ \tk{tkn_power} $\mid$ \tk{tkn_mod} \\[10pt]
-\nt{RELATIONAL_OP} & $\to$ & \tk{tkn_less} $\mid$ \tk{tkn_leq} $\mid$ \tk{tkn_greater} \\
- & & $\mid$ \tk{tkn_geq} $\mid$ \tk{tkn_equal} $\mid$ \tk{tkn_neq} \\[10pt]
+\nt{ARITH_OP} & $\to$ & \tk{\textquotesingle{}+\textquotesingle{}} $\mid$ \tk{\textquotesingle{}-\textquotesingle{}} $\mid$ \tk{\textquotesingle{}*\textquotesingle{}} $\mid$ \tk{\textquotesingle{}/\textquotesingle{}} \\
+ & & $\mid$ \tk{\textquotesingle{}//\textquotesingle{}} $\mid$ \tk{\textquotesingle{}\textasciicircum{}\textquotesingle{}} $\mid$ \tk{\textquotesingle{}\%\textquotesingle{}} \\[10pt]
+\nt{RELATIONAL_OP} & $\to$ & \tk{\textquotesingle{}<\textquotesingle{}} $\mid$ \tk{\textquotesingle{}<=\textquotesingle{}} $\mid$ \tk{\textquotesingle{}>\textquotesingle{}} \\
+ & & $\mid$ \tk{\textquotesingle{}>=\textquotesingle{}} $\mid$ \tk{\textquotesingle{}==\textquotesingle{}} $\mid$ \tk{\textquotesingle{}\textasciitilde{}=\textquotesingle{}} \\[10pt]
 \nt{LOGICAL_OP} & $\to$ & \tk{and}  $\mid$ \tk{or} \\[10pt]
-\nt{BITWISE_OP} & $\to$ & \tk{tkn_bit_and} $\mid$  \tk{tkn_bitex_or} $\mid$ \tk{tkn_bit_or} \\
- & & $\mid$ \tk{tkn_right_shift} $\mid$  \tk{tkn_left_shift} \\[10pt]
-\nt{OTHER_OP} & $\to$ & \tk{tkn_concat} \\[10pt]
-\nt{UNOP} & $\to$ & \tk{tkn_minus} $\mid$  \tk{not} $\mid$ \tk{tkn_length} \\[10pt]
+\nt{BITWISE_OP} & $\to$ & \tk{\textquotesingle{}\&\textquotesingle{}} $\mid$  \tk{\textquotesingle{}\textasciitilde{}\textquotesingle{}} $\mid$ \tk{\textquotesingle{}\textbar{}\textquotesingle{}} \\
+ & & $\mid$ \tk{\textquotesingle{}>{}>\textquotesingle{}} $\mid$  \tk{\textquotesingle{}<{}<\textquotesingle{}} \\[10pt]
+\nt{OTHER_OP} & $\to$ & \tk{\textquotesingle{}..\textquotesingle{}} \\[10pt]
+\nt{UNOP} & $\to$ & \tk{\textquotesingle{}-\textquotesingle{}} $\mid$  \tk{not} $\mid$ \tk{\textquotesingle{}\#\textquotesingle{}} \\[10pt]
 \nt{NAME} & $\to$ & \tk{id} $\mid$ \tk{print} $\mid$ \tk{pcall} \\
  & & $\mid$ \tk{error} $\mid$ \tk{warn}  $\mid$ \tk{xpcall} \\[10pt]
+\end{longtable}
+
+\section{Correspondencia entre símbolos y tokens}
+Símbolo que se escribe en la gramática y el tipo de token \texttt{tkn\_...} que le corresponde tanto en el analizador léxico como en el sintáctico.
+
+\begin{longtable}{@{}l@{\quad}l@{\qquad}l@{\quad}l@{}}
+\tk{\textquotesingle{}\&\textquotesingle{}} & \texttt{tkn\_bit\_and} & \tk{\textquotesingle{}\textbar{}\textquotesingle{}} & \texttt{tkn\_bit\_or} \\
+\tk{\textquotesingle{}\textasciitilde{}\textquotesingle{}} & \texttt{tkn\_bitex\_or} & \tk{\textquotesingle{}>{}>\textquotesingle{}} & \texttt{tkn\_right\_shift} \\
+\tk{\textquotesingle{}<{}<\textquotesingle{}} & \texttt{tkn\_left\_shift} & \tk{\textquotesingle{};\textquotesingle{}} & \texttt{tkn\_semicolon} \\
+\tk{\textquotesingle{}:\textquotesingle{}} & \texttt{tkn\_colon} & \tk{\textquotesingle{},\textquotesingle{}} & \texttt{tkn\_comma} \\
+\tk{\textquotesingle{}.\textquotesingle{}} & \texttt{tkn\_period} & \tk{\textquotesingle{}::\textquotesingle{}} & \texttt{tkn\_goto} \\
+\tk{\textquotesingle{}..\textquotesingle{}} & \texttt{tkn\_concat} & \tk{\textquotesingle{}...\textquotesingle{}} & \texttt{tkn\_varargs} \\
+\tk{\textquotesingle{}\{\textquotesingle{}} & \texttt{tkn\_opening\_key} & \tk{\textquotesingle{}\}\textquotesingle{}} & \texttt{tkn\_closing\_key} \\
+\tk{\textquotesingle{}[\textquotesingle{}} & \texttt{tkn\_opening\_bra} & \tk{\textquotesingle{}]\textquotesingle{}} & \texttt{tkn\_closing\_bra} \\
+\tk{\textquotesingle{}(\textquotesingle{}} & \texttt{tkn\_opening\_par} & \tk{\textquotesingle{})\textquotesingle{}} & \texttt{tkn\_closing\_par} \\
+\tk{\textquotesingle{}\#\textquotesingle{}} & \texttt{tkn\_length} & \tk{\textquotesingle{}+\textquotesingle{}} & \texttt{tkn\_plus} \\
+\tk{\textquotesingle{}-\textquotesingle{}} & \texttt{tkn\_minus} & \tk{\textquotesingle{}*\textquotesingle{}} & \texttt{tkn\_times} \\
+\tk{\textquotesingle{}/\textquotesingle{}} & \texttt{tkn\_div} & \tk{\textquotesingle{}//\textquotesingle{}} & \texttt{tkn\_floor\_div} \\
+\tk{\textquotesingle{}\textasciicircum{}\textquotesingle{}} & \texttt{tkn\_power} & \tk{\textquotesingle{}\%\textquotesingle{}} & \texttt{tkn\_mod} \\
+\tk{\textquotesingle{}==\textquotesingle{}} & \texttt{tkn\_equal} & \tk{\textquotesingle{}\textasciitilde{}=\textquotesingle{}} & \texttt{tkn\_neq} \\
+\tk{\textquotesingle{}<=\textquotesingle{}} & \texttt{tkn\_leq} & \tk{\textquotesingle{}>=\textquotesingle{}} & \texttt{tkn\_geq} \\
+\tk{\textquotesingle{}>\textquotesingle{}} & \texttt{tkn\_greater} & \tk{\textquotesingle{}<\textquotesingle{}} & \texttt{tkn\_less} \\
+\tk{\textquotesingle{}=\textquotesingle{}} & \texttt{tkn\_assign} & \tk{valor\_numerico} & \texttt{tkn\_num} \\
+\tk{cadena\_de\_caracteres} & \texttt{tkn\_str} &  &  \\
 \end{longtable}
 
 \end{document}
